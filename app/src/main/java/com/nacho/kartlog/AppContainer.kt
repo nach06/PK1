@@ -89,7 +89,7 @@ class AppContainer(context: Context) {
 
     /** Herramientas de depuración: `null` en release. */
     val debugTools: DebugTools? =
-        DebugToolsFactory.create(context, database, circuitRepository, sessionRepository, lapRepository)
+        DebugToolsFactory.create(context, database, circuitRepository, sessionRepository, lapRepository, trackStore)
 
     /** Origen de posiciones. GPS interno por defecto; los tests o el simulador lo sustituyen. */
     var locationSource: LocationSource = FusedLocationSource(context)

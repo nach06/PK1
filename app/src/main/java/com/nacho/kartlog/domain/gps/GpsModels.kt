@@ -20,4 +20,7 @@ interface TrackStore {
     suspend fun load(sessionId: Long): List<GpsFix>
 
     suspend fun delete(sessionId: Long)
+
+    /** Borra todos los trazados (al vaciar la base de datos). */
+    suspend fun deleteAll()
 }

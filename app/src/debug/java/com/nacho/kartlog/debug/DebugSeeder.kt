@@ -2,6 +2,7 @@ package com.nacho.kartlog.debug
 
 import com.nacho.kartlog.data.local.KartLogDatabase
 import com.nacho.kartlog.domain.gps.LocationSource
+import com.nacho.kartlog.domain.gps.TrackStore
 import com.nacho.kartlog.domain.gps.OvalTrack
 import com.nacho.kartlog.domain.gps.ReplayLocationSource
 import com.nacho.kartlog.domain.gps.TrackSimulator
@@ -29,6 +30,7 @@ class DebugSeeder(
     private val sessions: SessionRepository,
     private val laps: LapRepository,
     private val samples: SampleImages,
+    private val trackStore: TrackStore,
     private val zone: ZoneId = ZoneId.systemDefault(),
     private val today: () -> LocalDate = { LocalDate.now() },
 ) : DebugTools {
@@ -116,6 +118,7 @@ class DebugSeeder(
 
     override suspend fun wipeAll() {
         withContext(Dispatchers.IO) { database.clearAllTables() }
+        trackStore.deleteAll() // los trazados GPS viven en ficheros: sin esto quedarían huérfanos
     }
 
     override suspend fun loadTextSample(sample: TextSample): String? = samples.readText(sample.assetName)

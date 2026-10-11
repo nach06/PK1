@@ -31,4 +31,8 @@ class FileTrackStore(private val dir: File) : TrackStore {
     override suspend fun delete(sessionId: Long) {
         withContext(Dispatchers.IO) { file(sessionId).delete() }
     }
+
+    override suspend fun deleteAll() {
+        withContext(Dispatchers.IO) { dir.listFiles()?.forEach { it.delete() } }
+    }
 }

@@ -29,7 +29,7 @@ class DebugSeederTest {
             val circuits = CircuitRepositoryImpl(db.circuitDao())
             val sessions = SessionRepositoryImpl(db.sessionDao())
             val laps = LapRepositoryImpl(db.lapDao())
-            val seeder = DebugSeeder(db, circuits, sessions, laps, SampleImages(context))
+            val seeder = DebugSeeder(db, circuits, sessions, laps, SampleImages(context), com.nacho.kartlog.data.gps.FileTrackStore(java.io.File(context.cacheDir, "tracks-seeder")))
 
             assertEquals(14, seeder.seed())
 
@@ -65,7 +65,7 @@ class DebugSeederTest {
             context.deleteDatabase(KartLogDatabase.NAME)
             val db = KartLogDatabase.create(context)
             val circuits = CircuitRepositoryImpl(db.circuitDao())
-            val seeder = DebugSeeder(db, circuits, SessionRepositoryImpl(db.sessionDao()), LapRepositoryImpl(db.lapDao()), SampleImages(context))
+            val seeder = DebugSeeder(db, circuits, SessionRepositoryImpl(db.sessionDao()), LapRepositoryImpl(db.lapDao()), SampleImages(context), com.nacho.kartlog.data.gps.FileTrackStore(java.io.File(context.cacheDir, "tracks-seeder")))
 
             val source = seeder.prepareSimulation()
             seeder.prepareSimulation() // repetirlo no duplica el circuito
@@ -107,5 +107,29 @@ class DebugSeederTest {
         val b = parser.parse(requireNotNull(samples.readText(TextSample.B.assetName)))
         assertEquals(listOf(26, 28, 50, 54), b.drivers.map { it.kartNumber })
         assertEquals("Asupark", b.circuitName)
+    }
+
+    @Test
+    fun wipeAllAlsoDeletesTheGpsTrackFiles() = runBlocking {
+        withTimeout(30_000) {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            context.deleteDatabase(KartLogDatabase.NAME)
+            val db = KartLogDatabase.create(context)
+            val dir = java.io.File(context.cacheDir, "tracks-wipe").apply { deleteRecursively(); mkdirs() }
+            val store = com.nacho.kartlog.data.gps.FileTrackStore(dir)
+            val circuits = CircuitRepositoryImpl(db.circuitDao())
+            val sessions = SessionRepositoryImpl(db.sessionDao(), store)
+            val seeder = DebugSeeder(db, circuits, sessions, LapRepositoryImpl(db.lapDao()), SampleImages(context), store)
+            seeder.seed()
+            val fix = com.nacho.kartlog.domain.gps.GpsFix(1_000_000_000L, 41.86, -0.79, 10f, 4f)
+            sessions.observeSummaries().first().take(3).forEach { store.save(it.session.id, listOf(fix)) }
+            assertEquals(3, dir.listFiles()!!.size)
+
+            seeder.wipeAll()
+            assertEquals("no deben quedar trazados huérfanos", 0, dir.listFiles()!!.size)
+            db.close()
+            dir.deleteRecursively()
+            Unit
+        }
     }
 }
