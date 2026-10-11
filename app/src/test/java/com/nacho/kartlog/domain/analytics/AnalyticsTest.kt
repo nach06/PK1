@@ -262,4 +262,21 @@ class AnalyticsTest {
         // Sin vueltas no hay hueco.
         assertNull(Analytics.emptyCircuitStats(zuera).improvementGapMs)
     }
+
+    @Test
+    fun sessionStats_flagGpsLaps_andCountDistinctStints() {
+        val gps = listOf(
+            Lap(1, 1, 1, 58_000, LapSource.GPS, stintId = 10),
+            Lap(2, 1, 2, 58_100, LapSource.GPS, stintId = 10),
+            Lap(3, 1, 3, 58_200, LapSource.GPS, stintId = 11),
+        )
+        val manual = laps(2, 59_000, 59_100)
+        val snapshot = Analytics.compute(listOf(summary(1), summary(2)), gps + manual)
+        val a = snapshot.sessions.first { it.summary.session.id == 1L }
+        val b = snapshot.sessions.first { it.summary.session.id == 2L }
+        assertTrue(a.hasGpsLaps)
+        assertEquals(2, a.stintCount)
+        assertFalse(b.hasGpsLaps)
+        assertEquals(0, b.stintCount)
+    }
 }

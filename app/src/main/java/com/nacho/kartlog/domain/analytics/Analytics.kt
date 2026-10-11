@@ -59,6 +59,7 @@ object Analytics {
             val official = sorted.filter { it.source == LapSource.IMPORTED }.map { it.timeMs }
             if (gps.isNotEmpty() && official.isNotEmpty()) GpsAccuracy.compare(official, gps) else null
         }
+        val rawBySession = laps.groupBy { it.sessionId }
         val lapsBySession = laps.groupBy { it.sessionId }.mapValues { (_, v) -> v.sortedBy { it.number }.map { it.timeMs } }
 
         // Récord por circuito.
@@ -68,6 +69,7 @@ object Analytics {
 
         val sessionStats = summaries.map { summary ->
             val times = lapsBySession[summary.session.id].orEmpty()
+            val sessionLaps = rawBySession[summary.session.id].orEmpty()
             val best = times.minOrNull()
             val record = recordByCircuit[summary.circuit.id]
             val delta = if (best != null && record != null) best - record else null
@@ -80,6 +82,8 @@ object Analytics {
                 deltaToRecordMs = delta,
                 isRecord = delta == 0L,
                 gpsAccuracy = gpsReports[summary.session.id]?.takeIf { it.rows.isNotEmpty() },
+                hasGpsLaps = sessionLaps.any { it.source == LapSource.GPS },
+                stintCount = sessionLaps.mapNotNull { it.stintId }.distinct().size,
             )
         }
 
@@ -179,6 +183,10 @@ data class SessionStats(
     val isRecord: Boolean,
     /** GPS vs oficial de la tanda (solo si tiene vueltas `GPS` e `IMPORTED`). */
     val gpsAccuracy: GpsAccuracy.Report? = null,
+    /** La tanda tiene vueltas medidas por GPS (icono en la card). */
+    val hasGpsLaps: Boolean = false,
+    /** Nº de stints (Resistencia); 0 si la tanda no tiene. */
+    val stintCount: Int = 0,
 )
 
 data class EvolutionPoint(val sessionId: Long, val dateTime: Long, val bestMs: Long)

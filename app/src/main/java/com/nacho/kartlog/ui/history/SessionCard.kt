@@ -16,12 +16,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.Thermostat
 import com.nacho.kartlog.R
 import com.nacho.kartlog.domain.analytics.SessionStats
@@ -100,14 +102,21 @@ fun SessionCard(stats: SessionStats, onClick: () -> Unit, modifier: Modifier = M
             add(formatDateTime(session.dateTime))
             add(stringResource(session.type.labelRes()))
             session.kartNumber?.let { add(stringResource(R.string.format_kart, it)) }
+            if (stats.stintCount > 0) add(pluralStringResource(R.plurals.format_stint_count, stats.stintCount, stats.stintCount))
         }.joinToString(" · ")
-        Text(
-            text = line,
-            style = MaterialTheme.typography.bodyMedium,
-            color = kart.textMuted,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (stats.hasGpsLaps) {
+                Icon(Icons.Default.GpsFixed, contentDescription = stringResource(R.string.card_gps_laps), modifier = Modifier.size(16.dp).testTag("card_gps_icon"), tint = kart.telemetry)
+            }
+            Text(
+                text = line,
+                style = MaterialTheme.typography.bodyMedium,
+                color = kart.textMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+        }
 
         // 4. Condiciones con iconos.
         Spacer(Modifier.height(8.dp))

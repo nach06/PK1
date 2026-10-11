@@ -150,5 +150,11 @@ class EnduranceFlowTest {
         assertEquals(lapTimes[3].toDouble(), stints[0].pitMs!!.toDouble(), 30.0)
         val laps = runBlocking { container.lapRepository.observeBySession(summary.session.id).first() }
         assertEquals(listOf(stints[0].id, stints[0].id, stints[0].id, stints[1].id), laps.map { it.stintId })
+
+        // Sprint 6, A7: en Tandas la card lleva el icono GPS y «2 stints» en el subtítulo.
+        compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("card_gps_icon", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+        waitFor("2 stints", substring = true)
+        waitFor("Resistencia", substring = true)
     }
 }

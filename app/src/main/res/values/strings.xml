@@ -157,6 +157,11 @@
     <string name="col_clean_average">Media limp.</string>
     <string name="col_sessions">Tand.</string>
     <string name="history_count_filtered">%1$d de %2$d tandas</string>
+    <string name="card_gps_laps">Vueltas medidas por GPS</string>
+    <plurals name="format_stint_count">
+        <item quantity="one">%1$d stint</item>
+        <item quantity="other">%1$d stints</item>
+    </plurals>
     <plurals name="format_session_count">
         <item quantity="one">%1$d tanda</item>
         <item quantity="other">%1$d tandas</item>
