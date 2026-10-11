@@ -14,6 +14,12 @@ interface CircuitRepository {
 
     /** Crea el circuito y devuelve su id. Si ya existe uno con ese nombre, devuelve el existente. */
     suspend fun add(name: String, lengthMeters: Int?): Long
+
+    /** Edita nombre y longitud. Devuelve `false` si el nombre ya lo usa otro circuito. */
+    suspend fun update(id: Long, name: String, lengthMeters: Int?): Boolean
+
+    /** Borra el circuito. Devuelve `false` (sin borrar nada) si tiene tandas. */
+    suspend fun delete(id: Long): Boolean
 }
 
 interface SessionRepository {

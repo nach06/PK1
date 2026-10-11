@@ -29,6 +29,20 @@ class CircuitRepositoryImpl(private val dao: CircuitDao) : CircuitRepository {
         val id = dao.insert(CircuitEntity(name = trimmed, lengthMeters = lengthMeters))
         return if (id != -1L) id else requireNotNull(dao.getByName(trimmed)).id
     }
+
+    override suspend fun update(id: Long, name: String, lengthMeters: Int?): Boolean {
+        val trimmed = name.trim()
+        val clash = dao.getByName(trimmed)
+        if (clash != null && clash.id != id) return false
+        dao.update(CircuitEntity(id = id, name = trimmed, lengthMeters = lengthMeters))
+        return true
+    }
+
+    override suspend fun delete(id: Long): Boolean {
+        if (dao.countSessions(id) > 0) return false
+        dao.deleteById(id)
+        return true
+    }
 }
 
 class SessionRepositoryImpl(private val dao: SessionDao) : SessionRepository {

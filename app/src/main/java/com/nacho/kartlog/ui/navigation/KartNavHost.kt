@@ -34,6 +34,7 @@ import androidx.navigation.navArgument
 import com.nacho.kartlog.AppContainer
 import com.nacho.kartlog.R
 import com.nacho.kartlog.ui.analysis.AnalysisScreen
+import com.nacho.kartlog.ui.circuits.CircuitsScreen
 import com.nacho.kartlog.ui.detail.SessionDetailScreen
 import com.nacho.kartlog.ui.history.SessionListScreen
 import com.nacho.kartlog.ui.newsession.NewSessionScreen
@@ -113,7 +114,12 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
             composable(Routes.ANALYSIS) {
                 AnalysisScreen(viewModel = viewModel(factory = container.analysisViewModelFactory))
             }
-            composable(Routes.CIRCUITS) { PlaceholderScreen(R.string.nav_circuits) }
+            composable(Routes.CIRCUITS) {
+                CircuitsScreen(
+                    viewModel = viewModel(factory = container.circuitsViewModelFactory),
+                    onOpenAnalysis = { navController.navigateTopLevel(Routes.ANALYSIS) },
+                )
+            }
             composable(Routes.SETTINGS) {
                 SettingsScreen(viewModel = viewModel(factory = container.settingsViewModelFactory))
             }

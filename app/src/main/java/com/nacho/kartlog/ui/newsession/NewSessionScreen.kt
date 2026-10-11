@@ -12,23 +12,18 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,11 +34,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nacho.kartlog.R
@@ -51,6 +42,7 @@ import com.nacho.kartlog.domain.model.SessionType
 import com.nacho.kartlog.domain.model.TrackCondition
 import com.nacho.kartlog.ui.components.BigStepper
 import com.nacho.kartlog.ui.components.ChipSelector
+import com.nacho.kartlog.ui.components.CircuitEditSheet
 import com.nacho.kartlog.ui.components.CircuitPickerSheet
 import com.nacho.kartlog.ui.components.KartCard
 import com.nacho.kartlog.ui.components.KartTopBar
@@ -251,8 +243,11 @@ fun NewSessionScreen(
     }
 
     state.circuitDialog?.let { dialog ->
-        NewCircuitSheet(
-            state = dialog,
+        CircuitEditSheet(
+            title = stringResource(R.string.circuit_dialog_title),
+            name = dialog.name,
+            lengthMeters = dialog.lengthMeters,
+            errorText = if (dialog.nameError) stringResource(R.string.circuit_name_required) else null,
             onNameChange = viewModel::setCircuitName,
             onDecrementLength = viewModel::decrementCircuitLength,
             onIncrementLength = viewModel::incrementCircuitLength,
@@ -342,85 +337,4 @@ private fun SessionTimePickerDialog(dateTime: Long, onConfirm: (hour: Int, minut
             }
         },
     )
-}
-
-/**
- * Alta rápida de circuito en hoja inferior: los botones Cancelar/Guardar quedan siempre por encima
- * del teclado (`imePadding`). Nombre con mayúscula por palabra; «Hecho» del teclado guarda.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun NewCircuitSheet(
-    state: CircuitDialogState,
-    onNameChange: (String) -> Unit,
-    onDecrementLength: () -> Unit,
-    onIncrementLength: () -> Unit,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = MaterialTheme.colorScheme.surface,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .imePadding()
-                .navigationBarsPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.circuit_dialog_title),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            RacingTextField(
-                value = state.name,
-                onValueChange = onNameChange,
-                modifier = Modifier.focusRequester(focusRequester),
-                label = stringResource(R.string.label_circuit_name),
-                singleLine = true,
-                isError = state.nameError,
-                supportingText = if (state.nameError) stringResource(R.string.circuit_name_required) else null,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Words,
-                    imeAction = ImeAction.Done,
-                ),
-                keyboardActions = KeyboardActions(onDone = { onConfirm() }),
-            )
-            BigStepper(
-                label = stringResource(R.string.label_circuit_length),
-                valueText = state.lengthMeters?.let { stringResource(R.string.format_length_m, it) }
-                    ?: stringResource(R.string.value_unset),
-                onDecrement = onDecrementLength,
-                onIncrement = onIncrementLength,
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                OutlinedButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 56.dp),
-                    shape = MaterialTheme.shapes.medium,
-                ) { Text(stringResource(R.string.action_cancel).uppercase(), style = MaterialTheme.typography.titleSmall) }
-                Button(
-                    onClick = onConfirm,
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 56.dp),
-                    shape = MaterialTheme.shapes.medium,
-                ) { Text(stringResource(R.string.action_save).uppercase(), style = MaterialTheme.typography.titleSmall) }
-            }
-        }
-    }
 }

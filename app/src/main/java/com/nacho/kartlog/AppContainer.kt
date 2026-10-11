@@ -16,6 +16,7 @@ import com.nacho.kartlog.domain.repository.LapRepository
 import com.nacho.kartlog.domain.repository.SessionRepository
 import com.nacho.kartlog.ui.analysis.AnalysisSelection
 import com.nacho.kartlog.ui.analysis.AnalysisViewModel
+import com.nacho.kartlog.ui.circuits.CircuitsViewModel
 import com.nacho.kartlog.ui.detail.SessionDetailViewModel
 import com.nacho.kartlog.ui.history.SessionListViewModel
 import com.nacho.kartlog.ui.newsession.NewSessionViewModel
@@ -31,6 +32,10 @@ class AppContainer(context: Context) {
 
     val analyticsSource = AnalyticsSource(sessionRepository, lapRepository)
     val analysisSelection = AnalysisSelection()
+
+    val circuitsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
+        initializer { CircuitsViewModel(circuitRepository, analyticsSource, analysisSelection) }
+    }
 
     val analysisViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
         initializer { AnalysisViewModel(analyticsSource, analysisSelection) }

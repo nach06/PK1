@@ -151,4 +151,17 @@
         <item quantity="one">%1$d tanda</item>
         <item quantity="other">%1$d tandas</item>
     </plurals>
+
+    <!-- Circuitos -->
+    <string name="circuits_empty">Aún no hay circuitos. Crea uno al registrar una tanda.</string>
+    <string name="circuit_no_length">Longitud sin indicar</string>
+    <string name="circuit_edit_title">Editar circuito</string>
+    <string name="circuit_name_duplicate">Ya existe un circuito con ese nombre</string>
+    <string name="circuit_delete_title">¿Borrar %1$s?</string>
+    <string name="circuit_delete_message">El circuito se eliminará. Esta acción no se puede deshacer.</string>
+    <string name="circuit_delete_blocked_title">No se puede borrar</string>
+    <plurals name="circuit_has_sessions">
+        <item quantity="one">%1$s tiene %2$d tanda. Borra o mueve sus tandas antes de eliminar el circuito.</item>
+        <item quantity="other">%1$s tiene %2$d tandas. Borra sus tandas antes de eliminar el circuito.</item>
+    </plurals>
 </resources>
