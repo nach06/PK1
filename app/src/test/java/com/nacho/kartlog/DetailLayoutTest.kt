@@ -1,0 +1,89 @@
+package com.nacho.kartlog
+
+import android.content.Context
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.test.core.app.ApplicationProvider
+import com.nacho.kartlog.data.local.KartLogDatabase
+import com.nacho.kartlog.domain.model.NewSession
+import com.nacho.kartlog.domain.model.SessionType
+import com.nacho.kartlog.domain.model.TrackCondition
+import com.nacho.kartlog.ui.detail.SessionDetailScreen
+import com.nacho.kartlog.ui.detail.SessionDetailViewModel
+import com.nacho.kartlog.ui.theme.KartLogTheme
+import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+/** Detalle en una pantalla baja (360×560 dp) con 10 vueltas: reglas de F1 (gráfica/teclado). */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35], qualifiers = "w360dp-h560dp-xxhdpi")
+class DetailLayoutTest {
+    @get:Rule
+    val compose = createComposeRule()
+
+    private lateinit var context: Context
+
+    @Before
+    fun setUp() {
+        context = ApplicationProvider.getApplicationContext()
+        context.deleteDatabase(KartLogDatabase.NAME)
+    }
+
+    @After
+    fun tearDown() {
+        context.deleteDatabase(KartLogDatabase.NAME)
+    }
+
+    private fun waitFor(text: String) = compose.waitUntil(5_000) {
+        compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+    }
+
+    @Test
+    fun chartAndKeypadAreMutuallyExclusive_andSaveButtonStaysVisible() {
+        val container = AppContainer(context)
+        val sessionId = runBlocking {
+            val circuit = container.circuitRepository.add("Zuera", null)
+            val id = container.sessionRepository.create(
+                NewSession(circuit, 1_760_000_000_000, SessionType.RACE, 7, null, null, null, TrackCondition.DRY, ""),
+            )
+            listOf(86_000L, 72_900, 73_200, 72_600, 74_900, 72_800, 73_050, 72_450, 72_980, 72_858)
+                .forEach { container.lapRepository.addManual(id, it) }
+            id
+        }
+        val viewModel = SessionDetailViewModel(sessionId, container.sessionRepository, container.lapRepository)
+        compose.setContent { KartLogTheme { SessionDetailScreen(viewModel = viewModel, onBack = {}) } }
+
+        // Con vueltas guardadas la tanda abre con el teclado plegado.
+        waitFor("ABRIR TECLADO")
+
+        // Abrir la gráfica: aparece y el teclado sigue plegado.
+        compose.onNodeWithText("GRÁFICA DE VUELTAS").performClick()
+        compose.onNodeWithTag("lap_chart").assertIsDisplayed()
+        compose.onNodeWithText("ABRIR TECLADO").assertIsDisplayed()
+
+        // Abrir el teclado: la gráfica se pliega y el teclado cabe entero, con GUARDAR VUELTA a la vista.
+        compose.onNodeWithText("ABRIR TECLADO").performClick()
+        compose.waitForIdle()
+        check(compose.onAllNodesWithText("GUARDAR VUELTA").fetchSemanticsNodes().isNotEmpty())
+        check(compose.onAllNodesWithTag("lap_chart").fetchSemanticsNodes().isEmpty()) { "la gráfica debe plegarse" }
+        compose.onNodeWithText("GUARDAR VUELTA").assertIsDisplayed()
+        listOf("1", "5", "9", "00", "0", "⌫").forEach { compose.onNodeWithText(it).assertIsDisplayed() }
+
+        // Abrir la gráfica de nuevo: pliega el teclado.
+        compose.onNodeWithText("GRÁFICA DE VUELTAS").performClick()
+        compose.waitForIdle()
+        check(compose.onAllNodesWithText("GUARDAR VUELTA").fetchSemanticsNodes().isEmpty()) { "el teclado debe plegarse" }
+        compose.onNodeWithTag("lap_chart").assertIsDisplayed()
+    }
+}

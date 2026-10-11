@@ -134,7 +134,10 @@ fun LapEntryPanel(
                     onBackspace = onBackspace,
                     onClear = onClear,
                     keyHeight = 56.dp,
-                    modifier = Modifier.fillMaxWidth(),
+                    // Cede altura si el panel no cabe: GUARDAR VUELTA nunca se recorta.
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false),
                 )
                 PrimaryButton(
                     text = stringResource(if (isEditing) R.string.action_update_lap else R.string.action_save_lap),

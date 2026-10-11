@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,6 +68,8 @@ fun SessionDetailScreen(
     // Teclado plegable. Estado inicial: desplegado solo si la tanda no tiene vueltas.
     var keypadExpanded by rememberSaveable { mutableStateOf(false) }
     var keypadInitialized by rememberSaveable { mutableStateOf(false) }
+    // Gráfica y teclado son mutuamente excluyentes: abrir uno pliega el otro.
+    var chartExpanded by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.isLoading) {
         if (!state.isLoading && !keypadInitialized) {
             keypadExpanded = state.laps.isEmpty()
@@ -122,6 +125,11 @@ fun SessionDetailScreen(
                 HeaderCard(
                     detail = detail,
                     state = state,
+                    chartExpanded = chartExpanded,
+                    onToggleChart = {
+                        chartExpanded = !chartExpanded
+                        if (chartExpanded) keypadExpanded = false
+                    },
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
                 )
                 LazyColumn(
@@ -149,6 +157,7 @@ fun SessionDetailScreen(
                                 onEdit = {
                                     viewModel.startEditing(lap)
                                     keypadExpanded = true
+                                    chartExpanded = false
                                 },
                                 onDelete = { viewModel.requestDeleteLap(lap) },
                             )
@@ -168,7 +177,10 @@ fun SessionDetailScreen(
                         stringResource(R.string.lap_entry_title, state.nextLapNumber)
                     },
                     isEditing = editing != null,
-                    onToggle = { keypadExpanded = !keypadExpanded },
+                    onToggle = {
+                        keypadExpanded = !keypadExpanded
+                        if (keypadExpanded) chartExpanded = false
+                    },
                     onDigits = viewModel::onDigits,
                     onBackspace = viewModel::onBackspace,
                     onClear = viewModel::onClear,
@@ -201,8 +213,13 @@ fun SessionDetailScreen(
 
 /** Cabecera compacta: datos de la tanda (solo los no nulos) y fila MEJOR / MEDIA. */
 @Composable
-private fun HeaderCard(detail: SessionDetail, state: SessionDetailUiState, modifier: Modifier = Modifier) {
-    var chartExpanded by rememberSaveable { mutableStateOf(false) }
+private fun HeaderCard(
+    detail: SessionDetail,
+    state: SessionDetailUiState,
+    chartExpanded: Boolean,
+    onToggleChart: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val session = detail.session
     val kart = MaterialTheme.kartColors
     val unset = stringResource(R.string.value_unset)
@@ -268,7 +285,7 @@ private fun HeaderCard(detail: SessionDetail, state: SessionDetailUiState, modif
         // Gráfica de vueltas: plegable para no quitar sitio a la lista (necesita al menos 2 vueltas).
         if (state.laps.size >= 2) {
             TextButton(
-                onClick = { chartExpanded = !chartExpanded },
+                onClick = onToggleChart,
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 56.dp),
@@ -284,6 +301,7 @@ private fun HeaderCard(detail: SessionDetail, state: SessionDetailUiState, modif
                 )
             }
             if (chartExpanded) {
+                Box(Modifier.testTag("lap_chart")) {
                 val bestIndex = state.laps.indexOfFirst { it.timeMs == state.bestLapMs }
                 TimeLineChart(
                     x = state.laps.map { it.number.toDouble() },
@@ -296,6 +314,7 @@ private fun HeaderCard(detail: SessionDetail, state: SessionDetailUiState, modif
                     highlightIndex = bestIndex.takeIf { it >= 0 },
                     xSpacing = if (state.laps.size > 12) 2 else 1,
                 )
+                }
             }
         }
     }
