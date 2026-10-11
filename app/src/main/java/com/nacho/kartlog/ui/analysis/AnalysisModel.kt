@@ -6,7 +6,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
  * Circuito elegido para el análisis, compartido entre pestañas (Circuitos → Análisis).
- * `null` significa «el de la tanda más reciente».
+ * Vive en el [com.nacho.kartlog.AppContainer], así que la última elección se recuerda mientras la app
+ * siga en memoria. `null` significa «aún no se ha elegido: usar el circuito por defecto».
  */
 class AnalysisSelection {
     val circuitId = MutableStateFlow<Long?>(null)
@@ -21,10 +22,16 @@ fun circuitsWithSessions(snapshot: AnalyticsSnapshot): List<Circuit> {
 }
 
 /**
- * Circuito mostrado: el seleccionado si sigue teniendo tandas; si no, el de la tanda más reciente
- * (por fecha). `null` si no hay ninguna tanda.
+ * Circuito mostrado: el seleccionado si existe; si no, el que tiene **más tandas con vueltas** y, en
+ * caso de empate, el de la tanda más reciente. `null` si no hay ninguna tanda.
  */
 fun resolveCircuitId(snapshot: AnalyticsSnapshot, selected: Long?): Long? {
     if (selected != null && snapshot.circuits.containsKey(selected)) return selected
-    return snapshot.sessions.maxByOrNull { it.summary.session.dateTime }?.summary?.circuit?.id
+    val lastDate = snapshot.sessions.groupBy { it.summary.circuit.id }
+        .mapValues { (_, v) -> v.maxOf { it.summary.session.dateTime } }
+    return snapshot.circuits.values
+        .maxWithOrNull(
+            compareBy<com.nacho.kartlog.domain.analytics.CircuitStats> { it.sessionsWithLaps }
+                .thenBy { lastDate[it.circuit.id] ?: Long.MIN_VALUE },
+        )?.circuit?.id
 }

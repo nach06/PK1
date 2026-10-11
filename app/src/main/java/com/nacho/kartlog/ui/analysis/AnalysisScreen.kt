@@ -28,6 +28,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nacho.kartlog.R
 import com.nacho.kartlog.domain.analytics.CircuitStats
@@ -95,26 +96,35 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
                     Text("▾", style = MaterialTheme.typography.titleMedium)
                 }
 
-                // 2. Récord, media limpia histórica y nº de tandas.
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                // 2. Récord, media limpia histórica y nº de tandas: misma altura de valor y alineación superior.
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
                     val unset = stringResource(R.string.value_unset)
                     StatBadge(
                         label = stringResource(R.string.stat_record),
                         value = stats.recordMs?.let(LapTime::format) ?: unset,
                         valueColor = MaterialTheme.kartColors.telemetry,
                         valueStyle = KartTextStyles.lapTime,
-                        modifier = Modifier.weight(1.1f),
+                        minValueSize = 18.sp,
+                        valueAreaHeight = 40.dp,
+                        modifier = Modifier.weight(1.2f),
                     )
                     StatBadge(
                         label = stringResource(R.string.stat_historic_clean_average),
                         value = stats.historicCleanAverageMs?.let(LapTime::format) ?: unset,
                         valueStyle = KartTextStyles.lapTime,
-                        modifier = Modifier.weight(1.1f),
+                        minValueSize = 18.sp,
+                        valueAreaHeight = 40.dp,
+                        modifier = Modifier.weight(1.2f),
                     )
                     StatBadge(
                         label = stringResource(R.string.stat_session_count),
                         value = stats.sessionsWithLaps.toString(),
                         valueStyle = KartTextStyles.lapTime,
+                        minValueSize = 18.sp,
+                        valueAreaHeight = 40.dp,
                         modifier = Modifier.weight(0.6f),
                     )
                 }
