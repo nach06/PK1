@@ -355,7 +355,34 @@ private fun SummaryContent(state: DashboardUiState, onSave: () -> Unit, onDiscar
         if ((summary?.lapCount ?: 0) == 0 || state.nothingToSave) {
             Text(stringResource(R.string.track_no_laps), style = MaterialTheme.typography.bodyLarge, color = kart.warning)
         }
-        Box(Modifier.weight(1f))
+        // Comparativa con tu mejor del circuito y gráfica de vueltas: el resumen de lo que acabas de hacer.
+        val best = summary?.bestMs
+        if (best != null) {
+            val record = state.circuitRecordMs
+            val (text, color) = when {
+                record == null -> stringResource(R.string.summary_first_here) to kart.textMuted
+                best < record -> stringResource(R.string.summary_new_record, LapTime.formatDelta(best - record), LapTime.format(record)) to kart.telemetry
+                else -> stringResource(R.string.summary_vs_record, LapTime.format(record), LapTime.formatDelta(best - record)) to kart.textMuted
+            }
+            Text(text, style = MaterialTheme.typography.titleSmall, color = color, modifier = Modifier.testTag("summary_compare"))
+        }
+        val keptLaps = summary?.laps?.filter { it.kept }.orEmpty()
+        if (keptLaps.size >= 2) {
+            KartCard(Modifier.fillMaxWidth().weight(1f).heightIn(min = 140.dp).testTag("summary_chart"), contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)) {
+                com.nacho.kartlog.ui.components.TimeLineChart(
+                    x = keptLaps.indices.map { it.toDouble() },
+                    timesMs = keptLaps.map { it.timeMs },
+                    xLabel = { v -> keptLaps.getOrNull(v.toInt())?.number?.toString() ?: "" },
+                    referenceMs = state.circuitRecordMs,
+                    referenceLabel = state.circuitRecordMs?.let { stringResource(R.string.summary_record_line) },
+                    highlightIndex = keptLaps.indexOfFirst { it.timeMs == best },
+                    xSpacing = ((keptLaps.size + 5) / 6).coerceAtLeast(1),
+                    clipOutliers = true,
+                )
+            }
+        } else {
+            Box(Modifier.weight(1f))
+        }
         PrimaryButton(
             text = stringResource(R.string.track_save).uppercase(),
             onClick = onSave,

@@ -410,6 +410,10 @@
     <string name="alert_best">Mejor</string>
     <string name="alert_record_hint">Récord del circuito</string>
     <string name="stint_in_pit_short">Pit · cruza la meta al salir</string>
+    <string name="summary_first_here">Primera tanda en este circuito: aún no hay con qué comparar.</string>
+    <string name="summary_new_record">¡Nuevo récord del circuito! %1$s (antes %2$s)</string>
+    <string name="summary_vs_record">Tu mejor del circuito: %1$s · esta tanda %2$s</string>
+    <string name="summary_record_line">Récord</string>
     <string name="track_hold_to_finish">Mantén pulsado para terminar</string>
     <string name="track_summary_laps">Vueltas</string>
     <string name="track_no_laps">No se cerró ninguna vuelta: no hay nada que guardar.</string>
