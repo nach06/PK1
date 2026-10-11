@@ -10,7 +10,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -32,7 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nacho.kartlog.R
 import com.nacho.kartlog.ui.components.KartCard
 import com.nacho.kartlog.ui.components.KartTopBar
-import com.nacho.kartlog.ui.components.PrimaryButton
+import com.nacho.kartlog.ui.components.SecondaryButton
 import com.nacho.kartlog.ui.theme.kartColors
 import com.nacho.kartlog.ui.util.shareCsv
 
@@ -88,7 +87,7 @@ fun SettingsScreen(
                     color = MaterialTheme.kartColors.textMuted,
                 )
                 Column(modifier = Modifier.padding(top = 12.dp)) {
-                    PrimaryButton(
+                    SecondaryButton(
                         text = stringResource(R.string.settings_export_all),
                         onClick = viewModel::exportAll,
                         enabled = !state.isBusy,
@@ -113,25 +112,17 @@ fun SettingsScreen(
                         modifier = Modifier.padding(top = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        PrimaryButton(
+                        SecondaryButton(
                             text = stringResource(R.string.settings_seed),
                             onClick = viewModel::seedDebugData,
                             enabled = !state.isBusy,
                         )
-                        OutlinedButton(
+                        SecondaryButton(
+                            text = stringResource(R.string.settings_wipe),
                             onClick = { wipeStep = 1 },
                             enabled = !state.isBusy,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 56.dp),
-                            shape = MaterialTheme.shapes.medium,
-                        ) {
-                            Text(
-                                stringResource(R.string.settings_wipe).uppercase(),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                        }
+                            color = MaterialTheme.kartColors.warning,
+                        )
                     }
                 }
             }
