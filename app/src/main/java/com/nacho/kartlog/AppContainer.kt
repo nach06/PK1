@@ -166,7 +166,7 @@ class AppContainer(context: Context) {
     }
 
     val sessionListViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
-        initializer { SessionListViewModel(analyticsSource, circuitRepository) }
+        initializer { SessionListViewModel(analyticsSource, circuitRepository, userSettings) }
     }
 
     val newSessionViewModelFactory: ViewModelProvider.Factory = viewModelFactory {

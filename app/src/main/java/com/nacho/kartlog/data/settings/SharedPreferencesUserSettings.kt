@@ -3,6 +3,7 @@ package com.nacho.kartlog.data.settings
 import android.content.Context
 import android.content.SharedPreferences
 import com.nacho.kartlog.domain.settings.DashboardOrientation
+import com.nacho.kartlog.domain.settings.SavedListFilter
 import com.nacho.kartlog.domain.settings.UserSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -70,7 +71,28 @@ class SharedPreferencesUserSettings(context: Context) : UserSettings {
         prefs.edit().putBoolean(KEY_SAVE_IMPORT_PHOTO, enabled).apply()
     }
 
+    private val _listFilter = MutableStateFlow(
+        SavedListFilter(
+            circuitId = prefs.getLong(KEY_FILTER_CIRCUIT, -1L).takeIf { it >= 0 },
+            type = prefs.getString(KEY_FILTER_TYPE, null),
+            sort = prefs.getString(KEY_FILTER_SORT, null),
+        ),
+    )
+    override val listFilter: StateFlow<SavedListFilter> = _listFilter.asStateFlow()
+
+    override fun setListFilter(filter: SavedListFilter) {
+        _listFilter.value = filter
+        prefs.edit()
+            .putLong(KEY_FILTER_CIRCUIT, filter.circuitId ?: -1L)
+            .apply { if (filter.type != null) putString(KEY_FILTER_TYPE, filter.type) else remove(KEY_FILTER_TYPE) }
+            .apply { if (filter.sort != null) putString(KEY_FILTER_SORT, filter.sort) else remove(KEY_FILTER_SORT) }
+            .apply()
+    }
+
     private companion object {
+        const val KEY_FILTER_CIRCUIT = "list_filter_circuit"
+        const val KEY_FILTER_TYPE = "list_filter_type"
+        const val KEY_FILTER_SORT = "list_filter_sort"
         const val KEY_SAVE_IMPORT_PHOTO = "save_import_photo"
         const val FILE = "kartlog_settings"
         const val KEY_DRIVER_NAME = "driver_name"

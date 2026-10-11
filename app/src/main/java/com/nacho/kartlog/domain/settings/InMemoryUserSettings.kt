@@ -32,4 +32,8 @@ class InMemoryUserSettings(driverName: String = "") : UserSettings {
     private val photo = MutableStateFlow(true)
     override val saveImportPhoto: StateFlow<Boolean> = photo
     override fun setSaveImportPhoto(enabled: Boolean) { photo.value = enabled }
+
+    private val filter = MutableStateFlow(SavedListFilter())
+    override val listFilter: StateFlow<SavedListFilter> = filter
+    override fun setListFilter(filter: SavedListFilter) { this.filter.value = filter }
 }

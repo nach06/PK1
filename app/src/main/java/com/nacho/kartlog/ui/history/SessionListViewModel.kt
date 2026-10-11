@@ -6,6 +6,8 @@ import com.nacho.kartlog.domain.analytics.AnalyticsSource
 import com.nacho.kartlog.domain.model.Circuit
 import com.nacho.kartlog.domain.model.SessionType
 import com.nacho.kartlog.domain.repository.CircuitRepository
+import com.nacho.kartlog.domain.settings.SavedListFilter
+import com.nacho.kartlog.domain.settings.UserSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,11 +29,24 @@ data class SessionListUiState(
 class SessionListViewModel(
     analytics: AnalyticsSource,
     circuits: CircuitRepository,
+    /** Si se da, el filtro (circuito, tipo y orden) se recuerda entre sesiones. */
+    private val settings: UserSettings? = null,
 ) : ViewModel() {
-    private val filters = MutableStateFlow(SessionFilters())
+    private val filters = MutableStateFlow(initialFilters())
+
+    private fun initialFilters(): SessionFilters {
+        val saved = settings?.listFilter?.value ?: return SessionFilters()
+        return SessionFilters(
+            circuitId = saved.circuitId,
+            type = saved.type?.let { name -> SessionType.entries.firstOrNull { it.name == name } },
+            sort = saved.sort?.let { name -> SessionSort.entries.firstOrNull { it.name == name } } ?: SessionSort.DATE,
+        )
+    }
 
     val uiState: StateFlow<SessionListUiState> =
-        combine(analytics.observe(), circuits.observeAll(), filters) { snapshot, circuitList, f ->
+        combine(analytics.observe(), circuits.observeAll(), filters) { snapshot, circuitList, stored ->
+            // Un circuito borrado desde la última vez ya no filtra (si no, la lista saldría vacía sin explicación).
+            val f = if (stored.circuitId != null && circuitList.none { it.id == stored.circuitId }) stored.copy(circuitId = null) else stored
             SessionListUiState(
                 isLoading = false,
                 items = buildSessionItems(snapshot.sessions, f),
@@ -41,12 +56,17 @@ class SessionListViewModel(
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionListUiState())
 
-    fun selectCircuit(id: Long?) = filters.update { it.copy(circuitId = id) }
+    private fun change(change: (SessionFilters) -> SessionFilters) {
+        filters.update(change)
+        settings?.setListFilter(filters.value.let { SavedListFilter(it.circuitId, it.type?.name, it.sort.name) })
+    }
+
+    fun selectCircuit(id: Long?) = change { it.copy(circuitId = id) }
 
     /** Pulsar el tipo activo lo desmarca. */
-    fun toggleType(type: SessionType) = filters.update { it.copy(type = if (it.type == type) null else type) }
+    fun toggleType(type: SessionType) = change { it.copy(type = if (it.type == type) null else type) }
 
-    fun setSort(sort: SessionSort) = filters.update { it.copy(sort = sort) }
+    fun setSort(sort: SessionSort) = change { it.copy(sort = sort) }
 
-    fun clearFilters() = filters.update { it.copy(circuitId = null, type = null) }
+    fun clearFilters() = change { it.copy(circuitId = null, type = null) }
 }

@@ -5,6 +5,9 @@ import kotlinx.coroutines.flow.StateFlow
 /** Orientación del Dashboard en pista (Sprint 6, B1). */
 enum class DashboardOrientation { LANDSCAPE, AUTO, PORTRAIT }
 
+/** Filtro de la lista de Tandas que se recuerda entre sesiones (circuito, tipo y orden). */
+data class SavedListFilter(val circuitId: Long? = null, val type: String? = null, val sort: String? = null)
+
 /** Ajustes del usuario que no pertenecen a ninguna tanda. */
 interface UserSettings {
     /** «Mi nombre de piloto»: sirve para preseleccionar tu columna al importar tiempos. */
@@ -41,4 +44,9 @@ interface UserSettings {
     val saveImportPhoto: StateFlow<Boolean>
 
     fun setSaveImportPhoto(enabled: Boolean)
+
+    /** Última selección de filtros de Tandas (se recuerda al volver a abrir la app). */
+    val listFilter: StateFlow<SavedListFilter>
+
+    fun setListFilter(filter: SavedListFilter)
 }
