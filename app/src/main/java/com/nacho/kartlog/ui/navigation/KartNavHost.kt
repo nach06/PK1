@@ -229,6 +229,7 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
             }
             composable(Routes.TRACK) {
                 val feedback by container.userSettings.lapFeedback.collectAsState()
+                androidx.compose.runtime.CompositionLocalProvider(com.nacho.kartlog.ui.dashboard.LocalNanoClock provides container.nanoClock) {
                 DashboardScreen(
                     viewModel = viewModel(factory = container.dashboardViewModelFactory),
                     timingEvents = container.timingSession.events,
@@ -241,6 +242,7 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
                         }
                     },
                 )
+                }
             }
             composable(Routes.IMPORT) {
                 ImportScreen(

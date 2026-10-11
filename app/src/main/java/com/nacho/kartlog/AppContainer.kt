@@ -106,8 +106,11 @@ class AppContainer(context: Context) {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     /** Borrador de la tanda en curso (para recuperarla si el sistema mata la app). */
     val draftStore: DraftStore = FileDraftStore(File(context.filesDir, "tracks"))
-    val timingSession = TimingSession(appScope, wallClockMs = { wallClockMs() }, draftStore = draftStore)
+    val timingSession = TimingSession(appScope, clockNs = { nanoClock() }, wallClockMs = { wallClockMs() }, draftStore = draftStore)
     val gpsSessionSaver = GpsSessionSaver(sessionRepository, lapRepository, trackStore, stintRepository)
+
+    /** Reloj monótono (ns) del cronometraje y del reloj en vivo del Dashboard; los tests lo sustituyen por uno manual. */
+    var nanoClock: () -> Long = System::nanoTime
 
     /** Reloj de pared (epoch ms); los tests lo sustituyen para fijar la fecha de las tandas GPS. */
     var wallClockMs: () -> Long = System::currentTimeMillis

@@ -83,6 +83,9 @@ import java.util.Locale
 /** Los tests desactivan el reloj en vivo (un bucle infinito de `delay` impediría que Compose llegue a «reposo»). */
 val LocalLiveClock = compositionLocalOf { true }
 
+/** Reloj monótono (ns) que lee el cronómetro en vivo; los tests lo sustituyen por uno manual. */
+val LocalNanoClock = compositionLocalOf<() -> Long> { System::nanoTime }
+
 private const val FINISH_HOLD_MS = 1_500
 private const val SIGNAL_LOST_MS = 3_000L
 
@@ -264,11 +267,12 @@ private fun PrepContent(
 fun RunningDashboard(timing: TimingState, onFinish: () -> Unit, modifier: Modifier = Modifier, onPit: (String?) -> Unit = {}) {
     val kart = MaterialTheme.kartColors
     val live = LocalLiveClock.current
-    var nowNs by remember { mutableLongStateOf(timing.lastFixArrivalNs ?: System.nanoTime()) }
+    val clock = LocalNanoClock.current
+    var nowNs by remember { mutableLongStateOf(timing.lastFixArrivalNs ?: clock()) }
     if (live) {
         LaunchedEffect(Unit) {
             while (true) {
-                nowNs = System.nanoTime()
+                nowNs = clock()
                 delay(50)
             }
         }
