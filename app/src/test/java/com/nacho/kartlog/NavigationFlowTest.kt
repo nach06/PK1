@@ -80,6 +80,8 @@ class NavigationFlowTest {
         compose.onNodeWithText("Ajustes").performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithText("EXPORTAR TODO A CSV").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Exportar todo a CSV".uppercase()).assertIsDisplayed()
+        // T0: la línea de versión identifica la build (hash de git y hora de compilación).
+        compose.onNodeWithText("build ${BuildConfig.GIT_HASH} · ${BuildConfig.BUILD_TIME}", substring = true).assertExists()
 
         // Nueva tanda: la barra inferior desaparece.
         compose.onNodeWithText("Tandas").performClick()

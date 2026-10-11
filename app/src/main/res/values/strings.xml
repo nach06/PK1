@@ -172,5 +172,5 @@
     <string name="settings_export_all">Exportar todo a CSV</string>
     <string name="settings_export_hint">Una fila por vuelta de todas las tandas.</string>
     <string name="settings_nothing_to_export">No hay vueltas que exportar</string>
-    <string name="settings_version">%1$s · versión %2$s</string>
+    <string name="settings_version">%1$s · versión %2$s · build %3$s · %4$s</string>
 </resources>

@@ -28,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.nacho.kartlog.BuildConfig
 import com.nacho.kartlog.R
 import com.nacho.kartlog.ui.components.KartCard
 import com.nacho.kartlog.ui.components.KartTopBar
@@ -128,7 +129,13 @@ fun SettingsScreen(
             }
 
             Text(
-                text = stringResource(R.string.settings_version, stringResource(R.string.app_name), versionName),
+                text = stringResource(
+                    R.string.settings_version,
+                    stringResource(R.string.app_name),
+                    versionName,
+                    BuildConfig.GIT_HASH,
+                    BuildConfig.BUILD_TIME,
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.kartColors.textMuted,
                 textAlign = TextAlign.Center,
