@@ -1,6 +1,10 @@
 package com.nacho.kartlog.debug
 
 import com.nacho.kartlog.data.local.KartLogDatabase
+import com.nacho.kartlog.domain.gps.LocationSource
+import com.nacho.kartlog.domain.gps.OvalTrack
+import com.nacho.kartlog.domain.gps.ReplayLocationSource
+import com.nacho.kartlog.domain.gps.TrackSimulator
 import com.nacho.kartlog.domain.model.NewSession
 import com.nacho.kartlog.domain.model.SessionType
 import com.nacho.kartlog.domain.model.TrackCondition
@@ -117,4 +121,27 @@ class DebugSeeder(
     override fun sampleNames(): List<String> = samples.names()
 
     override suspend fun prepareSample(name: String): String? = samples.prepare(name)
+
+    override suspend fun prepareSimulation(): LocationSource {
+        val oval = OvalTrack()
+        val id = circuits.add(SIMULATED_CIRCUIT, (oval.perimeterM).toInt())
+        circuits.setFinishLine(id, oval.finishLine)
+        // 12 vueltas de ~58 s con variaciones reproducibles (la 1.ª, más lenta; alguna con error).
+        val random = Random(7)
+        val lapTimes = List(12) { i ->
+            val slowdown = when (i) {
+                0 -> 2_500L // primera vuelta, más lenta
+                6 -> 1_800L // un error a mitad de tanda
+                else -> 0L
+            }
+            58_000L + random.nextInt(-900, 900) + slowdown
+        }
+        val sim = TrackSimulator.simulate(oval, lapTimes, hz = 1.0, lateralNoiseM = 1.5, alongNoiseM = 0.8)
+        return ReplayLocationSource(sim.fixes, speedFactor = SIMULATION_SPEED)
+    }
+
+    private companion object {
+        const val SIMULATED_CIRCUIT = "Óvalo simulado"
+        const val SIMULATION_SPEED = 10.0
+    }
 }

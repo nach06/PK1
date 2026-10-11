@@ -111,6 +111,7 @@
     <string name="settings_clear_rivals_message">Se vaciarán las clasificaciones y las vueltas de otros pilotos de todas las tandas importadas, y el texto original que se guardó al importar. Tus tandas y tus vueltas se conservan.</string>
     <string name="settings_clear_rivals_confirm">Borrar rivales</string>
     <string name="settings_rivals_cleared">Datos de rivales borrados</string>
+    <string name="settings_simulate_track">Simular tanda en pista</string>
     <string name="settings_test_ocr">Probar OCR con muestra</string>
     <string name="settings_samples_missing">Añade muestras en app/src/debug/assets/muestras/</string>
     <string name="settings_wipe">Borrar todos los datos</string>

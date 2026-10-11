@@ -58,6 +58,8 @@ class SettingsViewModelTest {
         override suspend fun seed() = 0
         override suspend fun wipeAll() = Unit
         override fun sampleNames() = samples
+        override suspend fun prepareSimulation(): com.nacho.kartlog.domain.gps.LocationSource =
+            com.nacho.kartlog.domain.gps.ReplayLocationSource(emptyList())
         override suspend fun prepareSample(name: String) = "file:///cache/photos/$name"
     }
 

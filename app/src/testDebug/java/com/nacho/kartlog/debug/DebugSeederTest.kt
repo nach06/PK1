@@ -57,4 +57,32 @@ class DebugSeederTest {
             db.close()
         }
     }
+
+    @Test
+    fun simulationCreatesTheOvalWithItsFinishLine_andDrivesTwelveLaps() = runBlocking {
+        withTimeout(30_000) {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            context.deleteDatabase(KartLogDatabase.NAME)
+            val db = KartLogDatabase.create(context)
+            val circuits = CircuitRepositoryImpl(db.circuitDao())
+            val seeder = DebugSeeder(db, circuits, SessionRepositoryImpl(db.sessionDao()), LapRepositoryImpl(db.lapDao()), SampleImages(context))
+
+            val source = seeder.prepareSimulation()
+            seeder.prepareSimulation() // repetirlo no duplica el circuito
+            val circuit = circuits.observeAll().first().single()
+            assertEquals("Óvalo simulado", circuit.name)
+            val finish = circuit.finishLine
+            org.junit.Assert.assertNotNull(finish)
+            assertEquals(10.0, source.playbackSpeed, 0.0)
+
+            // Cronometrado de verdad con el detector (en tiempo virtual): 12 vueltas de ~58 s, la 1.ª y la 7.ª más lentas.
+            val detector = com.nacho.kartlog.domain.gps.GateDetector(finish!!)
+            val laps = mutableListOf<Long>()
+            kotlinx.coroutines.test.runTest { source.fixes().collect { detector.feed(it)?.lapTimeMs?.let(laps::add) } }
+            assertEquals(12, laps.size)
+            assertTrue("todas en torno a 58 s: $laps", laps.all { it in 56_500..62_000 })
+            assertTrue(laps[0] > laps.sorted()[6] && laps[6] > laps.sorted()[6]) // las dos lentas destacan
+            db.close()
+        }
+    }
 }

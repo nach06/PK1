@@ -118,7 +118,7 @@ class AppContainer(context: Context) {
     }
 
     val settingsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
-        initializer { SettingsViewModel(debugTools, SessionsCsvExporter(sessionRepository, lapRepository), userSettings, importInbox, importRepository) }
+        initializer { SettingsViewModel(debugTools, SessionsCsvExporter(sessionRepository, lapRepository), userSettings, importInbox, importRepository, onSimulationReady = { locationSource = it }) }
     }
 
     val sessionListViewModelFactory: ViewModelProvider.Factory = viewModelFactory {

@@ -143,7 +143,10 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
                 )
             }
             composable(Routes.SETTINGS) {
-                SettingsScreen(viewModel = viewModel(factory = container.settingsViewModelFactory))
+                SettingsScreen(
+                    viewModel = viewModel(factory = container.settingsViewModelFactory),
+                    onOpenDashboard = { navController.navigate(Routes.TRACK) { launchSingleTop = true } },
+                )
             }
             composable(Routes.NEW) {
                 NewSessionScreen(

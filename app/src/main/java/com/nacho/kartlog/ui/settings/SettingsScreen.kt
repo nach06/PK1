@@ -42,6 +42,7 @@ import com.nacho.kartlog.ui.util.shareCsv
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onBack: (() -> Unit)? = null,
+    onOpenDashboard: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
@@ -64,6 +65,13 @@ fun SettingsScreen(
     }
     val versionName = remember(context) {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
+    }
+
+    LaunchedEffect(state.openDashboard) {
+        if (state.openDashboard) {
+            viewModel.dashboardOpened()
+            onOpenDashboard()
+        }
     }
 
     LaunchedEffect(state.message) {
@@ -170,6 +178,11 @@ fun SettingsScreen(
                         SecondaryButton(
                             text = stringResource(R.string.settings_seed),
                             onClick = viewModel::seedDebugData,
+                            enabled = !state.isBusy,
+                        )
+                        SecondaryButton(
+                            text = stringResource(R.string.settings_simulate_track),
+                            onClick = viewModel::simulateTrackSession,
                             enabled = !state.isBusy,
                         )
                         SecondaryButton(

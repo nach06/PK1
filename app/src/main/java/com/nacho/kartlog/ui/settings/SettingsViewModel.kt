@@ -2,6 +2,7 @@ package com.nacho.kartlog.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nacho.kartlog.domain.gps.LocationSource
 import com.nacho.kartlog.domain.importing.ImportInbox
 import com.nacho.kartlog.domain.importing.SharedContent
 import com.nacho.kartlog.domain.repository.ImportRepository
@@ -31,6 +32,8 @@ data class SettingsUiState(
     val debugToolsAvailable: Boolean = false,
     /** Muestras entre las que elegir para «Probar OCR» (solo si hay más de una). */
     val sampleChoices: List<String> = emptyList(),
+    /** El simulador está listo: la pantalla debe abrir el Dashboard en pista. */
+    val openDashboard: Boolean = false,
 )
 
 class SettingsViewModel(
@@ -39,6 +42,7 @@ class SettingsViewModel(
     private val userSettings: UserSettings,
     private val importInbox: ImportInbox? = null,
     private val importRepository: ImportRepository? = null,
+    private val onSimulationReady: ((LocationSource) -> Unit)? = null,
     private val now: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SettingsUiState(debugToolsAvailable = debugTools != null))
@@ -117,6 +121,23 @@ class SettingsViewModel(
             if (uri == null) _uiState.update { it.copy(message = SettingsMessage.FAILED) } else importInbox?.put(SharedContent.Image(uri))
         }
     }
+
+    /** Solo debug: deja un óvalo sintético como origen de posiciones y pide abrir el Dashboard en pista. */
+    fun simulateTrackSession() {
+        val tools = debugTools ?: return
+        val callback = onSimulationReady ?: return
+        if (_uiState.value.isBusy) return
+        _uiState.update { it.copy(isBusy = true) }
+        viewModelScope.launch {
+            val source = runCatching { tools.prepareSimulation() }.getOrNull()
+            if (source != null) callback(source)
+            _uiState.update {
+                it.copy(isBusy = false, openDashboard = source != null, message = if (source == null) SettingsMessage.FAILED else it.message)
+            }
+        }
+    }
+
+    fun dashboardOpened() = _uiState.update { it.copy(openDashboard = false) }
 
     fun dismissSampleChoices() = _uiState.update { it.copy(sampleChoices = emptyList()) }
 
