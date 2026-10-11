@@ -372,6 +372,7 @@ private fun StintBar(timing: TimingState, onPit: (String?) -> Unit) {
     }
     if (showDialog) {
         var name by remember { mutableStateOf("") }
+        var typing by remember { mutableStateOf(false) }
         val suggestions = timing.stints.mapNotNull { it.driverName }.distinct()
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showDialog = false },
@@ -380,14 +381,23 @@ private fun StintBar(timing: TimingState, onPit: (String?) -> Unit) {
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(stringResource(R.string.stint_pit_message), style = MaterialTheme.typography.bodyLarge)
-                    androidx.compose.material3.OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        label = { Text(stringResource(R.string.stint_next_driver)) },
-                        singleLine = true,
-                    )
-                    suggestions.forEach { suggestion ->
-                        TextButton(onClick = { name = suggestion }, modifier = Modifier.testTag("pit_suggestion_$suggestion")) { Text(suggestion) }
+                    // El campo de texto solo aparece si se pide: así el diálogo es de dos toques en pista (con guantes) y,
+                    // con un piloto ya conocido, basta tocar su nombre.
+                    if (typing) {
+                        androidx.compose.material3.OutlinedTextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            label = { Text(stringResource(R.string.stint_next_driver)) },
+                            singleLine = true,
+                        )
+                    } else {
+                        if (name.isNotBlank()) Text(name, style = MaterialTheme.typography.titleMedium, color = kart.telemetry)
+                        suggestions.forEach { suggestion ->
+                            TextButton(onClick = { name = suggestion }, modifier = Modifier.heightIn(min = 48.dp).testTag("pit_suggestion_$suggestion")) { Text(suggestion) }
+                        }
+                        TextButton(onClick = { typing = true }, modifier = Modifier.heightIn(min = 48.dp).testTag("pit_new_driver")) {
+                            Text(stringResource(R.string.stint_new_driver))
+                        }
                     }
                 }
             },

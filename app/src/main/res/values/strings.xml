@@ -346,6 +346,7 @@
     <string name="stint_pit_title">Pit / cambio de piloto</string>
     <string name="stint_pit_message">Se cierra el stint actual. La vuelta en curso (entrada, parada y salida) no cuenta como vuelta: su duración será el tiempo en boxes.</string>
     <string name="stint_next_driver">Piloto que sale (opcional)</string>
+    <string name="stint_new_driver">Escribir nombre del piloto</string>
     <string name="stint_pit_confirm">Entrar a boxes</string>
     <string name="stints_title">Stints · %1$d</string>
     <string name="stints_pit_total">Tiempo total en boxes %1$s</string>
