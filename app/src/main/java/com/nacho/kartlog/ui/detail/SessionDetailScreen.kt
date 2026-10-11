@@ -313,7 +313,8 @@ private fun HeaderCard(
                         stringResource(R.string.format_clean_average, LapTime.format(it))
                     },
                     highlightIndex = bestIndex.takeIf { it >= 0 },
-                    xSpacing = if (state.laps.size > 12) 2 else 1,
+                    // Etiqueta cada vuelta (hasta 12) o cada 2 (hasta 24) según el ancho.
+                    xSpacing = (state.laps.size + 11) / 12,
                     clipOutliers = true,
                 )
                 }

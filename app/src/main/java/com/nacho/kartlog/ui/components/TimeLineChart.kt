@@ -18,13 +18,17 @@ import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLineComponen
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisTickComponent
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottom
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
+import com.patrykandpatrick.vico.compose.cartesian.layer.cartesianLayerPadding
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
+import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
+import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
 import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
 import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
 import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 import com.patrykandpatrick.vico.compose.common.fill
+import com.patrykandpatrick.vico.core.cartesian.Zoom
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModel
@@ -155,11 +159,22 @@ fun TimeLineChart(
             itemPlacer = remember(xSpacing) { HorizontalAxis.ItemPlacer.aligned(spacing = { xSpacing }) },
         ),
         decorations = decorations,
+        // Holgura fija en los extremos para que el primer y el último punto (y su etiqueta) no se corten.
+        layerPadding = { cartesianLayerPadding(unscalableStart = 12.dp, unscalableEnd = 12.dp) },
     )
 
+    // Sin scroll ni zoom: el contenido completo se ajusta siempre al ancho (por defecto Vico usa
+    // 32 dp por punto y desplaza, lo que cortaba las últimas vueltas).
     CartesianChartHost(
         chart = chart,
         model = model,
+        scrollState = rememberVicoScrollState(scrollEnabled = false),
+        zoomState = rememberVicoZoomState(
+            zoomEnabled = false,
+            initialZoom = Zoom.Content,
+            minZoom = Zoom.Content,
+            maxZoom = Zoom.Content,
+        ),
         modifier = modifier
             .fillMaxWidth()
             .height(200.dp),
