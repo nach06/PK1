@@ -12,10 +12,12 @@ import com.nacho.kartlog.AppContainer
 import com.nacho.kartlog.ui.detail.SessionDetailScreen
 import com.nacho.kartlog.ui.history.SessionListScreen
 import com.nacho.kartlog.ui.newsession.NewSessionScreen
+import com.nacho.kartlog.ui.settings.SettingsScreen
 
 object Routes {
     const val LIST = "sessions"
     const val NEW = "sessions/new"
+    const val SETTINGS = "settings"
     const val SESSION_ID = "sessionId"
     const val DETAIL = "sessions/{$SESSION_ID}"
 
@@ -31,7 +33,14 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
             SessionListScreen(
                 viewModel = viewModel(factory = container.sessionListViewModelFactory),
                 onNewSession = { navController.navigate(Routes.NEW) },
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onOpenSession = { navController.navigate(Routes.detail(it)) },
+            )
+        }
+        composable(Routes.SETTINGS) {
+            SettingsScreen(
+                viewModel = viewModel(factory = container.settingsViewModelFactory),
+                onBack = { navController.popBackStack() },
             )
         }
         composable(Routes.NEW) {

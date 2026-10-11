@@ -98,4 +98,19 @@
     <string name="delete_lap_message">Se eliminará el tiempo %1$s.</string>
     <string name="delete_session_title">¿Borrar tanda?</string>
     <string name="delete_session_message">Se eliminarán la tanda y todas sus vueltas. No se puede deshacer.</string>
+
+    <!-- Ajustes -->
+    <string name="nav_settings">Ajustes</string>
+    <string name="action_continue">Continuar</string>
+    <string name="settings_debug_title">Depuración (solo debug)</string>
+    <string name="settings_seed">Cargar datos de prueba</string>
+    <string name="settings_wipe">Borrar todos los datos</string>
+    <string name="settings_wipe_title_1">¿Borrar todos los datos?</string>
+    <string name="settings_wipe_message_1">Se eliminarán todos los circuitos, tandas y vueltas.</string>
+    <string name="settings_wipe_title_2">¿Seguro?</string>
+    <string name="settings_wipe_message_2">Esta acción no se puede deshacer.</string>
+    <string name="settings_wipe_confirm">Borrar todo</string>
+    <string name="settings_seeded">Datos de prueba cargados</string>
+    <string name="settings_wiped">Datos borrados</string>
+    <string name="settings_failed">No se pudo completar la acción</string>
 </resources>

@@ -29,7 +29,9 @@ import com.nacho.kartlog.domain.model.SessionSummary
 import com.nacho.kartlog.domain.model.TrackCondition
 import com.nacho.kartlog.domain.util.LapTime
 import com.nacho.kartlog.ui.components.KartCard
+import com.nacho.kartlog.ui.components.KartOverflowMenu
 import com.nacho.kartlog.ui.components.KartTopBar
+import com.nacho.kartlog.ui.components.MenuAction
 import com.nacho.kartlog.ui.components.PrimaryButton
 import com.nacho.kartlog.ui.components.StatBadge
 import com.nacho.kartlog.ui.theme.KartTextStyles
@@ -42,12 +44,22 @@ fun SessionListScreen(
     viewModel: SessionListViewModel,
     onNewSession: () -> Unit,
     onOpenSession: (Long) -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = { KartTopBar(title = stringResource(R.string.history_title)) },
+        topBar = {
+            KartTopBar(
+                title = stringResource(R.string.history_title),
+                actions = {
+                    KartOverflowMenu(
+                        actions = listOf(MenuAction(label = stringResource(R.string.nav_settings), onClick = onOpenSettings)),
+                    )
+                },
+            )
+        },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onNewSession,

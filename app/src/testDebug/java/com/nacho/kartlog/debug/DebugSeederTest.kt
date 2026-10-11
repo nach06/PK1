@@ -1,0 +1,56 @@
+package com.nacho.kartlog.debug
+
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import com.nacho.kartlog.data.local.KartLogDatabase
+import com.nacho.kartlog.data.repository.CircuitRepositoryImpl
+import com.nacho.kartlog.data.repository.LapRepositoryImpl
+import com.nacho.kartlog.data.repository.SessionRepositoryImpl
+import com.nacho.kartlog.domain.model.TrackCondition
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+class DebugSeederTest {
+    @Test
+    fun seedsRealisticDataAndWipeClearsIt() = runBlocking {
+        withTimeout(30_000) {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            context.deleteDatabase(KartLogDatabase.NAME)
+            val db = KartLogDatabase.create(context)
+            val circuits = CircuitRepositoryImpl(db.circuitDao())
+            val sessions = SessionRepositoryImpl(db.sessionDao())
+            val laps = LapRepositoryImpl(db.lapDao())
+            val seeder = DebugSeeder(db, circuits, sessions, laps)
+
+            assertEquals(12, seeder.seed())
+
+            assertEquals(3, circuits.observeAll().first().size)
+            val summaries = sessions.observeSummaries().first()
+            assertEquals(12, summaries.size)
+            assertEquals(1, summaries.count { it.lapCount == 0 }) // una tanda sin vueltas
+            assertTrue(summaries.any { it.session.trackCondition != TrackCondition.DRY })
+            assertTrue(summaries.all { (it.session.kartNumber ?: 0) in 3..20 })
+            summaries.filter { it.lapCount > 0 }.forEach { s ->
+                val times = laps.observeBySession(s.session.id).first().map { it.timeMs }
+                assertTrue("tiempos fuera de rango en ${s.circuit.name}", times.all { it in 45_000..90_000 })
+                // La vuelta de salida de boxes es claramente más lenta que la mejor de la tanda.
+                assertTrue(times.first() > times.min() * 1.10)
+            }
+            assertTrue(summaries.map { it.session.dateTime }.let { it.max() - it.min() } > 60L * 24 * 3600 * 1000)
+
+            seeder.wipeAll()
+            assertTrue(sessions.observeSummaries().first().isEmpty())
+            assertTrue(circuits.observeAll().first().isEmpty())
+            db.close()
+        }
+    }
+}
