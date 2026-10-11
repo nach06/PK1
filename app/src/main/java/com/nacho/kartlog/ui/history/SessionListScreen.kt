@@ -30,6 +30,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -117,6 +118,20 @@ fun SessionListScreen(
                         .background(Color.Black.copy(alpha = 0.6f))
                         .pointerInput(Unit) { detectTapGestures { fabExpanded = false } }
                         .testTag("fab_scrim"),
+                )
+            }
+            // Franja de ancho completo: a la izquierda el recuento (con el filtro aplicado), a la derecha la acción principal.
+            if (state.totalSessions > 0) {
+                val shown = state.items.count { it is SessionListItem.Entry }
+                Text(
+                    text = if (shown == state.totalSessions) {
+                        pluralStringResource(R.plurals.format_session_count, shown, shown)
+                    } else {
+                        stringResource(R.string.history_count_filtered, shown, state.totalSessions)
+                    },
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.kartColors.textMuted,
+                    modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 24.dp).testTag("list_count"),
                 )
             }
             SpeedDialFab(

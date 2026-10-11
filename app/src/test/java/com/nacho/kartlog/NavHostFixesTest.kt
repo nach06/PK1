@@ -6,6 +6,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -158,5 +159,28 @@ class NavHostFixesTest {
         // B5: copia de seguridad completa (exportar / restaurar).
         compose.onNodeWithText("EXPORTAR COPIA").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("RESTAURAR COPIA").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun s6a6_theActionStripIsFullWidth_countOnTheLeft_fabOnTheRight() {
+        val container = AppContainer(context)
+        runBlocking {
+            val zuera = container.circuitRepository.add("Zuera", 1_100)
+            (0 until 3).forEach { i ->
+                val id = container.sessionRepository.create(session(zuera, 1_750_000_000_000 + i * 86_400_000L))
+                container.lapRepository.addManual(id, 58_000L + i * 100)
+            }
+        }
+        compose.setContent { KartLogTheme { KartNavHost(container) } }
+        waitFor("Zuera")
+        compose.waitUntil(8_000) { compose.onAllNodesWithTag("list_count").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("list_count").assertTextEquals("3 tandas")
+        val count = compose.onNodeWithTag("list_count").fetchSemanticsNode().boundsInRoot
+        val fab = compose.onNodeWithTag("fab_main").fetchSemanticsNode().boundsInRoot
+        check(count.right <= fab.left) { "el recuento ($count) debe quedar a la izquierda de la FAB ($fab)" }
+        check(count.bottom > fab.top && count.top < fab.bottom) { "el recuento y la FAB comparten franja" }
+        // Con un filtro que deja 0 coincidencias el recuento lo dice.
+        compose.onNodeWithText("Libre").performClick()
+        compose.waitUntil(8_000) { compose.onNodeWithTag("list_count").fetchSemanticsNode().config.getOrNull(SemanticsProperties.Text)?.firstOrNull()?.text == "0 de 3 tandas" }
     }
 }
