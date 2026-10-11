@@ -190,4 +190,29 @@ class AnalyticsTest {
         assertTrue(Analytics.hasMeaningfulConsistency(listOf(50_000, 52_000)))
         assertNull(Analytics.compute(listOf(summary(1)), laps(1, 48_000)).circuits.getValue(zuera.id).historicConsistencyMs)
     }
+
+    @Test
+    fun circuitGpsAccuracy_averagesTheSessionsThatHaveBothGpsAndOfficialLaps() {
+        val s1 = SessionSummary(Session(1, 1, 1_000, SessionType.FREE, 7, null, null, null, TrackCondition.DRY, ""), zuera, 4, 58_000)
+        val s2 = SessionSummary(Session(2, 1, 2_000, SessionType.FREE, 7, null, null, null, TrackCondition.DRY, ""), zuera, 4, 58_000)
+        val s3 = SessionSummary(Session(3, 1, 3_000, SessionType.FREE, 7, null, null, null, TrackCondition.DRY, ""), zuera, 2, 58_000)
+        fun lap(id: Long, session: Long, n: Int, ms: Long, src: com.nacho.kartlog.domain.model.LapSource) =
+            Lap(id, session, n, ms, src)
+        val gps = com.nacho.kartlog.domain.model.LapSource.GPS
+        val off = com.nacho.kartlog.domain.model.LapSource.IMPORTED
+        val laps = listOf(
+            // Sesión 1: error medio 50 ms (GPS 1-2, oficial 3-4).
+            lap(1, 1, 1, 58_050, gps), lap(2, 1, 2, 58_150, gps), lap(3, 1, 3, 58_000, off), lap(4, 1, 4, 58_100, off),
+            // Sesión 2: error medio 150 ms.
+            lap(5, 2, 1, 58_150, gps), lap(6, 2, 2, 58_050, gps), lap(7, 2, 3, 58_000, off), lap(8, 2, 4, 58_200, off),
+            // Sesión 3: solo vueltas manuales, no cuenta.
+            lap(9, 3, 1, 58_000, com.nacho.kartlog.domain.model.LapSource.MANUAL), lap(10, 3, 2, 58_100, com.nacho.kartlog.domain.model.LapSource.MANUAL),
+        )
+        val snapshot = Analytics.compute(listOf(s1, s2, s3), laps)
+        val stats = snapshot.circuits.getValue(zuera.id)
+        assertEquals(2, stats.gpsAccuracySessions)
+        assertEquals(100.0, stats.gpsAccuracyMs!!, 1e-9)
+        assertEquals(50.0, snapshot.session(1)!!.gpsAccuracy!!.meanAbsErrorMs!!, 1e-9)
+        assertNull(snapshot.session(3)!!.gpsAccuracy)
+    }
 }

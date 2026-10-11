@@ -81,4 +81,7 @@ object LapTime {
 
     fun bestLapMs(laps: List<Lap>): Long? = laps.minOfOrNull { it.timeMs }
 
+
+    /** Segundos con tres decimales y coma («0,053»), para errores y desviaciones; los tiempos de vuelta siguen `m:ss.mmm`. */
+    fun formatSeconds(ms: Double): String = String.format(Locale("es", "ES"), "%.3f", ms / 1000.0)
 }

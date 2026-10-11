@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -174,6 +175,18 @@ private fun CircuitCard(
                     style = MaterialTheme.typography.bodyMedium,
                     color = kart.textMuted,
                 )
+                stats.gpsAccuracyMs?.let { ms ->
+                    Text(
+                        text = stringResource(
+                            R.string.circuit_gps_accuracy,
+                            LapTime.formatSeconds(ms),
+                            pluralStringResource(R.plurals.format_session_count, stats.gpsAccuracySessions, stats.gpsAccuracySessions),
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = kart.telemetry,
+                        modifier = Modifier.testTag("circuit_gps_accuracy"),
+                    )
+                }
                 Text(
                     text = stringResource(if (stats.circuit.finishLine != null) R.string.circuit_finish_set else R.string.circuit_finish_missing),
                     style = MaterialTheme.typography.bodyMedium,

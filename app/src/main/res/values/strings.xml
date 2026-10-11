@@ -311,6 +311,8 @@
     <string name="gps_accuracy_diff">Dif.</string>
     <string name="gps_accuracy_mismatch">Hay %1$d vueltas GPS y %2$d oficiales: solo se comparan las que coinciden por número. Si el oficial cuenta una vuelta de más al principio, ajusta el desplazamiento.</string>
     <string name="gps_accuracy_summary">Error medio %1$s s · máximo %2$s s · sesgo %3$s s (GPS − oficial)</string>
+    <string name="gps_accuracy_bias">Sesgo sistemático %1$s s: el GPS mide casi siempre en el mismo sentido. No se corrige moviendo la meta (un desplazamiento mueve igual la salida y la llegada de cada vuelta); suele venir del retardo del propio GPS o de cómo cuenta la vuelta el cronometraje oficial.</string>
+    <string name="circuit_gps_accuracy">Precisión GPS ±%1$s s (%2$s)</string>
     <string name="gps_accuracy_offset">Desplazamiento oficial: %1$+d</string>
 
     <!-- Meta: ajuste, verificación y sentido inverso -->

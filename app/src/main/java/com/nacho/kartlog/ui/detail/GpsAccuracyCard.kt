@@ -57,7 +57,7 @@ fun GpsAccuracyCard(gpsMs: List<Long>, officialMs: List<Long>, modifier: Modifie
             )
             if (mean != null) {
                 Text(
-                    text = "±" + String.format(Locale.ROOT, "%.3f s", mean / 1000.0),
+                    text = "±" + LapTime.formatSeconds(mean) + " s",
                     style = MaterialTheme.typography.titleSmall.copy(fontFamily = MonoFontFamily),
                     color = kart.telemetry,
                     modifier = Modifier.testTag("gps_accuracy_mean"),
@@ -88,12 +88,23 @@ fun GpsAccuracyCard(gpsMs: List<Long>, officialMs: List<Long>, modifier: Modifie
                 Text(
                     text = stringResource(
                         R.string.gps_accuracy_summary,
-                        String.format(Locale.ROOT, "%.3f", mean / 1000.0),
-                        String.format(Locale.ROOT, "%.3f", (report.maxAbsErrorMs ?: 0L) / 1000.0),
-                        String.format(Locale.ROOT, "%+.3f", (report.meanSignedErrorMs ?: 0.0) / 1000.0),
+                        LapTime.formatSeconds(mean),
+                        LapTime.formatSeconds((report.maxAbsErrorMs ?: 0L).toDouble()),
+                        (if ((report.meanSignedErrorMs ?: 0.0) >= 0) "+" else "−") + LapTime.formatSeconds(kotlin.math.abs(report.meanSignedErrorMs ?: 0.0)),
                     ),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 8.dp).testTag("gps_accuracy_summary"),
+                )
+            }
+            report.systematicBiasMs?.let { bias ->
+                Text(
+                    text = stringResource(
+                        R.string.gps_accuracy_bias,
+                        (if (bias >= 0) "+" else "−") + LapTime.formatSeconds(kotlin.math.abs(bias)),
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = kart.warning,
+                    modifier = Modifier.padding(top = 8.dp).testTag("gps_accuracy_bias"),
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {

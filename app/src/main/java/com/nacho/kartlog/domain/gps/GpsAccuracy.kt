@@ -7,6 +7,10 @@ import kotlin.math.abs
  * móvil basta o hace falta un receptor externo. Dominio puro.
  */
 object GpsAccuracy {
+    const val BIAS_MIN_LAPS = 3
+    const val BIAS_MIN_MS = 50.0
+    const val BIAS_CONSISTENCY = 0.8
+
     data class Row(
         /** Nº de vuelta GPS (1, 2, …) de la comparación. */
         val number: Int,
@@ -29,6 +33,18 @@ object GpsAccuracy {
 
         /** Sesgo medio con signo (si es sistemático, se puede compensar desplazando la meta). */
         val meanSignedErrorMs: Double? get() = rows.takeIf { it.isNotEmpty() }?.map { it.diffMs.toDouble() }?.average()
+
+        /**
+         * Sesgo sistemático (GPS − oficial, ms): solo si hay ≥ 3 vueltas, la media con signo supera [BIAS_MIN_MS] y al menos el
+         * 80 % de las diferencias tienen su mismo signo. `null` si el error es ruido sin dirección.
+         */
+        val systematicBiasMs: Double?
+            get() {
+                val mean = meanSignedErrorMs ?: return null
+                if (rows.size < BIAS_MIN_LAPS || kotlin.math.abs(mean) <= BIAS_MIN_MS) return null
+                val sameSign = rows.count { (it.diffMs > 0) == (mean > 0) && it.diffMs != 0L }
+                return mean.takeIf { sameSign.toDouble() / rows.size >= BIAS_CONSISTENCY }
+            }
 
         /** El nº de vueltas de uno y otro no coincide (tras aplicar el desplazamiento). */
         val countMismatch: Boolean get() = gpsCount != officialCount

@@ -1,7 +1,9 @@
 package com.nacho.kartlog.domain.analytics
 
+import com.nacho.kartlog.domain.gps.GpsAccuracy
 import com.nacho.kartlog.domain.model.Circuit
 import com.nacho.kartlog.domain.model.Lap
+import com.nacho.kartlog.domain.model.LapSource
 import com.nacho.kartlog.domain.model.SessionSummary
 import com.nacho.kartlog.domain.model.TrackCondition
 import kotlin.math.sqrt
@@ -51,6 +53,12 @@ object Analytics {
      * Las vueltas de sesiones desconocidas se ignoran.
      */
     fun compute(summaries: List<SessionSummary>, laps: List<Lap>): AnalyticsSnapshot {
+        val gpsReports = laps.groupBy { it.sessionId }.mapValues { (_, list) ->
+            val sorted = list.sortedBy { it.number }
+            val gps = sorted.filter { it.source == LapSource.GPS }.map { it.timeMs }
+            val official = sorted.filter { it.source == LapSource.IMPORTED }.map { it.timeMs }
+            if (gps.isNotEmpty() && official.isNotEmpty()) GpsAccuracy.compare(official, gps) else null
+        }
         val lapsBySession = laps.groupBy { it.sessionId }.mapValues { (_, v) -> v.sortedBy { it.number }.map { it.timeMs } }
 
         // Récord por circuito.
@@ -71,6 +79,7 @@ object Analytics {
                 consistencyMs = consistencyMs(times),
                 deltaToRecordMs = delta,
                 isRecord = delta == 0L,
+                gpsAccuracy = gpsReports[summary.session.id]?.takeIf { it.rows.isNotEmpty() },
             )
         }
 
@@ -117,8 +126,11 @@ object Analytics {
             }
         }
 
+        val accuracy = sessions.mapNotNull { it.gpsAccuracy?.meanAbsErrorMs }
         return CircuitStats(
             circuit = circuit,
+            gpsAccuracyMs = accuracy.takeIf { it.isNotEmpty() }?.average(),
+            gpsAccuracySessions = accuracy.size,
             recordMs = withLaps.mapNotNull { it.bestMs }.minOrNull(),
             historicCleanAverageMs = pooledAverage(pooledClean),
             historicConsistencyMs = withLaps.filter { hasMeaningfulConsistency(it.lapTimes) }
@@ -147,6 +159,8 @@ data class SessionStats(
     /** Mejor de la tanda − récord del circuito; `null` si la tanda no tiene vueltas. */
     val deltaToRecordMs: Long?,
     val isRecord: Boolean,
+    /** GPS vs oficial de la tanda (solo si tiene vueltas `GPS` e `IMPORTED`). */
+    val gpsAccuracy: GpsAccuracy.Report? = null,
 )
 
 data class EvolutionPoint(val sessionId: Long, val dateTime: Long, val bestMs: Long)
@@ -180,6 +194,10 @@ data class CircuitStats(
     /** Ordenado por mejor vuelta ascendente; ignora tandas sin kart. */
     val karts: List<KartStats>,
     val conditions: List<ConditionStats>,
+    /** Error medio absoluto GPS vs oficial (ms) de las tandas del circuito que lo permiten; `null` si ninguna. */
+    val gpsAccuracyMs: Double? = null,
+    /** Nº de tandas que entran en [gpsAccuracyMs]. */
+    val gpsAccuracySessions: Int = 0,
 )
 
 data class AnalyticsSnapshot(

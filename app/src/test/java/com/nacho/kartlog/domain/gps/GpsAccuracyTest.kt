@@ -59,4 +59,20 @@ class GpsAccuracyTest {
         assertEquals(GpsHealth.POOR, GpsHealth.of(3f, signalLost = true))
         assertNull(GpsHealth.of(null))
     }
+
+    @Test
+    fun systematicBias_isReportedOnlyWhenConsistentAndAboveFiftyMilliseconds() {
+        val official = listOf(58_400L, 57_900L, 58_120L, 59_300L, 58_000L)
+        // Sesgo conocido de +80 ms en todas las vueltas (con un poco de ruido): se detecta.
+        val biased = GpsAccuracy.compare(official, official.mapIndexed { i, ms -> ms + 80 + (i % 2) * 6 })
+        assertEquals(83.0, biased.systematicBiasMs!!, 3.0)
+        // Mismo error absoluto pero alternando de signo: ruido sin dirección, no hay sesgo.
+        val noise = GpsAccuracy.compare(official, official.mapIndexed { i, ms -> ms + if (i % 2 == 0) 80 else -80 })
+        assertNull(noise.systematicBiasMs)
+        // Sesgo pequeño (30 ms) o con menos de 3 vueltas: no se avisa.
+        assertNull(GpsAccuracy.compare(official, official.map { it + 30 }).systematicBiasMs)
+        assertNull(GpsAccuracy.compare(official.take(2), official.take(2).map { it + 120 }).systematicBiasMs)
+        // Negativo (el GPS mide de menos).
+        assertEquals(-120.0, GpsAccuracy.compare(official, official.map { it - 120 }).systematicBiasMs!!, 1e-9)
+    }
 }
