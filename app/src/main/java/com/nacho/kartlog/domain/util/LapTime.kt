@@ -75,6 +75,4 @@ object LapTime {
 
     fun bestLapMs(laps: List<Lap>): Long? = laps.minOfOrNull { it.timeMs }
 
-    fun averageMs(laps: List<Lap>): Long? =
-        if (laps.isEmpty()) null else Math.round(laps.sumOf { it.timeMs }.toDouble() / laps.size)
 }

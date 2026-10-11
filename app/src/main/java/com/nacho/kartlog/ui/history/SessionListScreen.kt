@@ -174,7 +174,7 @@ private fun FilterRow(
     ) {
         item(key = "circuit") {
             Chip(
-                text = state.selectedCircuit?.name ?: stringResource(R.string.filter_circuit),
+                text = (state.selectedCircuit?.name ?: stringResource(R.string.filter_circuit)) + " ▾",
                 selected = state.filters.circuitId != null,
                 onClick = onCircuitClick,
             )

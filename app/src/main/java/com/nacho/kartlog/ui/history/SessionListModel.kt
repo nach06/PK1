@@ -12,9 +12,7 @@ data class SessionFilters(
     val circuitId: Long? = null,
     val type: SessionType? = null,
     val sort: SessionSort = SessionSort.DATE,
-) {
-    val hasActiveFilter: Boolean get() = circuitId != null || type != null
-}
+)
 
 sealed interface SessionListItem {
     val key: String

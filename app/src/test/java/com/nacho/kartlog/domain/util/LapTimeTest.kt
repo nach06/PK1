@@ -55,12 +55,10 @@ class LapTimeTest {
     }
 
     @Test
-    fun bestAndAverage() {
+    fun bestLap() {
         val laps = listOf(lap(1, 50_000), lap(2, 48_532), lap(3, 49_000))
         assertEquals(48_532L, LapTime.bestLapMs(laps))
-        assertEquals(49_177L, LapTime.averageMs(laps))
         assertNull(LapTime.bestLapMs(emptyList()))
-        assertNull(LapTime.averageMs(emptyList()))
     }
 
     @Test

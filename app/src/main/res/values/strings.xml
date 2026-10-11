@@ -6,7 +6,6 @@
     <string name="menu_more">Más opciones</string>
     <string name="action_back">Volver</string>
     <string name="action_cancel">Cancelar</string>
-    <string name="action_add">Añadir</string>
     <string name="action_delete">Borrar</string>
     <string name="action_edit">Editar</string>
     <string name="action_save">Guardar</string>
@@ -29,7 +28,6 @@
     <string name="format_ballast">Lastre %1$d kg</string>
     <string name="format_temp">%1$d °C</string>
     <string name="format_length_m">%1$d m</string>
-    <string name="format_temps">Ambiente %1$d °C · Pista %2$d °C</string>
     <plurals name="format_lap_count">
         <item quantity="one">%1$d vuelta</item>
         <item quantity="other">%1$d vueltas</item>
@@ -41,7 +39,6 @@
     <string name="history_empty_message">Crea tu primera tanda para empezar a guardar tus vueltas.</string>
     <string name="history_no_laps">Sin vueltas</string>
     <string name="action_new_session">Nueva tanda</string>
-    <string name="label_best_short">Mejor vuelta</string>
 
     <!-- Nueva tanda -->
     <string name="new_session_title">Nueva tanda</string>
@@ -71,14 +68,11 @@
 
     <!-- Detalle -->
     <string name="detail_title">Tanda</string>
-    <string name="detail_not_found">Esta tanda ya no existe</string>
     <string name="stat_best">Mejor</string>
-    <string name="stat_average">Media</string>
     <string name="stat_clean_average">Media limpia</string>
     <string name="legend_best">Mejor</string>
     <string name="legend_clipped">Fuera de escala</string>
     <string name="chart_title">Gráfica de vueltas</string>
-    <string name="stat_laps">Vueltas</string>
     <string name="lap_entry_title">Vuelta %1$d</string>
     <string name="lap_entry_editing">Editando V%1$d</string>
     <string name="action_save_lap">Guardar vuelta</string>
@@ -96,9 +90,7 @@
     <string name="format_temp_track">Pista %1$d °C</string>
     <string name="action_export_csv">Exportar CSV</string>
     <string name="share_csv_title">Compartir vueltas</string>
-    <string name="laps_title">Vueltas</string>
     <string name="laps_empty">Aún no hay vueltas. Teclea el tiempo y pulsa GUARDAR VUELTA.</string>
-    <string name="lap_number">Vuelta %1$d</string>
     <string name="delete_lap_title">¿Borrar vuelta %1$d?</string>
     <string name="delete_lap_message">Se eliminará el tiempo %1$s.</string>
     <string name="delete_session_title">¿Borrar tanda?</string>

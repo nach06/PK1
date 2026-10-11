@@ -155,3 +155,38 @@ lo único que ahora verifican los tests de UI es la *estructura* (qué se ve, qu
 **Ajustes y Nueva tanda**
 - [ ] «Exportar todo a CSV» y «Cargar datos de prueba» con **contorno rojo** (no rellenos); «Borrar todos los datos» con **contorno ámbar**.
 - [ ] Elegir un circuito de nombre largo: el botón del selector lo muestra con «…».
+
+---
+
+# Sprint 2.2 — Verificación real del 2.1
+
+## T0. Identificar la build
+En Ajustes, la última línea es ahora `KartLog · versión 0.1.0 · build <hash corto> · <fecha-hora>`; el hash lleva un **`+`** si el árbol de trabajo
+tenía cambios sin commitear al compilar. Se genera en `app/build.gradle.kts` (`git rev-parse --short HEAD` y hora local) y se expone con
+`BuildConfig.GIT_HASH` / `BuildConfig.BUILD_TIME`. **Es lo primero que hay que mirar en el emulador:** si el hash no es el del último commit de la rama
+(`git log -1 --format=%h`), la app que se está viendo no es la última.
+
+## T1. Auditoría de conexión: fix → composable → ruta
+Todas las pantallas cuelgan de un único `NavHost` (`ui/navigation/KartNavHost.kt`), creado en `MainActivity`. No existe ningún segundo `NavHost`,
+ni pantallas alternativas, ni versiones antiguas de los composables: cada pieza tiene una única definición y se usa desde la ruta indicada.
+
+| Fix | Composable que lo implementa | Ruta de navegación hasta él |
+|---|---|---|
+| F1 gráfica/teclado excluyentes; teclado que encoge | `SessionDetailScreen` (estados `keypadExpanded`/`chartExpanded`) → `LapEntryPanel` + `TimeKeypad` (`Layout` propio) | Tandas (`sessions`) → tocar card → `sessions/{sessionId}` |
+| F2 franja `V10 … · V9 …`, teclas 52 dp | `LapEntryPanel.RecentLapsStrip` | `sessions/{sessionId}` |
+| F3 eje Y con vueltas limpias, recorte | `TimeLineChart` + `computeChartScale` (`ChartScale.kt`) | `sessions/{sessionId}` → «Gráfica de vueltas» |
+| F4 gráfica completa sin scroll | `TimeLineChart` (`Zoom.Content`, scroll desactivado, `layerPadding`) | ídem |
+| F5 leyenda fuera del gráfico | `TimeLineChart.ChartLegend` (también en la evolución del Análisis) | ídem y `analysis` |
+| F6 MEDIA LIMPIA sin recorte | `SessionDetailScreen.StatsRow` → `StatBadge` → `AutoSizeText` | `sessions/{sessionId}` |
+| F7 circuito por defecto y 3 cifras | `AnalysisModel.resolveCircuitId` ← `AnalysisViewModel`; fila de cifras en `AnalysisScreen` | pestaña Análisis (`analysis`) |
+| F8 `contentPadding`, chips de filtro | `SessionListScreen` (`LazyColumn`, `FilterRow`/`LazyRow`); `CircuitsScreen` | pestañas Tandas (`sessions`) y Circuitos (`circuits`) |
+| F9 botones secundarios, elipsis | `SettingsScreen` + `SecondaryButton`; `NewSessionScreen` (botón de circuito) | pestaña Ajustes (`settings`); Tandas → «+ NUEVA TANDA» (`sessions/new`) |
+
+**Resultado de la auditoría:** ningún fix quedó sin conectar en el código de la rama. Se buscaron composables sin referencias y símbolos con un único uso:
+solo había **código muerto menor**, ya eliminado: `LapTime.averageMs` (sustituida por la media limpia), `SessionFilters.hasActiveFilter` y 8 strings sin usar
+(`action_add`, `format_temps`, `label_best_short`, `detail_not_found`, `stat_average`, `stat_laps`, `laps_title`, `lap_number`).
+Otras diferencias reales respecto a lo pedido en T2, corregidas: MEDIA LIMPIA con 4 dp de margen interior y el chip «Circuito ▾» con la flecha.
+
+**Hipótesis más probable de lo visto en el emulador: una build antigua.** El `SPRINT2.md` de la carpeta local del responsable pesa 19 KB, que es el tamaño
+de la versión *con* el Sprint 2.1 (la anterior pesa ~10,5 KB), así que ese clon sí tenía los commits; pero la captura muestra clones **anidados**
+(`pk1\pk1\pk1\pk1`, cada uno con su propio `.git`) y Android Studio puede tener abierto uno más antiguo. La línea de build de T0 lo confirma o lo descarta.
