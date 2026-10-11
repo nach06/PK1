@@ -97,6 +97,9 @@ fun SessionDetailScreen(
     }
 
     val detail = state.detail
+    // Textos de la tarjeta de «Compartir resumen»: se leen aquí (en composición) y no con LocalContext al pulsar.
+    val typeLabel = detail?.let { stringResource(it.session.type.labelRes()) }
+    val kartLabel = detail?.session?.kartNumber?.let { stringResource(R.string.format_kart, it) }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
@@ -129,10 +132,7 @@ fun SessionDetailScreen(
                                         val data = ShareCardData(
                                             circuitName = detail.circuit.name,
                                             dateText = formatDateTime(detail.session.dateTime),
-                                            subtitle = listOfNotNull(
-                                                context.getString(detail.session.type.labelRes()),
-                                                detail.session.kartNumber?.let { context.getString(R.string.format_kart, it) },
-                                            ).joinToString(" · "),
+                                            subtitle = listOfNotNull(typeLabel, kartLabel).joinToString(" · "),
                                             bestMs = state.bestLapMs,
                                             cleanAverageMs = state.cleanAverageMs,
                                             lapCount = state.laps.size,

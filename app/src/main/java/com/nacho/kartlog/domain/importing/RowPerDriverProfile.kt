@@ -92,7 +92,7 @@ object RowPerDriverProfile : LapTextProfile {
             }
             j++
         }
-        while (times.isNotEmpty() && times.last() == null) { times.removeLast(); timeCells.removeLast() }
+        while (times.isNotEmpty() && times.last() == null) { times.removeAt(times.lastIndex); timeCells.removeAt(timeCells.lastIndex) }
         if (times.count { it != null } < MIN_LAPS) return null
 
         return DriverRow(HeaderColumn(name, kart), times, timeCells, firstNameCell, j - 1)
