@@ -308,4 +308,22 @@
     <string name="gps_accuracy_mismatch">Hay %1$d vueltas GPS y %2$d oficiales: solo se comparan las que coinciden por número. Si el oficial cuenta una vuelta de más al principio, ajusta el desplazamiento.</string>
     <string name="gps_accuracy_summary">Error medio %1$s s · máximo %2$s s · sesgo %3$s s (GPS − oficial)</string>
     <string name="gps_accuracy_offset">Desplazamiento oficial: %1$+d</string>
+
+    <!-- Meta: ajuste, verificación y sentido inverso -->
+    <string name="calibration_adjust">Ajustar meta</string>
+    <string name="calibration_shift">Posición de la meta</string>
+    <string name="calibration_saved">Meta guardada</string>
+    <string name="calibration_done">Terminar</string>
+    <string name="calibration_verify">Verificar meta</string>
+    <string name="calibration_verify_hint">Comprueba la meta con otra pasada: la app detecta el cruce y lo compara con el momento en que tú dices que estás en la línea.</string>
+    <string name="calibration_verify_instructions">Da una vuelta y vuelve a pasar por la meta. Pulsa AQUÍ justo cuando cruces la línea.</string>
+    <string name="calibration_verify_now">Aquí</string>
+    <string name="calibration_verify_time">Tú − cruce detectado</string>
+    <string name="calibration_verify_lateral">Separación del centro</string>
+    <string name="calibration_verify_ok">Meta verificada: el cruce detectado coincide con el tuyo.</string>
+    <string name="calibration_verify_warn">La meta no coincide: hay más de 1 s (o 20°) de diferencia. Ajústala o márcala de nuevo.</string>
+    <string name="calibration_verify_none">No se detectó ningún cruce de la meta en esta pasada. Revisa el ancho de la puerta o márcala de nuevo.</string>
+    <string name="calibration_verify_again">Repetir verificación</string>
+    <string name="calibration_verify_exit">Salir de la verificación</string>
+    <string name="calibration_reversed_warning">Esta meta va en sentido contrario a la guardada: parece que el circuito se recorre al revés. Se sustituirá la anterior; las tandas ya guardadas no cambian.</string>
 </resources>

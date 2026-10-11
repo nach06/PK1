@@ -16,6 +16,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,12 +31,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nacho.kartlog.R
 import com.nacho.kartlog.domain.gps.FinishCalibration
+import com.nacho.kartlog.domain.gps.FinishVerification
 import com.nacho.kartlog.domain.gps.GeoMath
 import com.nacho.kartlog.domain.gps.GpsFix
 import com.nacho.kartlog.domain.gps.LocalFrame
 import com.nacho.kartlog.domain.gps.OvalTrack
 import com.nacho.kartlog.domain.gps.TrackSimulator
 import com.nacho.kartlog.domain.model.FinishLine
+import com.nacho.kartlog.ui.components.BigStepper
 import com.nacho.kartlog.ui.components.GpsPermissionGate
 import com.nacho.kartlog.ui.components.KartCard
 import com.nacho.kartlog.ui.components.KartTopBar
@@ -47,10 +50,34 @@ import com.nacho.kartlog.ui.theme.kartColors
 import java.util.Locale
 import kotlin.math.max
 
+/** Acciones de la pantalla de meta (agrupadas para no arrastrar una docena de parámetros). */
+internal class CalibrationActions(
+    val onMark: () -> Unit,
+    val onRetry: () -> Unit,
+    val onSave: () -> Unit,
+    val onEditSaved: () -> Unit,
+    val onShiftForward: () -> Unit,
+    val onShiftBackward: () -> Unit,
+    val onWiden: () -> Unit,
+    val onNarrow: () -> Unit,
+    val onStartVerification: () -> Unit,
+    val onConfirmVerification: () -> Unit,
+    val onEndVerification: () -> Unit,
+    val onDone: () -> Unit,
+)
+
 @Composable
 fun CalibrationScreen(viewModel: CalibrationViewModel, onBack: () -> Unit, onSaved: () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    LaunchedEffect(state.saved) { if (state.saved) onSaved() }
+    val actions = remember(viewModel) {
+        CalibrationActions(
+            onMark = viewModel::mark, onRetry = viewModel::retry, onSave = viewModel::save, onEditSaved = viewModel::editSaved,
+            onShiftForward = viewModel::shiftForward, onShiftBackward = viewModel::shiftBackward,
+            onWiden = viewModel::widen, onNarrow = viewModel::narrow,
+            onStartVerification = viewModel::startVerification, onConfirmVerification = viewModel::confirmVerification,
+            onEndVerification = viewModel::endVerification, onDone = onSaved,
+        )
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -62,13 +89,7 @@ fun CalibrationScreen(viewModel: CalibrationViewModel, onBack: () -> Unit, onSav
             modifier = Modifier.padding(padding),
         ) {
             LaunchedEffect(viewModel) { viewModel.startListening() }
-            CalibrationContent(
-                state = state,
-                onMark = viewModel::mark,
-                onRetry = viewModel::retry,
-                onSave = viewModel::save,
-                modifier = Modifier.padding(padding),
-            )
+            CalibrationContent(state = state, actions = actions, modifier = Modifier.padding(padding))
         }
     }
 }
@@ -76,9 +97,7 @@ fun CalibrationScreen(viewModel: CalibrationViewModel, onBack: () -> Unit, onSav
 @Composable
 internal fun CalibrationContent(
     state: CalibrationUiState,
-    onMark: () -> Unit,
-    onRetry: () -> Unit,
-    onSave: () -> Unit,
+    actions: CalibrationActions,
     modifier: Modifier = Modifier,
 ) {
     val kart = MaterialTheme.kartColors
@@ -88,7 +107,7 @@ internal fun CalibrationContent(
     ) {
         Text(state.circuitName, style = MaterialTheme.typography.titleLarge, maxLines = 1)
         Text(
-            stringResource(R.string.calibration_instructions),
+            stringResource(if (state.verifying) R.string.calibration_verify_instructions else R.string.calibration_instructions),
             style = MaterialTheme.typography.bodyLarge,
             color = kart.textMuted,
         )
@@ -100,8 +119,8 @@ internal fun CalibrationContent(
         KartCard(Modifier.fillMaxWidth()) {
             TracePlot(
                 trace = state.trace,
-                finish = state.result?.finishLine ?: state.currentFinish,
-                confirmed = state.result != null,
+                finish = state.displayLine,
+                confirmed = state.result != null || state.editingSaved || state.saved,
                 modifier = Modifier.fillMaxWidth().aspectRatio(1.4f).testTag("calibration_plot"),
             )
         }
@@ -122,30 +141,125 @@ internal fun CalibrationContent(
             )
         }
 
-        val result = state.result
-        if (result != null) {
-            KartCard(Modifier.fillMaxWidth()) {
-                ValueRow(stringResource(R.string.calibration_lat), String.format(Locale.ROOT, "%.6f°", result.finishLine.lat))
-                ValueRow(stringResource(R.string.calibration_lon), String.format(Locale.ROOT, "%.6f°", result.finishLine.lon))
-                ValueRow(stringResource(R.string.calibration_bearing), String.format(Locale.ROOT, "%.1f°", result.finishLine.bearingDeg))
-                ValueRow(stringResource(R.string.calibration_gate), "${result.finishLine.gateWidthM} m")
-                ValueRow(stringResource(R.string.calibration_accuracy), String.format(Locale.ROOT, "±%.0f m", result.accuracyM))
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                Box(Modifier.weight(1f)) { SecondaryButton(stringResource(R.string.calibration_retry).uppercase(), onRetry) }
-                Box(Modifier.weight(1f)) { PrimaryButton(stringResource(R.string.calibration_save).uppercase(), onSave) }
-            }
-        } else {
-            if (state.currentFinish != null) {
-                Text(stringResource(R.string.calibration_current_saved), style = MaterialTheme.typography.bodyMedium, color = kart.textMuted)
-            }
+        when {
+            state.verifying -> VerificationSection(state, actions)
+            state.hasPendingLine -> PendingLineSection(state, actions)
+            state.saved -> SavedSection(actions)
+            else -> LiveSection(state, actions)
+        }
+    }
+}
+
+@Composable
+private fun LiveSection(state: CalibrationUiState, actions: CalibrationActions) {
+    val kart = MaterialTheme.kartColors
+    if (state.currentFinish != null) {
+        Text(stringResource(R.string.calibration_current_saved), style = MaterialTheme.typography.bodyMedium, color = kart.textMuted)
+    }
+    PrimaryButton(
+        text = stringResource(R.string.calibration_mark).uppercase(),
+        onClick = actions.onMark,
+        enabled = state.listening && state.fixCount > 0,
+    )
+    if (state.currentFinish != null) {
+        SecondaryButton(stringResource(R.string.calibration_adjust).uppercase(), actions.onEditSaved)
+        SecondaryButton(stringResource(R.string.calibration_verify).uppercase(), actions.onStartVerification, enabled = state.listening)
+    }
+}
+
+/** Resultado del marcado (o meta guardada en edición): valores, ajuste manual y guardar. */
+@Composable
+private fun PendingLineSection(state: CalibrationUiState, actions: CalibrationActions) {
+    val kart = MaterialTheme.kartColors
+    val line = state.adjustedLine ?: return
+    if (state.reversed) {
+        Text(
+            stringResource(R.string.calibration_reversed_warning),
+            style = MaterialTheme.typography.bodyLarge,
+            color = kart.warning,
+            modifier = Modifier.testTag("calibration_reversed"),
+        )
+    }
+    KartCard(Modifier.fillMaxWidth().testTag("calibration_values")) {
+        ValueRow(stringResource(R.string.calibration_lat), String.format(Locale.ROOT, "%.6f°", line.lat))
+        ValueRow(stringResource(R.string.calibration_lon), String.format(Locale.ROOT, "%.6f°", line.lon))
+        ValueRow(stringResource(R.string.calibration_bearing), String.format(Locale.ROOT, "%.1f°", line.bearingDeg))
+        ValueRow(stringResource(R.string.calibration_gate), "${line.gateWidthM} m")
+        state.result?.let { ValueRow(stringResource(R.string.calibration_accuracy), String.format(Locale.ROOT, "±%.0f m", it.accuracyM)) }
+    }
+    KartCard(Modifier.fillMaxWidth()) {
+        BigStepper(
+            label = stringResource(R.string.calibration_shift),
+            valueText = String.format(Locale.ROOT, "%+d m", state.shiftM),
+            onDecrement = actions.onShiftBackward,
+            onIncrement = actions.onShiftForward,
+            modifier = Modifier.testTag("shift_stepper"),
+        )
+        BigStepper(
+            label = stringResource(R.string.calibration_gate),
+            valueText = "${state.gateWidthM} m",
+            onDecrement = actions.onNarrow,
+            onIncrement = actions.onWiden,
+            modifier = Modifier.padding(top = 16.dp).testTag("width_stepper"),
+        )
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        Box(Modifier.weight(1f)) { SecondaryButton(stringResource(if (state.editingSaved) R.string.action_cancel else R.string.calibration_retry).uppercase(), actions.onRetry) }
+        Box(Modifier.weight(1f)) { PrimaryButton(stringResource(R.string.calibration_save).uppercase(), actions.onSave) }
+    }
+}
+
+@Composable
+private fun SavedSection(actions: CalibrationActions) {
+    Text(
+        stringResource(R.string.calibration_saved),
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.kartColors.telemetry,
+        modifier = Modifier.testTag("calibration_saved"),
+    )
+    Text(stringResource(R.string.calibration_verify_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.kartColors.textMuted)
+    SecondaryButton(stringResource(R.string.calibration_verify).uppercase(), actions.onStartVerification)
+    PrimaryButton(stringResource(R.string.calibration_done).uppercase(), actions.onDone)
+}
+
+@Composable
+private fun VerificationSection(state: CalibrationUiState, actions: CalibrationActions) {
+    val kart = MaterialTheme.kartColors
+    val outcome = state.verification
+    when (outcome) {
+        null -> {
             PrimaryButton(
-                text = stringResource(R.string.calibration_mark).uppercase(),
-                onClick = onMark,
+                text = stringResource(R.string.calibration_verify_now).uppercase(),
+                onClick = actions.onConfirmVerification,
                 enabled = state.listening && state.fixCount > 0,
             )
         }
+        FinishVerification.Outcome.NoCrossing -> {
+            Text(
+                stringResource(R.string.calibration_verify_none),
+                style = MaterialTheme.typography.bodyLarge,
+                color = kart.warning,
+                modifier = Modifier.testTag("verification_none"),
+            )
+            SecondaryButton(stringResource(R.string.calibration_verify_again).uppercase(), actions.onStartVerification)
+        }
+        is FinishVerification.Outcome.Checked -> {
+            KartCard(Modifier.fillMaxWidth().testTag("verification_values")) {
+                ValueRow(stringResource(R.string.calibration_verify_time), String.format(Locale.ROOT, "%+.2f s", outcome.timeDiffMs / 1000.0))
+                ValueRow(stringResource(R.string.calibration_bearing), String.format(Locale.ROOT, "%.1f° (%+.1f°)", outcome.travelBearingDeg, outcome.bearingDiffDeg))
+                ValueRow(stringResource(R.string.calibration_verify_lateral), String.format(Locale.ROOT, "%+.1f m", outcome.lateralOffsetM))
+            }
+            Text(
+                stringResource(if (outcome.ok) R.string.calibration_verify_ok else R.string.calibration_verify_warn),
+                style = MaterialTheme.typography.titleMedium,
+                color = if (outcome.ok) kart.telemetry else kart.warning,
+                modifier = Modifier.testTag(if (outcome.ok) "verification_ok" else "verification_warn"),
+            )
+            SecondaryButton(stringResource(R.string.calibration_verify_again).uppercase(), actions.onStartVerification)
+            if (!outcome.ok) SecondaryButton(stringResource(R.string.calibration_adjust).uppercase(), { actions.onEndVerification(); actions.onEditSaved() })
+        }
     }
+    SecondaryButton(stringResource(R.string.calibration_verify_exit).uppercase(), actions.onEndVerification)
 }
 
 @Composable
@@ -221,7 +335,7 @@ internal fun TracePlot(trace: List<GpsFix>, finish: FinishLine?, confirmed: Bool
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF121212, widthDp = 360, heightDp = 780)
+@Preview(showBackground = true, backgroundColor = 0xFF121212, widthDp = 360, heightDp = 900)
 @Composable
 private fun CalibrationPreview() {
     val track = OvalTrack()
@@ -233,9 +347,9 @@ private fun CalibrationPreview() {
         CalibrationContent(
             state = CalibrationUiState(
                 circuitName = "Karting Zuera", listening = true, fixCount = 14, accuracyM = 3f, rateHz = 1.0,
-                trace = window, result = ok,
+                trace = window, result = ok, shiftM = 3, gateWidthM = 25,
             ),
-            onMark = {}, onRetry = {}, onSave = {},
+            actions = CalibrationActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}),
         )
     }
 }
