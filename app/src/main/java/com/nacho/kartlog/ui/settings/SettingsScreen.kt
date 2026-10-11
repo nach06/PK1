@@ -1,6 +1,10 @@
 package com.nacho.kartlog.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -95,6 +99,66 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            if (state.debugToolsAvailable) {
+                // Sección de depuración al principio y plegable: las herramientas de prueba quedan a un toque.
+                var debugExpanded by rememberSaveable { mutableStateOf(false) }
+                KartCard(Modifier.fillMaxWidth().testTag("debug_section")) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .clickable { debugExpanded = !debugExpanded }
+                            .testTag("debug_header"),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.settings_debug_title).uppercase() + if (debugExpanded) " ▾" else " ▸",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.kartColors.warning,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    if (debugExpanded) {
+                        Column(
+                            modifier = Modifier.padding(top = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            SecondaryButton(
+                                text = stringResource(R.string.settings_simulate_track),
+                                onClick = viewModel::simulateTrackSession,
+                                enabled = !state.isBusy,
+                            )
+                            SecondaryButton(
+                                text = stringResource(R.string.settings_test_ocr),
+                                onClick = viewModel::testOcrWithSample,
+                                enabled = !state.isBusy,
+                            )
+                            SecondaryButton(
+                                text = stringResource(R.string.settings_import_sample_a),
+                                onClick = { viewModel.importTextSample(TextSample.A) },
+                                enabled = !state.isBusy,
+                            )
+                            SecondaryButton(
+                                text = stringResource(R.string.settings_import_sample_b),
+                                onClick = { viewModel.importTextSample(TextSample.B) },
+                                enabled = !state.isBusy,
+                            )
+                            SecondaryButton(
+                                text = stringResource(R.string.settings_seed),
+                                onClick = viewModel::seedDebugData,
+                                enabled = !state.isBusy,
+                            )
+                            SecondaryButton(
+                                text = stringResource(R.string.settings_wipe),
+                                onClick = { wipeStep = 1 },
+                                enabled = !state.isBusy,
+                                color = MaterialTheme.kartColors.warning,
+                            )
+                        }
+                    }
+                }
+            }
+
             KartCard(Modifier.fillMaxWidth()) {
                 Text(
                     text = stringResource(R.string.settings_driver_title).uppercase(),
@@ -162,52 +226,6 @@ fun SettingsScreen(
                         color = MaterialTheme.kartColors.textMuted,
                         modifier = Modifier.padding(top = 8.dp),
                     )
-                }
-            }
-
-            if (state.debugToolsAvailable) {
-                KartCard(Modifier.fillMaxWidth()) {
-                    Text(
-                        text = stringResource(R.string.settings_debug_title).uppercase(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.kartColors.warning,
-                    )
-                    Column(
-                        modifier = Modifier.padding(top = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        SecondaryButton(
-                            text = stringResource(R.string.settings_seed),
-                            onClick = viewModel::seedDebugData,
-                            enabled = !state.isBusy,
-                        )
-                        SecondaryButton(
-                            text = stringResource(R.string.settings_simulate_track),
-                            onClick = viewModel::simulateTrackSession,
-                            enabled = !state.isBusy,
-                        )
-                        SecondaryButton(
-                            text = stringResource(R.string.settings_import_sample_a),
-                            onClick = { viewModel.importTextSample(TextSample.A) },
-                            enabled = !state.isBusy,
-                        )
-                        SecondaryButton(
-                            text = stringResource(R.string.settings_import_sample_b),
-                            onClick = { viewModel.importTextSample(TextSample.B) },
-                            enabled = !state.isBusy,
-                        )
-                        SecondaryButton(
-                            text = stringResource(R.string.settings_test_ocr),
-                            onClick = viewModel::testOcrWithSample,
-                            enabled = !state.isBusy,
-                        )
-                        SecondaryButton(
-                            text = stringResource(R.string.settings_wipe),
-                            onClick = { wipeStep = 1 },
-                            enabled = !state.isBusy,
-                            color = MaterialTheme.kartColors.warning,
-                        )
-                    }
                 }
             }
 

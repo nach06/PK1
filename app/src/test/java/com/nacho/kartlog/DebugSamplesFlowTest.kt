@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -52,6 +53,7 @@ class DebugSamplesFlowTest {
         compose.setContent { KartLogTheme { KartNavHost(container) } }
         waitFor("Tandas")
         compose.onNodeWithText("Ajustes").performClick()
+        compose.onNodeWithTag("debug_header").performClick() // la sección Depuración arranca plegada
         waitFor("Importar muestra de texto A")
         compose.onNodeWithText("Importar muestra de texto A", ignoreCase = true).performScrollTo().performClick()
         waitFor("¿Cuál eres tú?")
@@ -64,9 +66,31 @@ class DebugSamplesFlowTest {
         compose.setContent { KartLogTheme { KartNavHost(container) } }
         waitFor("Tandas")
         compose.onNodeWithText("Ajustes").performClick()
+        compose.onNodeWithTag("debug_header").performClick()
         waitFor("Importar muestra de texto B")
         compose.onNodeWithText("Importar muestra de texto B", ignoreCase = true).performScrollTo().performClick()
         waitFor("¿Cuál eres tú?")
         waitFor("Kart 28")
+    }
+
+    @Test
+    fun debugSectionIsTheFirstCardOfSettings_andFolds() {
+        val container = AppContainer(context)
+        compose.setContent { KartLogTheme { KartNavHost(container) } }
+        waitFor("Tandas")
+        compose.onNodeWithText("Ajustes").performClick()
+        waitFor("Mi perfil")
+
+        // Al principio de Ajustes (encima de «Mi perfil» y de los datos) y plegada: sin botones a la vista.
+        val debugTop = compose.onNodeWithTag("debug_section").fetchSemanticsNode().boundsInRoot.top
+        val profileTop = compose.onNodeWithText("Mi perfil", ignoreCase = true).fetchSemanticsNode().boundsInRoot.top
+        check(debugTop < profileTop) { "Depuración ($debugTop) debe ir antes de Mi perfil ($profileTop)" }
+        check(compose.onAllNodesWithText("Simular tanda en pista", ignoreCase = true).fetchSemanticsNodes().isEmpty()) { "debe arrancar plegada" }
+
+        compose.onNodeWithTag("debug_header").performClick()
+        listOf("Simular tanda en pista", "Probar OCR con muestra", "Importar muestra de texto A", "Importar muestra de texto B", "Cargar datos de prueba", "Borrar todos los datos")
+            .forEach { waitFor(it) }
+        compose.onNodeWithTag("debug_header").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Simular tanda en pista", ignoreCase = true).fetchSemanticsNodes().isEmpty() }
     }
 }
