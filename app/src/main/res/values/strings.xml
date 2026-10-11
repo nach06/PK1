@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">KartLog</string>
+
+    <!-- Genérico -->
+    <string name="action_back">Volver</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="action_add">Añadir</string>
+    <string name="action_delete">Borrar</string>
+    <string name="action_edit">Editar</string>
+    <string name="action_save">Guardar</string>
+    <string name="value_unset">—</string>
+    <string name="stepper_decrease">Disminuir</string>
+    <string name="stepper_increase">Aumentar</string>
+
+    <!-- Tipos y estados -->
+    <string name="session_type_free">Libre</string>
+    <string name="session_type_qualifying">Clasificación</string>
+    <string name="session_type_race">Carrera</string>
+    <string name="condition_dry">Seca</string>
+    <string name="condition_damp">Húmeda</string>
+    <string name="condition_wet">Mojada</string>
+
+    <!-- Formatos -->
+    <string name="format_kart">Kart %1$d</string>
+    <string name="format_kart_value">%1$d</string>
+    <string name="format_ballast_value">%1$d kg</string>
+    <string name="format_ballast">Lastre %1$d kg</string>
+    <string name="format_temp">%1$d °C</string>
+    <string name="format_length_m">%1$d m</string>
+    <string name="format_temps">Ambiente %1$d °C · Pista %2$d °C</string>
+    <plurals name="format_lap_count">
+        <item quantity="one">%1$d vuelta</item>
+        <item quantity="other">%1$d vueltas</item>
+    </plurals>
+
+    <!-- Histórico -->
+    <string name="history_title">Mis tandas</string>
+    <string name="history_empty_title">Aún no hay tandas</string>
+    <string name="history_empty_message">Crea tu primera tanda para empezar a guardar tus vueltas.</string>
+    <string name="history_no_laps">Sin vueltas</string>
+    <string name="action_new_session">Nueva tanda</string>
+    <string name="label_best_short">Mejor vuelta</string>
+
+    <!-- Nueva tanda -->
+    <string name="new_session_title">Nueva tanda</string>
+    <string name="label_circuit">Circuito</string>
+    <string name="label_session_type">Tipo de sesión</string>
+    <string name="label_kart_number">Kart nº</string>
+    <string name="label_ballast">Lastre</string>
+    <string name="label_ambient_temp">Temperatura ambiente</string>
+    <string name="label_track_temp">Temperatura de pista</string>
+    <string name="label_track_condition">Estado de pista</string>
+    <string name="label_notes">Notas</string>
+    <string name="hint_notes">Neumáticos, presiones, sensaciones…</string>
+    <string name="circuit_new">+ Nuevo circuito</string>
+    <string name="circuit_required">Elige o crea un circuito para guardar</string>
+    <string name="circuit_dialog_title">Nuevo circuito</string>
+    <string name="label_circuit_name">Nombre del circuito</string>
+    <string name="label_circuit_length">Longitud (opcional)</string>
+    <string name="circuit_name_required">Escribe un nombre</string>
+
+    <!-- Detalle -->
+    <string name="detail_title">Tanda</string>
+    <string name="detail_not_found">Esta tanda ya no existe</string>
+    <string name="stat_best">Mejor</string>
+    <string name="stat_average">Media</string>
+    <string name="stat_laps">Vueltas</string>
+    <string name="lap_entry_title">Vuelta %1$d</string>
+    <string name="lap_entry_editing">Editando vuelta %1$d</string>
+    <string name="action_save_lap">Guardar vuelta</string>
+    <string name="action_update_lap">Actualizar vuelta</string>
+    <string name="action_cancel_edit">Cancelar edición</string>
+    <string name="time_invalid">Los segundos deben ser menores de 60</string>
+    <string name="keypad_backspace">Borrar dígito</string>
+    <string name="laps_title">Vueltas</string>
+    <string name="laps_empty">Aún no hay vueltas. Teclea el tiempo y pulsa GUARDAR VUELTA.</string>
+    <string name="lap_number">Vuelta %1$d</string>
+    <string name="delete_lap_title">¿Borrar vuelta %1$d?</string>
+    <string name="delete_lap_message">Se eliminará el tiempo %1$s.</string>
+    <string name="delete_session_title">¿Borrar tanda?</string>
+    <string name="delete_session_message">Se eliminarán la tanda y todas sus vueltas. No se puede deshacer.</string>
+</resources>

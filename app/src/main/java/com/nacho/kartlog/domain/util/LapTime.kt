@@ -1,0 +1,61 @@
+package com.nacho.kartlog.domain.util
+
+import com.nacho.kartlog.domain.model.Lap
+
+/** Utilidades de tiempos de vuelta. Todo se calcula en milisegundos. */
+object LapTime {
+    /** Máximo de dígitos tecleables: `m` + `ss` + `mmm`. */
+    const val MAX_DIGITS = 6
+
+    /** Formatea milisegundos como `m:ss.mmm`, p. ej. 48532 -> `0:48.532`. */
+    fun format(timeMs: Long): String {
+        val total = timeMs.coerceAtLeast(0)
+        val minutes = total / 60_000
+        val seconds = (total % 60_000) / 1_000
+        val millis = total % 1_000
+        return "%d:%02d.%03d".format(minutes, seconds, millis)
+    }
+
+    /** Muestra los dígitos tecleados rellenando de derecha a izquierda: `48532` -> `0:48.532`. */
+    fun formatDigits(digits: String): String {
+        val padded = digits.padStart(MAX_DIGITS, '0')
+        return "${padded[0]}:${padded.substring(1, 3)}.${padded.substring(3, 6)}"
+    }
+
+    /** Añade dígitos ignorando ceros a la izquierda y respetando el máximo. */
+    fun appendDigits(current: String, input: String): String {
+        val next = (current + input).trimStart('0')
+        return if (next.length > MAX_DIGITS) current else next
+    }
+
+    /**
+     * Convierte los dígitos tecleados a milisegundos.
+     * Devuelve `null` si están vacíos, el tiempo es cero o los segundos son >= 60.
+     */
+    fun digitsToMs(digits: String): Long? {
+        if (digits.isEmpty()) return null
+        val padded = digits.padStart(MAX_DIGITS, '0')
+        val minutes = padded.substring(0, 1).toLong()
+        val seconds = padded.substring(1, 3).toLong()
+        val millis = padded.substring(3, 6).toLong()
+        if (seconds >= 60) return null
+        val total = minutes * 60_000 + seconds * 1_000 + millis
+        return total.takeIf { it > 0 }
+    }
+
+    /** `true` si hay dígitos pero no forman un tiempo válido. */
+    fun isInvalid(digits: String): Boolean = digits.isNotEmpty() && digitsToMs(digits) == null
+
+    /** Dígitos equivalentes a un tiempo, para precargar la edición de una vuelta. */
+    fun msToDigits(timeMs: Long): String {
+        val minutes = timeMs / 60_000
+        val seconds = (timeMs % 60_000) / 1_000
+        val millis = timeMs % 1_000
+        return "%d%02d%03d".format(minutes, seconds, millis).trimStart('0')
+    }
+
+    fun bestLapMs(laps: List<Lap>): Long? = laps.minOfOrNull { it.timeMs }
+
+    fun averageMs(laps: List<Lap>): Long? =
+        if (laps.isEmpty()) null else Math.round(laps.sumOf { it.timeMs }.toDouble() / laps.size)
+}
