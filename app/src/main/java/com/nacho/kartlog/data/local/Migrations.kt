@@ -46,3 +46,16 @@ val MIGRATION_1_2: Migration = object : Migration(1, 2) {
         )
     }
 }
+
+/**
+ * v2 → v3 (Sprint 4, cronometraje por GPS): la meta del circuito (`finishLat`, `finishLon`, `finishBearingDeg`)
+ * y el ancho de la puerta (`gateWidthM`, 20 m por defecto). Los circuitos existentes quedan sin meta.
+ */
+val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `circuits` ADD COLUMN `finishLat` REAL")
+        db.execSQL("ALTER TABLE `circuits` ADD COLUMN `finishLon` REAL")
+        db.execSQL("ALTER TABLE `circuits` ADD COLUMN `finishBearingDeg` REAL")
+        db.execSQL("ALTER TABLE `circuits` ADD COLUMN `gateWidthM` INTEGER NOT NULL DEFAULT 20")
+    }
+}

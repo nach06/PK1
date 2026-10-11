@@ -1,9 +1,12 @@
 package com.nacho.kartlog
 
 import android.content.Context
+import com.nacho.kartlog.domain.gps.TrackStore
+import java.io.File
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.nacho.kartlog.data.gps.FileTrackStore
 import com.nacho.kartlog.data.local.KartLogDatabase
 import com.nacho.kartlog.data.repository.CircuitRepositoryImpl
 import com.nacho.kartlog.data.repository.ImportRepositoryImpl
@@ -37,7 +40,9 @@ class AppContainer(context: Context) {
     internal val database: KartLogDatabase = KartLogDatabase.create(context)
 
     val circuitRepository: CircuitRepository = CircuitRepositoryImpl(database.circuitDao())
-    val sessionRepository: SessionRepository = SessionRepositoryImpl(database.sessionDao())
+    /** Trazados GPS (`filesDir/tracks/{sessionId}.csv`); se borran junto con su tanda. */
+    val trackStore: TrackStore = FileTrackStore(File(context.filesDir, "tracks"))
+    val sessionRepository: SessionRepository = SessionRepositoryImpl(database.sessionDao(), trackStore)
     val lapRepository: LapRepository = LapRepositoryImpl(database.lapDao())
     val participantRepository: ParticipantRepository = ParticipantRepositoryImpl(database.participantDao())
     val importRepository: ImportRepository = ImportRepositoryImpl(database.importDao())

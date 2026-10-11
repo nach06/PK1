@@ -7,10 +7,27 @@ enum class TrackCondition { DRY, DAMP, WET }
 /** Origen de una vuelta. En el Sprint 1 siempre es [MANUAL]. */
 enum class LapSource { MANUAL, IMPORTED, GPS, LIVE_TIMING }
 
+/**
+ * Línea de meta marcada con el GPS: punto, rumbo de paso (grados desde el norte, sentido horario) y ancho de la
+ * «puerta» (segmento perpendicular al rumbo) en metros.
+ */
+data class FinishLine(
+    val lat: Double,
+    val lon: Double,
+    val bearingDeg: Double,
+    val gateWidthM: Int = DEFAULT_GATE_WIDTH_M,
+) {
+    companion object {
+        const val DEFAULT_GATE_WIDTH_M = 20
+    }
+}
+
 data class Circuit(
     val id: Long,
     val name: String,
     val lengthMeters: Int?,
+    /** `null` si todavía no se ha marcado la meta (sin ella no se puede cronometrar por GPS). */
+    val finishLine: FinishLine? = null,
 )
 
 data class Session(

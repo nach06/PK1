@@ -7,6 +7,7 @@ import com.nacho.kartlog.data.local.entity.SessionEntity
 import com.nacho.kartlog.data.local.entity.SessionSummaryRow
 import com.nacho.kartlog.data.local.entity.SessionWithCircuit
 import com.nacho.kartlog.domain.model.Circuit
+import com.nacho.kartlog.domain.model.FinishLine
 import com.nacho.kartlog.domain.model.Lap
 import com.nacho.kartlog.domain.model.NewSession
 import com.nacho.kartlog.domain.model.Participant
@@ -14,7 +15,16 @@ import com.nacho.kartlog.domain.model.Session
 import com.nacho.kartlog.domain.model.SessionDetail
 import com.nacho.kartlog.domain.model.SessionSummary
 
-fun CircuitEntity.toDomain() = Circuit(id = id, name = name, lengthMeters = lengthMeters)
+fun CircuitEntity.toDomain() = Circuit(
+    id = id,
+    name = name,
+    lengthMeters = lengthMeters,
+    finishLine = if (finishLat != null && finishLon != null && finishBearingDeg != null) {
+        FinishLine(finishLat, finishLon, finishBearingDeg, gateWidthM)
+    } else {
+        null
+    },
+)
 
 fun SessionEntity.toDomain() = Session(
     id = id,

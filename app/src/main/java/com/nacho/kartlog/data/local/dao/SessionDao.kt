@@ -16,6 +16,10 @@ private const val SUMMARY_QUERY = """
            c.id AS circuit_id,
            c.name AS circuit_name,
            c.lengthMeters AS circuit_lengthMeters,
+           c.finishLat AS circuit_finishLat,
+           c.finishLon AS circuit_finishLon,
+           c.finishBearingDeg AS circuit_finishBearingDeg,
+           c.gateWidthM AS circuit_gateWidthM,
            (SELECT COUNT(*) FROM laps l WHERE l.sessionId = s.id) AS lapCount,
            (SELECT MIN(l.timeMs) FROM laps l WHERE l.sessionId = s.id) AS bestLapMs
     FROM sessions s

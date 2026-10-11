@@ -4,6 +4,7 @@ import androidx.room.testing.MigrationTestHelper
 import androidx.test.platform.app.InstrumentationRegistry
 import com.nacho.kartlog.data.local.KartLogDatabase
 import com.nacho.kartlog.data.local.MIGRATION_1_2
+import com.nacho.kartlog.data.local.MIGRATION_2_3
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -75,5 +76,50 @@ class MigrationTest {
         }
         helper.runMigrationsAndValidate(dbName, 2, true, MIGRATION_1_2).close()
         assertNull(null) // la validación de esquema (identity hash) ya la hace runMigrationsAndValidate
+    }
+
+    @Test
+    fun migrate2To3_addsFinishLineToCircuits_keepingEverythingElse() {
+        helper.createDatabase(dbName, 2).apply {
+            execSQL("INSERT INTO circuits (id, name, lengthMeters) VALUES (1, 'Zuera', 1100)")
+            execSQL("INSERT INTO sessions (id, circuitId, dateTime, type, trackCondition, notes, label) VALUES (10, 1, 1760000000000, 'RACE', 'DRY', '', 'Sesión 46')")
+            execSQL("INSERT INTO laps (sessionId, number, timeMs, source) VALUES (10, 1, 58400, 'IMPORTED')")
+            close()
+        }
+        val db = helper.runMigrationsAndValidate(dbName, 3, true, MIGRATION_2_3)
+
+        db.query("SELECT name, lengthMeters, finishLat, finishLon, finishBearingDeg, gateWidthM FROM circuits WHERE id = 1").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("Zuera", c.getString(0))
+            assertEquals(1100, c.getInt(1))
+            assertTrue("sin meta hasta que se marque", c.isNull(2) && c.isNull(3) && c.isNull(4))
+            assertEquals("ancho de puerta por defecto", 20, c.getInt(5))
+        }
+        db.query("SELECT label FROM sessions WHERE id = 10").use { assertTrue(it.moveToFirst()); assertEquals("Sesión 46", it.getString(0)) }
+        db.query("SELECT COUNT(*) FROM laps WHERE source = 'IMPORTED'").use { assertTrue(it.moveToFirst()); assertEquals(1, it.getInt(0)) }
+        // La meta se puede escribir y leer.
+        db.execSQL("UPDATE circuits SET finishLat = 41.8626, finishLon = -0.7931, finishBearingDeg = 87.5, gateWidthM = 25 WHERE id = 1")
+        db.query("SELECT finishLat, finishBearingDeg, gateWidthM FROM circuits WHERE id = 1").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals(41.8626, c.getDouble(0), 1e-9)
+            assertEquals(87.5, c.getDouble(1), 1e-9)
+            assertEquals(25, c.getInt(2))
+        }
+    }
+
+    @Test
+    fun migrate1To3_chainKeepsData() {
+        helper.createDatabase(dbName, 1).apply {
+            execSQL("INSERT INTO circuits (id, name, lengthMeters) VALUES (1, 'Zuera', 1100)")
+            execSQL("INSERT INTO sessions (id, circuitId, dateTime, type, trackCondition, notes) VALUES (10, 1, 1760000000000, 'FREE', 'DRY', '')")
+            execSQL("INSERT INTO laps (sessionId, number, timeMs, source) VALUES (10, 1, 58400, 'MANUAL')")
+            close()
+        }
+        val db = helper.runMigrationsAndValidate(dbName, 3, true, MIGRATION_1_2, MIGRATION_2_3)
+        db.query("SELECT (SELECT COUNT(*) FROM laps), (SELECT gateWidthM FROM circuits WHERE id = 1)").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals(1, c.getInt(0))
+            assertEquals(20, c.getInt(1))
+        }
     }
 }

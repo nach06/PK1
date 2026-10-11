@@ -1,6 +1,7 @@
 package com.nacho.kartlog.domain.repository
 
 import com.nacho.kartlog.domain.model.Circuit
+import com.nacho.kartlog.domain.model.FinishLine
 import com.nacho.kartlog.domain.model.ImportRequest
 import com.nacho.kartlog.domain.model.Lap
 import com.nacho.kartlog.domain.model.NewSession
@@ -19,6 +20,9 @@ interface CircuitRepository {
 
     /** Edita nombre y longitud. Devuelve `false` si el nombre ya lo usa otro circuito. */
     suspend fun update(id: Long, name: String, lengthMeters: Int?): Boolean
+
+    /** Guarda (o, con `null`, borra) la línea de meta del circuito. */
+    suspend fun setFinishLine(id: Long, line: FinishLine?)
 
     /** Borra el circuito. Devuelve `false` (sin borrar nada) si tiene tandas. */
     suspend fun delete(id: Long): Boolean

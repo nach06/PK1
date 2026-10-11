@@ -24,7 +24,7 @@ import com.nacho.kartlog.data.local.entity.SessionEntity
         ParticipantEntity::class,
         ParticipantLapEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -40,7 +40,7 @@ abstract class KartLogDatabase : RoomDatabase() {
 
         fun create(context: Context): KartLogDatabase =
             Room.databaseBuilder(context.applicationContext, KartLogDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2) // migración explícita; nunca fallbackToDestructiveMigration
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3) // migración explícita; nunca fallbackToDestructiveMigration
                 .build()
     }
 }

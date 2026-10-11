@@ -8,7 +8,9 @@ import com.nacho.kartlog.data.local.dao.SessionDao
 import com.nacho.kartlog.data.local.entity.CircuitEntity
 import com.nacho.kartlog.data.mapper.toDomain
 import com.nacho.kartlog.data.mapper.toEntity
+import com.nacho.kartlog.domain.gps.TrackStore
 import com.nacho.kartlog.domain.model.Circuit
+import com.nacho.kartlog.domain.model.FinishLine
 import com.nacho.kartlog.domain.model.ImportRequest
 import com.nacho.kartlog.domain.model.Lap
 import com.nacho.kartlog.domain.model.LapSource
@@ -40,8 +42,22 @@ class CircuitRepositoryImpl(private val dao: CircuitDao) : CircuitRepository {
         val trimmed = name.trim()
         val clash = dao.getByName(trimmed)
         if (clash != null && clash.id != id) return false
-        dao.update(CircuitEntity(id = id, name = trimmed, lengthMeters = lengthMeters))
+        // Se parte de la fila actual para no perder la meta marcada.
+        val current = dao.getById(id) ?: return false
+        dao.update(current.copy(name = trimmed, lengthMeters = lengthMeters))
         return true
+    }
+
+    override suspend fun setFinishLine(id: Long, line: FinishLine?) {
+        val current = dao.getById(id) ?: return
+        dao.update(
+            current.copy(
+                finishLat = line?.lat,
+                finishLon = line?.lon,
+                finishBearingDeg = line?.bearingDeg,
+                gateWidthM = line?.gateWidthM ?: FinishLine.DEFAULT_GATE_WIDTH_M,
+            ),
+        )
     }
 
     override suspend fun delete(id: Long): Boolean {
@@ -51,7 +67,7 @@ class CircuitRepositoryImpl(private val dao: CircuitDao) : CircuitRepository {
     }
 }
 
-class SessionRepositoryImpl(private val dao: SessionDao) : SessionRepository {
+class SessionRepositoryImpl(private val dao: SessionDao, private val tracks: TrackStore? = null) : SessionRepository {
     override fun observeSummaries(): Flow<List<SessionSummary>> =
         dao.observeSummaries().map { rows -> rows.map { it.toDomain() } }
 
@@ -60,7 +76,10 @@ class SessionRepositoryImpl(private val dao: SessionDao) : SessionRepository {
 
     override suspend fun create(session: NewSession): Long = dao.insert(session.toEntity())
 
-    override suspend fun delete(sessionId: Long) = dao.deleteById(sessionId)
+    override suspend fun delete(sessionId: Long) {
+        dao.deleteById(sessionId)
+        tracks?.delete(sessionId) // el trazado GPS vive en un fichero y se borra con la tanda
+    }
 }
 
 class LapRepositoryImpl(private val dao: LapDao) : LapRepository {

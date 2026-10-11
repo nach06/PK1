@@ -1,6 +1,7 @@
 package com.nacho.kartlog.data.local.entity
 
 import androidx.room.Embedded
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -18,6 +19,10 @@ data class CircuitEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val lengthMeters: Int? = null,
+    val finishLat: Double? = null,
+    val finishLon: Double? = null,
+    val finishBearingDeg: Double? = null,
+    @ColumnInfo(defaultValue = "20") val gateWidthM: Int = 20,
 )
 
 @Entity(
