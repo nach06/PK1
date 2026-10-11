@@ -62,4 +62,12 @@ class LapTimeTest {
         assertNull(LapTime.bestLapMs(emptyList()))
         assertNull(LapTime.averageMs(emptyList()))
     }
+
+    @Test
+    fun formatDelta_signAndDecimalComma() {
+        assertEquals("+2,927", LapTime.formatDelta(2_927))
+        assertEquals("+0,000", LapTime.formatDelta(0))
+        assertEquals("-0,350", LapTime.formatDelta(-350))
+        assertEquals("+1:02,345", LapTime.formatDelta(62_345))
+    }
 }

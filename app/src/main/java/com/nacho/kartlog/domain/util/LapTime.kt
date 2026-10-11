@@ -1,6 +1,8 @@
 package com.nacho.kartlog.domain.util
 
 import com.nacho.kartlog.domain.model.Lap
+import java.util.Locale
+import kotlin.math.abs
 
 /** Utilidades de tiempos de vuelta. Todo se calcula en milisegundos. */
 object LapTime {
@@ -13,7 +15,24 @@ object LapTime {
         val minutes = total / 60_000
         val seconds = (total % 60_000) / 1_000
         val millis = total % 1_000
-        return "%d:%02d.%03d".format(minutes, seconds, millis)
+        return String.format(Locale.ROOT, "%d:%02d.%03d", minutes, seconds, millis)
+    }
+
+    /**
+     * Diferencia con otro tiempo, con signo y coma decimal: 2927 -> `+2,927`, -350 -> `-0,350`,
+     * 62345 -> `+1:02,345`.
+     */
+    fun formatDelta(deltaMs: Long): String {
+        val sign = if (deltaMs < 0) "-" else "+"
+        val total = abs(deltaMs)
+        val minutes = total / 60_000
+        val seconds = (total % 60_000) / 1_000
+        val millis = total % 1_000
+        return if (minutes > 0) {
+            String.format(Locale.ROOT, "%s%d:%02d,%03d", sign, minutes, seconds, millis)
+        } else {
+            String.format(Locale.ROOT, "%s%d,%03d", sign, seconds, millis)
+        }
     }
 
     /** Muestra los dígitos tecleados rellenando de derecha a izquierda: `48532` -> `0:48.532`. */
@@ -51,7 +70,7 @@ object LapTime {
         val minutes = timeMs / 60_000
         val seconds = (timeMs % 60_000) / 1_000
         val millis = timeMs % 1_000
-        return "%d%02d%03d".format(minutes, seconds, millis).trimStart('0')
+        return String.format(Locale.ROOT, "%d%02d%03d", minutes, seconds, millis).trimStart('0')
     }
 
     fun bestLapMs(laps: List<Lap>): Long? = laps.minOfOrNull { it.timeMs }

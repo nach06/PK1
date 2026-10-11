@@ -123,8 +123,7 @@ fun SessionDetailScreen(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                 ) {
                     if (state.laps.isEmpty()) {
                         item {
@@ -132,6 +131,7 @@ fun SessionDetailScreen(
                                 text = stringResource(R.string.laps_empty),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.kartColors.textMuted,
+                                modifier = Modifier.padding(8.dp),
                             )
                         }
                     } else {
@@ -139,7 +139,7 @@ fun SessionDetailScreen(
                         items(state.laps.asReversed(), key = { it.id }) { lap ->
                             LapRow(
                                 lap = lap,
-                                isBest = lap.timeMs == state.bestLapMs,
+                                bestLapMs = state.bestLapMs,
                                 isEditing = lap.id == state.editingLap?.id,
                                 onEdit = {
                                     viewModel.startEditing(lap)
@@ -258,52 +258,6 @@ private fun HeaderCard(detail: SessionDetail, state: SessionDetailUiState, modif
                 value = state.averageMs?.let(LapTime::format) ?: unset,
                 modifier = Modifier.weight(0.8f),
             )
-        }
-    }
-}
-
-@Composable
-private fun LapRow(
-    lap: Lap,
-    isBest: Boolean,
-    isEditing: Boolean,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    val kart = MaterialTheme.kartColors
-    KartCard(Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stringResource(R.string.lap_number, lap.number),
-                style = MaterialTheme.typography.titleSmall,
-                color = if (isEditing) kart.warning else kart.textMuted,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                text = LapTime.format(lap.timeMs),
-                style = KartTextStyles.lapTime,
-                color = if (isBest) kart.telemetry else MaterialTheme.colorScheme.onSurface,
-            )
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 4.dp),
-            horizontalArrangement = Arrangement.End,
-        ) {
-            TextButton(onClick = onEdit, modifier = Modifier.heightIn(min = 56.dp)) {
-                Text(stringResource(R.string.action_edit).uppercase(), style = MaterialTheme.typography.titleSmall)
-            }
-            TextButton(onClick = onDelete, modifier = Modifier.heightIn(min = 56.dp)) {
-                Text(
-                    stringResource(R.string.action_delete).uppercase(),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
         }
     }
 }

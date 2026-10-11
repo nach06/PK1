@@ -37,7 +37,7 @@ fun KartTopBar(
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
             .windowInsetsPadding(WindowInsets.statusBars)
-            .heightIn(min = 64.dp)
+            .heightIn(min = 56.dp)
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
