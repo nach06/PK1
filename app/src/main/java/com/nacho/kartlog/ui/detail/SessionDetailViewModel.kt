@@ -2,6 +2,7 @@ package com.nacho.kartlog.ui.detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nacho.kartlog.domain.analytics.Analytics
 import com.nacho.kartlog.domain.model.Lap
 import com.nacho.kartlog.domain.model.SessionDetail
 import com.nacho.kartlog.domain.repository.LapRepository
@@ -22,7 +23,8 @@ data class SessionDetailUiState(
     /** Vueltas ordenadas por número ascendente. */
     val laps: List<Lap> = emptyList(),
     val bestLapMs: Long? = null,
-    val averageMs: Long? = null,
+    /** Media limpia (vueltas <= 107 % de la mejor). */
+    val cleanAverageMs: Long? = null,
     val digits: String = "",
     val editingLap: Lap? = null,
     val pendingDeleteLap: Lap? = null,
@@ -59,7 +61,7 @@ class SessionDetailViewModel(
             detail = detail,
             laps = laps,
             bestLapMs = LapTime.bestLapMs(laps),
-            averageMs = LapTime.averageMs(laps),
+            cleanAverageMs = Analytics.cleanAverageMs(laps.map { it.timeMs }),
             digits = l.digits,
             editingLap = l.editingLap,
             pendingDeleteLap = l.pendingDeleteLap,

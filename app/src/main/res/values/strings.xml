@@ -74,6 +74,8 @@
     <string name="detail_not_found">Esta tanda ya no existe</string>
     <string name="stat_best">Mejor</string>
     <string name="stat_average">Media</string>
+    <string name="stat_clean_average">Media limpia</string>
+    <string name="chart_title">Gráfica de vueltas</string>
     <string name="stat_laps">Vueltas</string>
     <string name="lap_entry_title">Vuelta %1$d</string>
     <string name="lap_entry_editing">Editando V%1$d</string>

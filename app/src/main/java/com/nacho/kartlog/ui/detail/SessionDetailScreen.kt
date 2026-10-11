@@ -12,6 +12,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -42,6 +46,7 @@ import com.nacho.kartlog.ui.components.KartOverflowMenu
 import com.nacho.kartlog.ui.components.KartTopBar
 import com.nacho.kartlog.ui.components.MenuAction
 import com.nacho.kartlog.ui.components.StatBadge
+import com.nacho.kartlog.ui.components.TimeLineChart
 import com.nacho.kartlog.ui.theme.KartTextStyles
 import com.nacho.kartlog.ui.theme.kartColors
 import com.nacho.kartlog.ui.util.formatDateTime
@@ -197,6 +202,7 @@ fun SessionDetailScreen(
 /** Cabecera compacta: datos de la tanda (solo los no nulos) y fila MEJOR / MEDIA. */
 @Composable
 private fun HeaderCard(detail: SessionDetail, state: SessionDetailUiState, modifier: Modifier = Modifier) {
+    var chartExpanded by rememberSaveable { mutableStateOf(false) }
     val session = detail.session
     val kart = MaterialTheme.kartColors
     val unset = stringResource(R.string.value_unset)
@@ -254,10 +260,43 @@ private fun HeaderCard(detail: SessionDetail, state: SessionDetailUiState, modif
                 modifier = Modifier.weight(1.2f),
             )
             StatBadge(
-                label = stringResource(R.string.stat_average),
-                value = state.averageMs?.let(LapTime::format) ?: unset,
+                label = stringResource(R.string.stat_clean_average),
+                value = state.cleanAverageMs?.let(LapTime::format) ?: unset,
                 modifier = Modifier.weight(0.8f),
             )
+        }
+        // Gráfica de vueltas: plegable para no quitar sitio a la lista (necesita al menos 2 vueltas).
+        if (state.laps.size >= 2) {
+            TextButton(
+                onClick = { chartExpanded = !chartExpanded },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 56.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.chart_title).uppercase(),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    imageVector = if (chartExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                )
+            }
+            if (chartExpanded) {
+                val bestIndex = state.laps.indexOfFirst { it.timeMs == state.bestLapMs }
+                TimeLineChart(
+                    x = state.laps.map { it.number.toDouble() },
+                    timesMs = state.laps.map { it.timeMs },
+                    xLabel = { it.toInt().toString() },
+                    referenceMs = state.cleanAverageMs,
+                    referenceLabel = state.cleanAverageMs?.let {
+                        stringResource(R.string.format_clean_average, LapTime.format(it))
+                    },
+                    highlightIndex = bestIndex.takeIf { it >= 0 },
+                    xSpacing = if (state.laps.size > 12) 2 else 1,
+                )
+            }
         }
     }
 }
