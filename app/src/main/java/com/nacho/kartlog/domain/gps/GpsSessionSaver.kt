@@ -2,7 +2,6 @@ package com.nacho.kartlog.domain.gps
 
 import com.nacho.kartlog.domain.model.LapSource
 import com.nacho.kartlog.domain.model.NewSession
-import com.nacho.kartlog.domain.model.SessionType
 import com.nacho.kartlog.domain.repository.LapRepository
 import com.nacho.kartlog.domain.repository.SessionRepository
 
@@ -11,7 +10,6 @@ class GpsSessionSaver(
     private val sessions: SessionRepository,
     private val laps: LapRepository,
     private val tracks: TrackStore,
-    private val now: () -> Long = System::currentTimeMillis,
 ) {
     /** Devuelve el id de la sesión creada, o `null` si no hubo ninguna vuelta cerrada (no se crea nada). */
     suspend fun save(recording: GpsRecording): Long? {
@@ -20,14 +18,16 @@ class GpsSessionSaver(
         val sessionId = sessions.create(
             NewSession(
                 circuitId = setup.circuitId,
-                dateTime = now(),
-                type = SessionType.FREE,
+                // La fecha es la de salida (EMPEZAR), no la de guardar: una tanda guardada horas después sigue en su día.
+                dateTime = setup.startedAtMs,
+                type = setup.type,
                 kartNumber = setup.kartNumber,
                 ballastKg = setup.ballastKg,
                 ambientTempC = setup.ambientTempC,
                 trackTempC = setup.trackTempC,
                 trackCondition = setup.trackCondition,
                 notes = "",
+                durationMin = ((recording.stoppedAtMs - setup.startedAtMs) / 60_000.0).let { Math.round(it).toInt() }.takeIf { it > 0 },
             ),
         )
         laps.addAll(sessionId, recording.laps, LapSource.GPS)

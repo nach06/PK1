@@ -96,8 +96,11 @@ class AppContainer(context: Context) {
 
     /** Alcance de la app: el cronometraje sigue aunque se cierre la pantalla. */
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    val timingSession = TimingSession(appScope)
+    val timingSession = TimingSession(appScope, wallClockMs = { wallClockMs() })
     val gpsSessionSaver = GpsSessionSaver(sessionRepository, lapRepository, trackStore)
+
+    /** Reloj de pared (epoch ms); los tests lo sustituyen para fijar la fecha de las tandas GPS. */
+    var wallClockMs: () -> Long = System::currentTimeMillis
 
     /** Servicio en primer plano; los tests lo sustituyen por uno que no hace nada. */
     var trackingController: TrackingController = ServiceTrackingController(context.applicationContext)
@@ -109,6 +112,7 @@ class AppContainer(context: Context) {
                 startTracking = { trackingController.start() },
                 stopTracking = { trackingController.stop() },
                 locationSource = { locationSource },
+                now = { wallClockMs() },
             )
         }
     }

@@ -10,6 +10,7 @@ import com.nacho.kartlog.domain.gps.TimingPhase
 import com.nacho.kartlog.domain.gps.TimingSession
 import com.nacho.kartlog.domain.gps.TimingState
 import com.nacho.kartlog.domain.model.Circuit
+import com.nacho.kartlog.domain.model.SessionType
 import com.nacho.kartlog.domain.model.TrackCondition
 import com.nacho.kartlog.domain.repository.CircuitRepository
 import kotlinx.coroutines.channels.Channel
@@ -38,6 +39,7 @@ data class DashboardUiState(
     val ambientTempC: Int? = null,
     val trackTempC: Int? = null,
     val condition: TrackCondition = TrackCondition.DRY,
+    val type: SessionType = SessionType.FREE,
     val showCircuitPicker: Boolean = false,
     val timing: TimingState = TimingState(),
     val summary: DashboardSummary? = null,
@@ -61,6 +63,7 @@ class DashboardViewModel(
     private val startTracking: () -> Unit,
     private val stopTracking: () -> Unit,
     private val locationSource: () -> LocationSource,
+    private val now: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
 
     private data class Form(
@@ -70,6 +73,7 @@ class DashboardViewModel(
         val ambientTempC: Int? = null,
         val trackTempC: Int? = null,
         val condition: TrackCondition = TrackCondition.DRY,
+        val type: SessionType = SessionType.FREE,
         val showCircuitPicker: Boolean = false,
         val saving: Boolean = false,
         val nothingToSave: Boolean = false,
@@ -87,7 +91,7 @@ class DashboardViewModel(
             circuits = circuits,
             circuitId = activeCircuit ?: f.circuitId ?: circuits.firstOrNull { it.finishLine != null }?.id,
             kartNumber = f.kartNumber, ballastKg = f.ballastKg, ambientTempC = f.ambientTempC, trackTempC = f.trackTempC,
-            condition = f.condition, showCircuitPicker = f.showCircuitPicker, timing = timing,
+            condition = f.condition, type = f.type, showCircuitPicker = f.showCircuitPicker, timing = timing,
             summary = if (timing.phase == TimingPhase.STOPPED) f.summary ?: summaryOf(timing) else null,
             saving = f.saving, nothingToSave = f.nothingToSave,
         )
@@ -110,6 +114,7 @@ class DashboardViewModel(
     fun setTrackTemp(value: Int) = form.update { it.copy(trackTempC = value) }
     fun clearTrackTemp() = form.update { it.copy(trackTempC = null) }
     fun selectCondition(value: TrackCondition) = form.update { it.copy(condition = value) }
+    fun selectType(value: SessionType) = form.update { it.copy(type = value) }
 
     /** EMPEZAR: arranca el cronómetro y el servicio en primer plano. */
     fun start() {
@@ -126,6 +131,8 @@ class DashboardViewModel(
             ambientTempC = state.ambientTempC?.toFloat(),
             trackTempC = state.trackTempC?.toFloat(),
             trackCondition = state.condition,
+            type = state.type,
+            startedAtMs = now(),
         )
         if (timingSession.start(setup, locationSource())) startTracking()
     }

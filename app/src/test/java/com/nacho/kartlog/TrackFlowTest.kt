@@ -103,6 +103,12 @@ class TrackFlowTest {
         waitFor("EMPEZAR")
         waitFor("Óvalo simulado", substring = true)
         compose.onNodeWithText("Óvalo simulado", substring = true, ignoreCase = true).assertIsDisplayed()
+        // A6: tipo de tanda elegible (Libre por defecto) y fecha = hora de EMPEZAR.
+        listOf("Libre", "Clasificación", "Carrera", "Resistencia").forEach { check(compose.onAllNodesWithText(it).fetchSemanticsNodes().isNotEmpty()) { "falta la ficha $it" } }
+        compose.onNodeWithText("Carrera").performClick()
+        val startedAt = 1_760_000_000_000L
+        var clock = startedAt
+        container.wallClockMs = { clock }
         compose.onNodeWithText("EMPEZAR").performClick()
 
         // En marcha: vuelta actual, última, mejor y delta con los tiempos simulados; servicio arrancado.
@@ -114,6 +120,7 @@ class TrackFlowTest {
         val best = container.timingSession.state.value.bestLapMs!!
         assertTrue("mejor ≈ 57,650 s: $best", kotlin.math.abs(best - 57_650) <= 20)
 
+        clock = startedAt + 47 * 60_000L // la tanda dura 47 min
         // Terminar exige mantener pulsado 1,5 s: un toque corto no hace nada.
         compose.mainClock.autoAdvance = false
         compose.onNodeWithTag("finish_hold").performTouchInput { click() }
@@ -129,6 +136,7 @@ class TrackFlowTest {
         waitFor("Tanda terminada")
         compose.onNodeWithTag("summary_laps").assertIsDisplayed()
         assertEquals(1, controller.stops)
+        clock = startedAt + 3 * 3_600_000L // se guarda 3 h después: la fecha sigue siendo la de salida
         compose.onNodeWithText("GUARDAR TANDA").performClick()
 
         // Detalle: las vueltas llevan el icono de GPS y se guardó el trazado.
@@ -136,6 +144,9 @@ class TrackFlowTest {
         val sessions = runBlocking { container.sessionRepository.observeSummaries().first() }
         assertEquals(1, sessions.size)
         val sessionId = sessions.single().session.id
+        assertEquals(startedAt, sessions.single().session.dateTime)
+        assertEquals(com.nacho.kartlog.domain.model.SessionType.RACE, sessions.single().session.type)
+        assertEquals(47, sessions.single().session.durationMin)
         val laps = runBlocking { container.lapRepository.observeBySession(sessionId).first() }
         assertEquals(lapTimes.size, laps.size)
         assertTrue(laps.all { it.source == LapSource.GPS })

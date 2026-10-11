@@ -17,6 +17,7 @@
     <string name="session_type_free">Libre</string>
     <string name="session_type_qualifying">Clasificación</string>
     <string name="session_type_race">Carrera</string>
+    <string name="session_type_endurance">Resistencia</string>
     <string name="condition_dry">Seca</string>
     <string name="condition_damp">Húmeda</string>
     <string name="condition_wet">Mojada</string>

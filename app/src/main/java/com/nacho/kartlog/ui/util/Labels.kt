@@ -14,6 +14,7 @@ fun SessionType.labelRes(): Int = when (this) {
     SessionType.FREE -> R.string.session_type_free
     SessionType.QUALIFYING -> R.string.session_type_qualifying
     SessionType.RACE -> R.string.session_type_race
+    SessionType.ENDURANCE -> R.string.session_type_endurance
 }
 
 @StringRes

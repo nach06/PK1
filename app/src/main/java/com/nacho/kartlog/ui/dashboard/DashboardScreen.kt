@@ -51,6 +51,7 @@ import com.nacho.kartlog.domain.gps.GpsSessionSetup
 import com.nacho.kartlog.domain.gps.TimingEvent
 import com.nacho.kartlog.domain.gps.TimingPhase
 import com.nacho.kartlog.domain.gps.TimingState
+import com.nacho.kartlog.domain.model.SessionType
 import com.nacho.kartlog.domain.model.TrackCondition
 import com.nacho.kartlog.domain.util.LapTime
 import com.nacho.kartlog.ui.components.AutoSizeText
@@ -221,6 +222,15 @@ private fun PrepContent(
                     valueText = { stringResource(R.string.format_temp, it) },
                     idleValue = 30,
                     modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            Text(stringResource(R.string.label_session_type).uppercase(), style = MaterialTheme.typography.labelMedium, color = kart.textMuted)
+            Box(Modifier.testTag("type_selector")) {
+                ChipSelector(
+                    options = SessionType.entries,
+                    selected = state.type,
+                    onSelect = viewModel::selectType,
+                    label = { stringResource(it.labelRes()) },
                 )
             }
             Text(stringResource(R.string.label_track_condition).uppercase(), style = MaterialTheme.typography.labelMedium, color = kart.textMuted)

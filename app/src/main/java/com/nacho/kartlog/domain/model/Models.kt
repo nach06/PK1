@@ -1,6 +1,6 @@
 package com.nacho.kartlog.domain.model
 
-enum class SessionType { FREE, QUALIFYING, RACE }
+enum class SessionType { FREE, QUALIFYING, RACE, ENDURANCE }
 
 enum class TrackCondition { DRY, DAMP, WET }
 

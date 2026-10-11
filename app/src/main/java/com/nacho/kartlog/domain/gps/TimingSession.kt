@@ -1,6 +1,7 @@
 package com.nacho.kartlog.domain.gps
 
 import com.nacho.kartlog.domain.model.FinishLine
+import com.nacho.kartlog.domain.model.SessionType
 import com.nacho.kartlog.domain.model.TrackCondition
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +24,9 @@ data class GpsSessionSetup(
     val ambientTempC: Float? = null,
     val trackTempC: Float? = null,
     val trackCondition: TrackCondition = TrackCondition.DRY,
+    val type: SessionType = SessionType.FREE,
+    /** Hora (epoch ms) a la que se pulsó EMPEZAR: es la fecha de la tanda, no la de guardarla. */
+    val startedAtMs: Long = 0L,
 )
 
 enum class TimingPhase {
@@ -53,6 +57,8 @@ data class TimingState(
     /** Alguna vuelta se midió con un hueco de fixes grande: su tiempo es menos fiable. */
     val hasUnreliableLap: Boolean = false,
     val error: String? = null,
+    /** Hora (epoch ms) a la que se paró la tanda; `null` mientras sigue en marcha. */
+    val stoppedAtMs: Long? = null,
 ) {
     val running: Boolean get() = phase == TimingPhase.RUNNING
     val started: Boolean get() = currentLapStartNs != null
@@ -84,7 +90,13 @@ sealed interface TimingEvent {
 }
 
 /** Lo que queda de una tanda parada: vueltas y trazado completo. */
-class GpsRecording(val setup: GpsSessionSetup, val laps: List<Long>, val fixes: List<GpsFix>)
+class GpsRecording(
+    val setup: GpsSessionSetup,
+    val laps: List<Long>,
+    val fixes: List<GpsFix>,
+    /** Hora (epoch ms) a la que se paró; con [GpsSessionSetup.startedAtMs] da la duración de la tanda. */
+    val stoppedAtMs: Long = setup.startedAtMs,
+)
 
 /**
  * Cronometraje en marcha: lee posiciones, detecta la meta y mantiene el estado que pinta el Dashboard y la
@@ -94,6 +106,7 @@ class GpsRecording(val setup: GpsSessionSetup, val laps: List<Long>, val fixes: 
 class TimingSession(
     private val scope: CoroutineScope,
     private val clockNs: () -> Long = System::nanoTime,
+    private val wallClockMs: () -> Long = System::currentTimeMillis,
 ) {
     private val _state = MutableStateFlow(TimingState())
     val state: StateFlow<TimingState> = _state.asStateFlow()
@@ -177,7 +190,7 @@ class TimingSession(
         if (_state.value.phase != TimingPhase.RUNNING) return
         job?.cancel()
         job = null
-        _state.update { it.copy(phase = TimingPhase.STOPPED) }
+        _state.update { it.copy(phase = TimingPhase.STOPPED, stoppedAtMs = wallClockMs()) }
     }
 
     /** Las vueltas y el trazado de la tanda parada, o `null` si no hay ninguna. */
@@ -185,7 +198,7 @@ class TimingSession(
         val s = _state.value
         val setup = s.setup ?: return null
         if (s.phase != TimingPhase.STOPPED) return null
-        return GpsRecording(setup, s.laps, fixes.toList())
+        return GpsRecording(setup, s.laps, fixes.toList(), s.stoppedAtMs ?: setup.startedAtMs)
     }
 
     /** Descarta todo (tras guardar o al cancelar) y vuelve a IDLE. */
