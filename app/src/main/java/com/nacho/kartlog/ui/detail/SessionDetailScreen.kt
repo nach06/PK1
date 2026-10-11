@@ -34,6 +34,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.sp
+import com.nacho.kartlog.ui.theme.KartLogTheme
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -263,26 +266,11 @@ private fun HeaderCard(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            StatBadge(
-                label = stringResource(R.string.stat_best),
-                value = state.bestLapMs?.let(LapTime::format) ?: unset,
-                valueColor = if (state.bestLapMs != null) kart.telemetry else kart.textMuted,
-                valueStyle = KartTextStyles.bestLap,
-                modifier = Modifier.weight(1.2f),
-            )
-            StatBadge(
-                label = stringResource(R.string.stat_clean_average),
-                value = state.cleanAverageMs?.let(LapTime::format) ?: unset,
-                modifier = Modifier.weight(0.8f),
-            )
-        }
+        StatsRow(
+            bestLapMs = state.bestLapMs,
+            cleanAverageMs = state.cleanAverageMs,
+            modifier = Modifier.padding(top = 8.dp),
+        )
         // Gráfica de vueltas: plegable para no quitar sitio a la lista (necesita al menos 2 vueltas).
         if (state.laps.size >= 2) {
             TextButton(
@@ -350,4 +338,45 @@ private fun ConfirmDialog(
             }
         },
     )
+}
+
+/** MEJOR y MEDIA LIMPIA en una fila; ambos valores encogen para caber en una sola línea. */
+@Composable
+internal fun StatsRow(bestLapMs: Long?, cleanAverageMs: Long?, modifier: Modifier = Modifier) {
+    val kart = MaterialTheme.kartColors
+    val unset = stringResource(R.string.value_unset)
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        StatBadge(
+            label = stringResource(R.string.stat_best),
+            value = bestLapMs?.let(LapTime::format) ?: unset,
+            valueColor = if (bestLapMs != null) kart.telemetry else kart.textMuted,
+            valueStyle = KartTextStyles.bestLap,
+            valueAreaHeight = 52.dp,
+            modifier = Modifier.weight(1.1f),
+        )
+        StatBadge(
+            label = stringResource(R.string.stat_clean_average),
+            value = cleanAverageMs?.let(LapTime::format) ?: unset,
+            valueStyle = KartTextStyles.lapTime,
+            // Puede bajar hasta 18 sp: nunca se recorta por el borde derecho.
+            minValueSize = 18.sp,
+            valueAreaHeight = 52.dp,
+            modifier = Modifier.weight(0.9f),
+        )
+    }
+}
+
+@Preview(widthDp = 393, showBackground = true, backgroundColor = 0xFF0A0A0C)
+@Composable
+private fun StatsRowPreview() {
+    KartLogTheme {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            StatsRow(bestLapMs = 72_263, cleanAverageMs = 72_981) // 1:12.263 · 1:12.981
+            StatsRow(bestLapMs = 47_388, cleanAverageMs = 47_901) // 0:47.388 · 0:47.901
+        }
+    }
 }
