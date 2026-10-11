@@ -4,7 +4,10 @@ import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -88,9 +91,20 @@ class NavigationFlowTest {
 
         // Nueva tanda: la barra inferior desaparece.
         compose.onNodeWithText("Tandas").performClick()
-        compose.waitUntil(5_000) { compose.onAllNodesWithText("NUEVA TANDA", substring = true).fetchSemanticsNodes().isNotEmpty() }
-        compose.onAllNodesWithText("NUEVA TANDA", substring = true).onFirst().performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("fab_main").fetchSemanticsNodes().isNotEmpty() }
+        // A4: el botón principal es desplegable: «+ NUEVA TANDA» e «IMPORTAR TIEMPOS».
+        compose.onNodeWithTag("fab_main").performClick()
+        compose.onNodeWithTag("fab_import").assertIsDisplayed()
+        compose.onNodeWithText("IMPORTAR TIEMPOS").assertIsDisplayed()
+        compose.onNodeWithTag("fab_new").performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Circuito".uppercase()).fetchSemanticsNodes().isNotEmpty() }
         check(compose.onAllNodesWithText("Circuitos").fetchSemanticsNodes().isEmpty()) { "la barra debe ocultarse en Nueva tanda" }
+
+        // El mismo botón desplegable lleva a Importar tiempos.
+        compose.onNodeWithContentDescription("Volver").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("fab_main").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("fab_main").performClick()
+        compose.onNodeWithTag("fab_import").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Pega aquí el resultado").fetchSemanticsNodes().isNotEmpty() }
     }
 }

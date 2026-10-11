@@ -38,6 +38,7 @@
     <string name="history_empty_title">Aún no hay tandas</string>
     <string name="history_empty_message">Crea tu primera tanda para empezar a guardar tus vueltas.</string>
     <string name="history_no_laps">Sin vueltas</string>
+    <string name="action_close">Cerrar</string>
     <string name="action_new_session">Nueva tanda</string>
 
     <!-- Nueva tanda -->

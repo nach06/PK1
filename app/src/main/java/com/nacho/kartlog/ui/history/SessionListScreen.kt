@@ -15,7 +15,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -34,11 +33,13 @@ import com.nacho.kartlog.R
 import com.nacho.kartlog.domain.model.SessionType
 import com.nacho.kartlog.ui.components.Chip
 import com.nacho.kartlog.ui.components.CircuitPickerSheet
+import com.nacho.kartlog.ui.components.FabAction
 import com.nacho.kartlog.ui.components.KartOverflowMenu
 import com.nacho.kartlog.ui.components.KartTopBar
 import com.nacho.kartlog.ui.components.MenuAction
 import com.nacho.kartlog.ui.components.PrimaryButton
 import com.nacho.kartlog.ui.components.SecondaryButton
+import com.nacho.kartlog.ui.components.SpeedDialFab
 import com.nacho.kartlog.ui.theme.kartColors
 import com.nacho.kartlog.ui.util.labelRes
 import java.time.YearMonth
@@ -85,19 +86,13 @@ fun SessionListScreen(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onNewSession,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = MaterialTheme.shapes.medium,
-                modifier = Modifier.padding(bottom = 8.dp),
-            ) {
-                Text(
-                    text = "+  " + stringResource(R.string.action_new_session).uppercase(),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
-                )
-            }
+            SpeedDialFab(
+                closedLabel = stringResource(R.string.action_new_session),
+                actions = listOf(
+                    FabAction(stringResource(R.string.action_new_session), onNewSession, tag = "fab_new"),
+                    FabAction(stringResource(R.string.import_title), onImport, tag = "fab_import"),
+                ),
+            )
         },
     ) { padding ->
         when {
