@@ -53,6 +53,9 @@ fun SessionListScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showCircuitPicker by rememberSaveable { mutableStateOf(false) }
+    // Estado de scroll explícito y fuera de las ramas de carga/vacío: se guarda con la entrada de la pila y
+    // la lista vuelve a la misma posición al regresar del Detalle.
+    val listState = rememberLazyListState()
     val checked = stringResource(R.string.menu_checked)
 
     Scaffold(
@@ -118,6 +121,7 @@ fun SessionListScreen(
                     )
                 } else {
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
