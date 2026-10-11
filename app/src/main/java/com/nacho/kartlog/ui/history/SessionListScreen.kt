@@ -1,5 +1,8 @@
 package com.nacho.kartlog.ui.history
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,33 +13,37 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nacho.kartlog.R
-import com.nacho.kartlog.domain.model.SessionSummary
-import com.nacho.kartlog.domain.model.TrackCondition
-import com.nacho.kartlog.domain.util.LapTime
-import com.nacho.kartlog.ui.components.KartCard
+import com.nacho.kartlog.domain.model.SessionType
+import com.nacho.kartlog.ui.components.Chip
+import com.nacho.kartlog.ui.components.CircuitPickerSheet
+import com.nacho.kartlog.ui.components.KartOverflowMenu
 import com.nacho.kartlog.ui.components.KartTopBar
+import com.nacho.kartlog.ui.components.MenuAction
 import com.nacho.kartlog.ui.components.PrimaryButton
-import com.nacho.kartlog.ui.components.StatBadge
-import com.nacho.kartlog.ui.theme.KartTextStyles
 import com.nacho.kartlog.ui.theme.kartColors
-import com.nacho.kartlog.ui.util.formatDateTime
 import com.nacho.kartlog.ui.util.labelRes
+import java.time.YearMonth
+import java.time.format.TextStyle
+import java.util.Locale
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SessionListScreen(
     viewModel: SessionListViewModel,
@@ -44,10 +51,32 @@ fun SessionListScreen(
     onOpenSession: (Long) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var showCircuitPicker by rememberSaveable { mutableStateOf(false) }
+    val checked = stringResource(R.string.menu_checked)
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = { KartTopBar(title = stringResource(R.string.history_title)) },
+        topBar = {
+            KartTopBar(
+                title = stringResource(R.string.history_title),
+                actions = {
+                    KartOverflowMenu(
+                        actions = listOf(
+                            MenuAction(
+                                label = (if (state.filters.sort == SessionSort.DATE) checked else "") +
+                                    stringResource(R.string.sort_by_date),
+                                onClick = { viewModel.setSort(SessionSort.DATE) },
+                            ),
+                            MenuAction(
+                                label = (if (state.filters.sort == SessionSort.BEST_LAP) checked else "") +
+                                    stringResource(R.string.sort_by_best_lap),
+                                onClick = { viewModel.setSort(SessionSort.BEST_LAP) },
+                            ),
+                        ),
+                    )
+                },
+            )
+        },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onNewSession,
@@ -66,24 +95,122 @@ fun SessionListScreen(
     ) { padding ->
         when {
             state.isLoading -> Unit
-            state.sessions.isEmpty() -> EmptyState(onNewSession, Modifier.padding(padding))
-            else -> LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 112.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(state.sessions, key = { it.session.id }) { summary ->
-                    SessionCard(summary, onClick = { onOpenSession(summary.session.id) })
+            state.totalSessions == 0 -> EmptyState(
+                title = stringResource(R.string.history_empty_title),
+                message = stringResource(R.string.history_empty_message),
+                actionLabel = stringResource(R.string.action_new_session),
+                onAction = onNewSession,
+                modifier = Modifier.padding(padding),
+            )
+            else -> Column(Modifier.fillMaxSize().padding(padding)) {
+                FilterRow(
+                    state = state,
+                    onCircuitClick = { showCircuitPicker = true },
+                    onTypeClick = viewModel::toggleType,
+                )
+                if (state.items.isEmpty()) {
+                    EmptyState(
+                        title = stringResource(R.string.filter_empty_title),
+                        message = stringResource(R.string.filter_empty_message),
+                        actionLabel = stringResource(R.string.filter_clear),
+                        onAction = viewModel::clearFilters,
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 112.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        state.items.forEach { item ->
+                            when (item) {
+                                is SessionListItem.MonthHeader -> stickyHeader(key = item.key, contentType = "header") {
+                                    MonthHeader(item.month)
+                                }
+                                is SessionListItem.Entry -> item(key = item.key, contentType = "session") {
+                                    SessionCard(
+                                        stats = item.stats,
+                                        onClick = { onOpenSession(item.stats.summary.session.id) },
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
+
+    if (showCircuitPicker) {
+        CircuitPickerSheet(
+            circuits = state.circuits,
+            selectedId = state.filters.circuitId,
+            onSelect = {
+                viewModel.selectCircuit(it.id)
+                showCircuitPicker = false
+            },
+            onDismiss = { showCircuitPicker = false },
+            allLabel = stringResource(R.string.filter_all_circuits),
+            onSelectAll = {
+                viewModel.selectCircuit(null)
+                showCircuitPicker = false
+            },
+        )
+    }
 }
 
 @Composable
-private fun EmptyState(onNewSession: () -> Unit, modifier: Modifier = Modifier) {
+private fun FilterRow(
+    state: SessionListUiState,
+    onCircuitClick: () -> Unit,
+    onTypeClick: (SessionType) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Chip(
+            text = state.selectedCircuit?.name ?: stringResource(R.string.filter_circuit),
+            selected = state.filters.circuitId != null,
+            onClick = onCircuitClick,
+        )
+        SessionType.entries.forEach { type ->
+            Chip(
+                text = stringResource(type.labelRes()),
+                selected = state.filters.type == type,
+                onClick = { onTypeClick(type) },
+            )
+        }
+    }
+}
+
+/** Cabecera de mes pegajosa («Octubre 2026»). */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun MonthHeader(month: YearMonth) {
+    val name = month.month.getDisplayName(TextStyle.FULL_STANDALONE, Locale("es", "ES"))
+        .replaceFirstChar { it.uppercase() }
+    Text(
+        text = "$name ${month.year}",
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.kartColors.textMuted,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(top = 8.dp, bottom = 4.dp),
+    )
+}
+
+@Composable
+private fun EmptyState(
+    title: String,
+    message: String,
+    actionLabel: String,
+    onAction: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -92,81 +219,19 @@ private fun EmptyState(onNewSession: () -> Unit, modifier: Modifier = Modifier) 
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = stringResource(R.string.history_empty_title),
+            text = title,
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.history_empty_message),
+            text = message,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.kartColors.textMuted,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(24.dp))
-        PrimaryButton(text = stringResource(R.string.action_new_session), onClick = onNewSession)
-    }
-}
-
-@Composable
-private fun SessionCard(summary: SessionSummary, onClick: () -> Unit) {
-    val session = summary.session
-    val kart = MaterialTheme.kartColors
-    KartCard(modifier = Modifier.fillMaxWidth(), onClick = onClick) {
-        Text(
-            text = summary.circuit.name,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            text = formatDateTime(session.dateTime),
-            style = MaterialTheme.typography.bodyMedium,
-            color = kart.textMuted,
-        )
-        Spacer(Modifier.height(8.dp))
-        val conditionColor = if (session.trackCondition == TrackCondition.DRY) kart.textMuted else kart.warning
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(
-                text = stringResource(session.type.labelRes()),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            session.kartNumber?.let {
-                Text(
-                    text = stringResource(R.string.format_kart, it),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-            Text(
-                text = stringResource(session.trackCondition.labelRes()),
-                style = MaterialTheme.typography.labelLarge,
-                color = conditionColor,
-            )
-        }
-        Spacer(Modifier.height(12.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            StatBadge(
-                label = stringResource(R.string.label_best_short),
-                value = summary.bestLapMs?.let(LapTime::format) ?: stringResource(R.string.value_unset),
-                valueColor = if (summary.bestLapMs != null) kart.telemetry else kart.textMuted,
-                valueStyle = KartTextStyles.bestLap,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                text = if (summary.lapCount == 0) {
-                    stringResource(R.string.history_no_laps)
-                } else {
-                    pluralStringResource(R.plurals.format_lap_count, summary.lapCount, summary.lapCount)
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = kart.textMuted,
-            )
-        }
+        PrimaryButton(text = actionLabel, onClick = onAction)
     }
 }

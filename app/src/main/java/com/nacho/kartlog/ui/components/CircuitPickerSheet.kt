@@ -45,6 +45,9 @@ fun CircuitPickerSheet(
     selectedId: Long?,
     onSelect: (Circuit) -> Unit,
     onDismiss: () -> Unit,
+    /** Si no es nulo, añade una primera fila «todos» que llama a [onSelectAll]. */
+    allLabel: String? = null,
+    onSelectAll: () -> Unit = {},
 ) {
     var query by remember { mutableStateOf("") }
     val filtered = remember(circuits, query) {
@@ -84,6 +87,30 @@ fun CircuitPickerSheet(
                 )
             }
             LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
+                if (allLabel != null && query.isBlank()) {
+                    item(key = "all") {
+                        Column {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 56.dp)
+                                    .clickable { onSelectAll() },
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = allLabel,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = if (selectedId == null) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    },
+                                )
+                            }
+                            HorizontalDivider(color = MaterialTheme.kartColors.cardBorder)
+                        }
+                    }
+                }
                 items(filtered, key = { it.id }) { circuit ->
                     Column {
                         Row(

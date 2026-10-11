@@ -8,7 +8,9 @@ import com.nacho.kartlog.data.repository.LapRepositoryImpl
 import com.nacho.kartlog.data.repository.SessionRepositoryImpl
 import com.nacho.kartlog.domain.model.LapSource
 import com.nacho.kartlog.ui.detail.SessionDetailViewModel
+import com.nacho.kartlog.ui.history.SessionListItem
 import com.nacho.kartlog.ui.history.SessionListViewModel
+import com.nacho.kartlog.domain.analytics.AnalyticsSource
 import com.nacho.kartlog.ui.newsession.NewSessionViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -111,20 +113,25 @@ class SessionFlowTest {
 
         // --- Segunda ejecución: reabrir la misma BD ---
         db = KartLogDatabase.create(context)
-        val listVm = SessionListViewModel(SessionRepositoryImpl(db.sessionDao()))
-        val summary = listVm.uiState.first { !it.isLoading && it.sessions.isNotEmpty() }.sessions.single()
-        assertEquals("Zuera", summary.circuit.name)
-        assertEquals(14, summary.lapCount)
-        assertEquals(47_000L, summary.bestLapMs)
-        assertEquals(1, summary.session.kartNumber)
-        assertEquals(0f, summary.session.ballastKg)
+        val listVm = SessionListViewModel(
+            AnalyticsSource(SessionRepositoryImpl(db.sessionDao()), LapRepositoryImpl(db.lapDao())),
+            CircuitRepositoryImpl(db.circuitDao()),
+        )
+        val stats = listVm.uiState.first { !it.isLoading && it.totalSessions > 0 }
+            .items.filterIsInstance<SessionListItem.Entry>().single().stats
+        assertEquals("Zuera", stats.summary.circuit.name)
+        assertEquals(14, stats.lapTimes.size)
+        assertEquals(47_000L, stats.bestMs)
+        assertTrue(stats.isRecord)
+        assertEquals(1, stats.summary.session.kartNumber)
+        assertEquals(0f, stats.summary.session.ballastKg)
 
         // Borrar la sesión elimina sus vueltas (cascada).
         val reopened = SessionDetailViewModel(sessionId, SessionRepositoryImpl(db.sessionDao()), LapRepositoryImpl(db.lapDao()))
         reopened.uiState.first { it.laps.size == 14 }
         reopened.confirmDeleteSession()
         reopened.uiState.first { it.detail == null && it.laps.isEmpty() } // cascada
-        assertFalse(listVm.uiState.first { it.sessions.isEmpty() }.sessions.isNotEmpty())
+        assertEquals(0, listVm.uiState.first { it.totalSessions == 0 }.totalSessions)
         db.close()
     }
 

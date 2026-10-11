@@ -116,4 +116,18 @@
     <string name="settings_seeded">Datos de prueba cargados</string>
     <string name="settings_wiped">Datos borrados</string>
     <string name="settings_failed">No se pudo completar la acción</string>
+
+    <!-- Histórico: card, filtros y orden -->
+    <string name="badge_record">Récord</string>
+    <string name="format_clean_average">Media limpia %1$s</string>
+    <string name="format_temp_ambient_short">Amb. %1$d °C</string>
+    <string name="format_temp_track_short">Pista %1$d °C</string>
+    <string name="menu_checked">✓  </string>
+    <string name="sort_by_date">Ordenar por fecha</string>
+    <string name="sort_by_best_lap">Ordenar por mejor vuelta</string>
+    <string name="filter_circuit">Circuito</string>
+    <string name="filter_all_circuits">Todos los circuitos</string>
+    <string name="filter_empty_title">Sin resultados</string>
+    <string name="filter_empty_message">Ninguna tanda coincide con los filtros.</string>
+    <string name="filter_clear">Quitar filtros</string>
 </resources>
