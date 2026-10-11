@@ -257,12 +257,12 @@ private fun StatsRow(state: SessionDetailUiState) {
             value = state.bestLapMs?.let(LapTime::format) ?: unset,
             valueColor = if (state.bestLapMs != null) kart.telemetry else kart.textMuted,
             valueStyle = KartTextStyles.bestLap,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1.2f),
         )
         StatBadge(
             label = stringResource(R.string.stat_average),
             value = state.averageMs?.let(LapTime::format) ?: unset,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(0.8f),
         )
     }
 }

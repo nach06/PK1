@@ -25,6 +25,6 @@ fun StatBadge(
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.kartColors.textMuted,
         )
-        Text(text = value, style = valueStyle, color = valueColor)
+        AutoSizeText(text = value, style = valueStyle, color = valueColor)
     }
 }

@@ -31,6 +31,7 @@ import com.nacho.kartlog.domain.util.LapTime
 import com.nacho.kartlog.ui.components.KartCard
 import com.nacho.kartlog.ui.components.KartTopBar
 import com.nacho.kartlog.ui.components.PrimaryButton
+import com.nacho.kartlog.ui.components.StatBadge
 import com.nacho.kartlog.ui.theme.KartTextStyles
 import com.nacho.kartlog.ui.theme.kartColors
 import com.nacho.kartlog.ui.util.formatDateTime
@@ -150,18 +151,13 @@ private fun SessionCard(summary: SessionSummary, onClick: () -> Unit) {
             verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Column {
-                Text(
-                    text = stringResource(R.string.label_best_short).uppercase(),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = kart.textMuted,
-                )
-                Text(
-                    text = summary.bestLapMs?.let(LapTime::format) ?: stringResource(R.string.value_unset),
-                    style = KartTextStyles.bestLap,
-                    color = if (summary.bestLapMs != null) kart.telemetry else kart.textMuted,
-                )
-            }
+            StatBadge(
+                label = stringResource(R.string.label_best_short),
+                value = summary.bestLapMs?.let(LapTime::format) ?: stringResource(R.string.value_unset),
+                valueColor = if (summary.bestLapMs != null) kart.telemetry else kart.textMuted,
+                valueStyle = KartTextStyles.bestLap,
+                modifier = Modifier.weight(1f),
+            )
             Text(
                 text = if (summary.lapCount == 0) {
                     stringResource(R.string.history_no_laps)
