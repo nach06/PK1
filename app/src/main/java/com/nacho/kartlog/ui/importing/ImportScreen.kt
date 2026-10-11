@@ -1,6 +1,7 @@
 package com.nacho.kartlog.ui.importing
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -9,20 +10,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -34,38 +31,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nacho.kartlog.R
-import com.nacho.kartlog.domain.importing.CheckState
-import com.nacho.kartlog.domain.importing.DriverChecks
-import com.nacho.kartlog.domain.importing.LapSuggestion
-import com.nacho.kartlog.domain.importing.ParsedDocument
-import com.nacho.kartlog.domain.importing.ParsedDriver
-import com.nacho.kartlog.domain.importing.ParsedLap
+import com.nacho.kartlog.domain.importing.ImportFormat
 import com.nacho.kartlog.domain.model.SessionType
-import com.nacho.kartlog.domain.util.LapTime
-import com.nacho.kartlog.ui.components.AutoSizeText
 import com.nacho.kartlog.ui.components.BigStepper
 import com.nacho.kartlog.ui.components.ChipSelector
 import com.nacho.kartlog.ui.components.CircuitEditSheet
 import com.nacho.kartlog.ui.components.CircuitPickerSheet
-import com.nacho.kartlog.ui.components.KartCard
 import com.nacho.kartlog.ui.components.KartTopBar
 import com.nacho.kartlog.ui.components.PrimaryButton
 import com.nacho.kartlog.ui.components.RacingTextField
@@ -74,9 +58,7 @@ import com.nacho.kartlog.ui.components.SessionDatePickerDialog
 import com.nacho.kartlog.ui.components.SessionPickerSheet
 import com.nacho.kartlog.ui.components.SessionTimePickerDialog
 import com.nacho.kartlog.ui.components.TimeKeypad
-import com.nacho.kartlog.ui.theme.KartLogTheme
 import com.nacho.kartlog.ui.theme.KartTextStyles
-import com.nacho.kartlog.ui.theme.MonoFontFamily
 import com.nacho.kartlog.ui.theme.kartColors
 import com.nacho.kartlog.ui.util.formatDate
 import com.nacho.kartlog.ui.util.formatDateTime
@@ -86,6 +68,11 @@ import java.io.File
 import java.time.Instant
 import java.time.ZoneId
 
+/**
+ * Importar tiempos, por pasos: **entrada** (un botón con tres vías) → **recorte** de la foto → **revisión** editable → guardar.
+ * Pegar texto salta directamente a la revisión. Nada se guarda hasta confirmar en la revisión.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportScreen(
     viewModel: ImportViewModel,
@@ -98,93 +85,91 @@ fun ImportScreen(
     val clipboard = LocalClipboardManager.current
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
-    var showScanOptions by rememberSaveable { mutableStateOf(false) }
+    var showSources by rememberSaveable { mutableStateOf(false) }
+    var showMeta by rememberSaveable { mutableStateOf(false) }
     var pendingPhotoPath by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(viewModel) { viewModel.saved.collect { onSaved(it) } }
 
-    // Escanear: cámara (foto temporal en cache/photos, no se guarda) o galería. El OCR es del dispositivo.
+    // Cámara del sistema (foto temporal en cache/photos) o galería. El OCR es del dispositivo.
     val takePicture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
         val path = pendingPhotoPath
         if (ok && path != null) {
-            viewModel.recognizeImage(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", File(path)).toString())
+            viewModel.loadPhoto(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", File(path)).toString())
         }
     }
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
-        uri?.let { viewModel.recognizeImage(it.toString()) }
+        uri?.let { viewModel.loadPhoto(it.toString()) }
+    }
+    val launchCamera = {
+        val file = File(File(context.cacheDir, "photos").apply { mkdirs() }, "escaneo.jpg")
+        pendingPhotoPath = file.absolutePath
+        takePicture.launch(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file))
     }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = { KartTopBar(title = stringResource(R.string.import_title), onBack = onBack) },
-        bottomBar = {
-            if (state.parsed != null) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .imePadding()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    state.error?.let { ErrorText(it) }
-                    PrimaryButton(text = stringResource(R.string.import_save), onClick = viewModel::save, enabled = state.canSave)
-                }
-            }
-        },
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+    BackHandler(enabled = state.stage != ImportStage.ENTRY) { viewModel.backToEntry() }
+
+    when (state.stage) {
+        ImportStage.ENTRY -> EntryContent(state, ocrAvailable, onBack, onImport = { showSources = true })
+        ImportStage.PASTE -> PasteContent(
+            state = state,
+            onBack = viewModel::backToEntry,
+            onTextChange = viewModel::setRawText,
+            onPaste = { clipboard.getText()?.text?.takeIf { it.isNotBlank() }?.let(viewModel::setRawText) },
+            onAnalyze = { viewModel.analyze() },
+        )
+        ImportStage.CROP -> CropContent(
+            state = state,
+            onBack = viewModel::backToEntry,
+            onQuad = viewModel::setQuad,
+            onRotate = viewModel::rotatePhoto,
+            onEnhance = viewModel::setEnhance,
+            onAnalyze = viewModel::analyzePhoto,
+            onRetake = {
+                viewModel.backToEntry()
+                showSources = true
+            },
+            onPasteInstead = viewModel::openPaste,
+        )
+        ImportStage.REVIEW -> ReviewContent(
+            state = state,
+            viewModel = viewModel,
+            onBack = viewModel::backToEntry,
+            onEditMeta = { showMeta = true },
+        )
+    }
+
+    if (showSources) {
+        ModalBottomSheet(
+            onDismissRequest = { showSources = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surface,
         ) {
-            InputSection(
-                state = state,
-                ocrAvailable = ocrAvailable,
-                showScanOptions = showScanOptions,
-                onTextChange = viewModel::setRawText,
-                onPaste = { clipboard.getText()?.text?.takeIf { it.isNotBlank() }?.let(viewModel::pasteAndAnalyze) },
-                onToggleScan = { showScanOptions = !showScanOptions },
-                onCamera = {
-                    val file = File(File(context.cacheDir, "photos").apply { mkdirs() }, "escaneo.jpg")
-                    pendingPhotoPath = file.absolutePath
-                    takePicture.launch(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file))
-                },
-                onGallery = { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                onAnalyze = viewModel::analyze,
-            )
-            val parsed = state.parsed
-            if (parsed != null) {
-                if (parsed.warnings.isNotEmpty() || parsed.ignoredTimes.isNotEmpty()) WarningsCard(parsed)
-                DriverChooser(parsed.drivers, state.selectedDriverKey, viewModel::selectDriver)
-                if (state.me != null) {
-                    PreviewSection(
-                        state = state,
-                        onEdit = viewModel::startEdit,
-                        onToggle = viewModel::toggleLap,
-                        onApplySuggestion = viewModel::applySuggestion,
-                    )
-                    OthersSection(state.others, state.othersExpanded, viewModel::toggleOthers)
-                    DestinationSection(
-                        state = state,
-                        onDestination = viewModel::setDestination,
-                        onCircuit = viewModel::openCircuitPicker,
-                        onNewCircuit = viewModel::openNewCircuit,
-                        onDate = { showDatePicker = true },
-                        onTime = { showTimePicker = true },
-                        onType = viewModel::setType,
-                        onKartMinus = viewModel::decrementKart,
-                        onKartPlus = viewModel::incrementKart,
-                        onLabel = viewModel::setLabel,
-                        onSession = viewModel::openSessionPicker,
-                    )
+            Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 16.dp)) {
+                Text(
+                    stringResource(R.string.import_sheet_title).uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.kartColors.textMuted,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                )
+                SourceRow(stringResource(R.string.import_option_camera), "import_source_camera", enabled = ocrAvailable) { showSources = false; launchCamera() }
+                SourceRow(stringResource(R.string.import_option_gallery), "import_source_gallery", enabled = ocrAvailable) {
+                    showSources = false
+                    pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }
+                SourceRow(stringResource(R.string.import_option_paste), "import_source_paste") { showSources = false; viewModel.openPaste() }
             }
-            Spacer(Modifier.height(8.dp))
         }
+    }
+
+    if (showMeta) {
+        MetaSheet(
+            state = state,
+            viewModel = viewModel,
+            onDate = { showDatePicker = true },
+            onTime = { showTimePicker = true },
+            onDismiss = { showMeta = false },
+        )
     }
 
     if (state.confirmReplace) {
@@ -205,6 +190,63 @@ fun ImportScreen(
             },
         )
     }
+    if (state.confirmDoubts) {
+        val summary = state.summary
+        AlertDialog(
+            onDismissRequest = viewModel::dismissDoubts,
+            containerColor = MaterialTheme.kartColors.card,
+            title = { Text(stringResource(R.string.import_doubts_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.testTag("doubts_title")) },
+            text = {
+                Text(
+                    stringResource(R.string.import_doubts_message, summary?.doubtful ?: 0, summary?.invalid ?: 0),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmDoubts, modifier = Modifier.heightIn(min = 56.dp).testTag("doubts_save")) {
+                    Text(stringResource(R.string.import_doubts_save).uppercase(), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissDoubts, modifier = Modifier.heightIn(min = 56.dp).testTag("doubts_review")) {
+                    Text(stringResource(R.string.import_doubts_review).uppercase(), style = MaterialTheme.typography.titleSmall)
+                }
+            },
+        )
+    }
+    if (state.showQualityPrompt) QualityPrompt(state, onRetake = {
+        viewModel.dismissQualityPrompt()
+        viewModel.backToEntry()
+        showSources = true
+    }, onAnyway = viewModel::analyzeAnyway)
+    if (state.showFormatPicker) {
+        FormatPicker(state.format, state.forcedFormat, onPick = viewModel::changeFormat, onDismiss = viewModel::dismissFormatPicker)
+    }
+    if (state.showMergePicker) {
+        val viewing = state.viewedDriver
+        val others = state.review?.drivers.orEmpty().filter { it.key != viewing?.key }
+        AlertDialog(
+            onDismissRequest = viewModel::dismissMergePicker,
+            containerColor = MaterialTheme.kartColors.card,
+            title = { Text(stringResource(R.string.import_merge_title), style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.import_merge_message), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.kartColors.textMuted)
+                    others.forEach { d ->
+                        TextButton(onClick = { viewModel.mergeInto(d.key) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("merge_${d.name}")) {
+                            Text(d.displayName, modifier = Modifier.fillMaxWidth())
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissMergePicker, modifier = Modifier.heightIn(min = 56.dp)) {
+                    Text(stringResource(R.string.action_cancel).uppercase(), style = MaterialTheme.typography.titleSmall)
+                }
+            },
+        )
+    }
+    if (state.showImageDialog) ImageDialog(state, onDismiss = viewModel::dismissImage)
 
     state.editing?.let { editing ->
         EditLapSheet(
@@ -275,305 +317,202 @@ fun ImportScreen(
     }
 }
 
+// ---------------------------------------------------------------- Entrada
+
 @Composable
-private fun ErrorText(error: ImportError) {
+private fun SourceRow(text: String, tag: String, enabled: Boolean = true, onClick: () -> Unit) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.kartColors.textMuted,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 18.dp)
+            .testTag(tag),
+    )
+}
+
+@Composable
+private fun EntryContent(state: ImportUiState, ocrAvailable: Boolean, onBack: () -> Unit, onImport: () -> Unit) {
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = { KartTopBar(title = stringResource(R.string.import_title), onBack = onBack) },
+    ) { padding ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                stringResource(R.string.import_entry_hint),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.kartColors.textMuted,
+                modifier = Modifier.padding(bottom = 24.dp),
+            )
+            state.error?.let { ErrorText(it, Modifier.padding(bottom = 16.dp)) }
+            if (!ocrAvailable) {
+                Text(
+                    stringResource(R.string.import_scan_unavailable),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.kartColors.textMuted,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+            }
+            PrimaryButton(text = stringResource(R.string.import_main), onClick = onImport, modifier = Modifier.testTag("import_main"))
+        }
+    }
+}
+
+/**
+ * Pegar texto sin que el campo se coma la pantalla: el campo ocupa el espacio que queda y se desplaza por dentro, y los botones
+ * PEGAR / ANALIZAR están siempre abajo, a la vista.
+ */
+@Composable
+private fun PasteContent(
+    state: ImportUiState,
+    onBack: () -> Unit,
+    onTextChange: (String) -> Unit,
+    onPaste: () -> Unit,
+    onAnalyze: () -> Unit,
+) {
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = { KartTopBar(title = stringResource(R.string.import_paste_title), onBack = onBack) },
+        bottomBar = {
+            Column(Modifier.fillMaxWidth().navigationBarsPadding().imePadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                state.error?.let { ErrorText(it) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(Modifier.weight(1f)) { SecondaryButton(stringResource(R.string.import_paste), onPaste, modifier = Modifier.testTag("paste_clipboard")) }
+                    Box(Modifier.weight(1f)) {
+                        PrimaryButton(
+                            text = stringResource(R.string.import_analyze),
+                            onClick = onAnalyze,
+                            enabled = state.rawText.isNotBlank() && !state.isBusy,
+                            modifier = Modifier.testTag("paste_analyze"),
+                        )
+                    }
+                }
+            }
+        },
+    ) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            RacingTextField(
+                value = state.rawText,
+                onValueChange = onTextChange,
+                label = stringResource(R.string.import_input_label),
+                placeholder = stringResource(R.string.import_input_hint),
+                modifier = Modifier.weight(1f).testTag("paste_field"),
+            )
+            if (state.rawText.isNotBlank()) {
+                Text(
+                    stringResource(R.string.import_paste_lines, state.rawText.lines().size),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.kartColors.textMuted,
+                )
+            } else if (state.rawText.isEmpty()) {
+                Text(
+                    stringResource(R.string.import_analyze_disabled_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.kartColors.textMuted,
+                    modifier = Modifier.testTag("paste_hint"),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun ErrorText(error: ImportError, modifier: Modifier = Modifier) {
     Text(
         text = stringResource(
             when (error) {
                 ImportError.EMPTY_TEXT -> R.string.import_error_empty
                 ImportError.NOTHING_FOUND -> R.string.import_error_nothing
                 ImportError.OCR_FAILED -> R.string.import_error_ocr
+                ImportError.PHOTO_FAILED -> R.string.import_error_photo
+                ImportError.UNRELIABLE -> R.string.import_error_unreliable
                 ImportError.SAVE_FAILED -> R.string.import_error_save
             },
         ),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.kartColors.warning,
+        modifier = modifier.testTag("import_error"),
     )
 }
 
 @Composable
-private fun SectionLabel(text: String) {
-    Text(text.uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.kartColors.textMuted)
-}
-
-@Composable
-private fun InputSection(
-    state: ImportUiState,
-    ocrAvailable: Boolean,
-    showScanOptions: Boolean,
-    onTextChange: (String) -> Unit,
-    onPaste: () -> Unit,
-    onToggleScan: () -> Unit,
-    onCamera: () -> Unit,
-    onGallery: () -> Unit,
-    onAnalyze: () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        RacingTextField(
-            value = state.rawText,
-            onValueChange = onTextChange,
-            label = stringResource(R.string.import_input_label),
-            placeholder = stringResource(R.string.import_input_hint),
-            minLines = 4,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(Modifier.weight(1f)) { SecondaryButton(stringResource(R.string.import_paste), onPaste, enabled = !state.isBusy) }
-            Box(Modifier.weight(1f)) {
-                SecondaryButton(stringResource(R.string.import_scan), onToggleScan, enabled = !state.isBusy && ocrAvailable)
-            }
-        }
-        if (!ocrAvailable) {
-            Text(
-                stringResource(R.string.import_scan_unavailable),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.kartColors.textMuted,
-            )
-        }
-        if (showScanOptions && ocrAvailable) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(Modifier.weight(1f)) { SecondaryButton(stringResource(R.string.import_scan_camera), onCamera) }
-                Box(Modifier.weight(1f)) { SecondaryButton(stringResource(R.string.import_scan_gallery), onGallery) }
-            }
-        }
-        PrimaryButton(
-            text = stringResource(R.string.import_analyze),
-            onClick = onAnalyze,
-            enabled = state.rawText.isNotBlank() && !state.isBusy,
-        )
-        if (state.parsed == null) state.error?.let { ErrorText(it) }
-    }
-}
-
-@Composable
-private fun WarningsCard(doc: ParsedDocument) {
-    KartCard(Modifier.fillMaxWidth()) {
-        SectionLabel(stringResource(R.string.import_warnings))
-        doc.warnings.forEach {
-            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.kartColors.warning)
-        }
-        if (doc.ignoredTimes.isNotEmpty()) {
-            Text(
-                stringResource(R.string.import_ignored_times, doc.ignoredTimes.joinToString(", ")),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.kartColors.textMuted,
-            )
-        }
-    }
-}
-
-@Composable
-private fun DriverChooser(drivers: List<ParsedDriver>, selectedKey: String?, onSelect: (String) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SectionLabel(stringResource(R.string.import_who_title))
-        ChipSelector(
-            options = drivers.filter { it.laps.isNotEmpty() },
-            selected = drivers.firstOrNull { it.key == selectedKey },
-            onSelect = { onSelect(it.key) },
-            label = { it.displayName },
-        )
-        if (selectedKey == null) {
-            Text(stringResource(R.string.import_who_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.kartColors.textMuted)
-        }
-    }
-}
-
-@Composable
-private fun PreviewSection(
-    state: ImportUiState,
-    onEdit: (Int) -> Unit,
-    onToggle: (Int) -> Unit,
-    onApplySuggestion: () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SectionLabel(stringResource(R.string.import_preview_title))
-        state.checks?.let { CheckRow(it, state.me?.reportedBestMs, state.me?.reportedLapCount, state.me?.reportedAvgMs, state.includedLaps.size) }
-        state.checks?.suggestion?.let { SuggestionCard(it, onApplySuggestion) }
-        KartCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp, horizontal = 8.dp)) {
-            state.laps.forEachIndexed { index, lap ->
-                PreviewLapRow(lap, onEdit = { onEdit(lap.number) }, onToggle = { onToggle(lap.number) })
-                if (index < state.laps.lastIndex) HorizontalDivider(color = MaterialTheme.kartColors.cardBorder)
-            }
-        }
-        if (state.duplicateCount > 0) {
-            Text(
-                stringResource(R.string.import_duplicates_warning, state.duplicateCount),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.kartColors.warning,
-            )
-        }
-    }
-}
-
-/** Los tres indicadores de la validación cruzada (✓ cuadra, ⚠ no cuadra, – sin dato en el documento). */
-@Composable
-private fun CheckRow(checks: DriverChecks, reportedBest: Long?, reportedCount: Int?, reportedAvg: Long?, currentCount: Int) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-        CheckChip(
-            label = stringResource(R.string.import_check_best),
-            value = checks.computedBestMs?.let(LapTime::format) ?: stringResource(R.string.value_unset),
-            doc = reportedBest?.let(LapTime::format),
-            state = checks.best,
-            modifier = Modifier.weight(1f),
-        )
-        CheckChip(
-            label = stringResource(R.string.import_check_laps),
-            value = currentCount.toString(),
-            doc = reportedCount?.toString(),
-            state = checks.lapCount,
-            modifier = Modifier.weight(0.8f),
-        )
-        CheckChip(
-            label = stringResource(R.string.import_check_average),
-            value = checks.computedAvgMs?.let(LapTime::format) ?: stringResource(R.string.value_unset),
-            doc = reportedAvg?.let(LapTime::format),
-            state = checks.average,
-            modifier = Modifier.weight(1f),
-        )
-    }
-}
-
-@Composable
-private fun CheckChip(label: String, value: String, doc: String?, state: CheckState, modifier: Modifier = Modifier) {
-    val kart = MaterialTheme.kartColors
-    val (symbol, color) = when (state) {
-        CheckState.OK -> "✓" to kart.telemetry
-        CheckState.WARN -> "⚠" to kart.warning
-        CheckState.NOT_AVAILABLE -> "–" to kart.textMuted
-    }
-    KartCard(modifier, contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)) {
-        Text(label.uppercase(), style = MaterialTheme.typography.labelMedium, color = kart.textMuted, maxLines = 1)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(symbol, style = MaterialTheme.typography.titleMedium, color = color)
-            AutoSizeText(
-                text = value,
-                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = MonoFontFamily, fontSize = 16.sp),
-                color = MaterialTheme.colorScheme.onSurface,
-                minSize = 11.sp,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        if (state == CheckState.WARN && doc != null) {
-            Text(
-                stringResource(R.string.import_check_doc_value, doc),
-                style = MaterialTheme.typography.labelMedium,
-                color = color,
-                maxLines = 1,
-            )
-        }
-    }
-}
-
-@Composable
-private fun SuggestionCard(suggestion: LapSuggestion, onApply: () -> Unit) {
-    KartCard(Modifier.fillMaxWidth()) {
-        Text(
-            text = stringResource(
-                R.string.import_suggestion,
-                stringResource(R.string.lap_short, suggestion.lapNumber),
-                LapTime.format(suggestion.currentMs),
-                LapTime.format(suggestion.proposedMs),
-            ),
-            style = MaterialTheme.typography.bodyLarge.copy(fontFamily = MonoFontFamily),
-            color = MaterialTheme.kartColors.warning,
-        )
-        Text(
-            stringResource(R.string.import_suspect_cells),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.kartColors.textMuted,
-        )
-        SecondaryButton(
-            text = stringResource(R.string.import_suggestion_apply),
-            onClick = onApply,
-            color = MaterialTheme.kartColors.warning,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-    }
-}
-
-@Composable
-private fun PreviewLapRow(lap: PreviewLap, onEdit: () -> Unit, onToggle: () -> Unit) {
-    val kart = MaterialTheme.kartColors
-    val amber = lap.suspect || lap.possibleDuplicate
-    val timeColor = when {
-        !lap.included -> kart.textMuted
-        amber -> kart.warning
-        else -> MaterialTheme.colorScheme.onSurface
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .clickable(enabled = lap.included, onClick = onEdit),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = stringResource(R.string.lap_short, lap.number),
-            style = MaterialTheme.typography.titleSmall,
-            color = kart.textMuted,
-            modifier = Modifier.width52(),
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = (if (lap.suspect) "⚠ " else "") + LapTime.format(lap.timeMs),
-                style = KartTextStyles.lapTime.copy(
-                    textDecoration = if (lap.included) TextDecoration.None else TextDecoration.LineThrough,
-                ),
-                color = timeColor,
-                maxLines = 1,
-                softWrap = false,
-            )
-            val notes = buildList {
-                if (lap.edited) add(stringResource(R.string.import_lap_edited))
-                if (lap.ocrFixed) add(stringResource(R.string.import_lap_ocr))
-                if (lap.possibleDuplicate) add(stringResource(R.string.import_lap_duplicate))
-            }
-            if (notes.isNotEmpty()) {
-                Text(notes.joinToString(" · "), style = MaterialTheme.typography.labelMedium, color = kart.warning)
-            }
-        }
-        TextButton(onClick = onToggle, modifier = Modifier.heightIn(min = 56.dp)) {
-            Text(
-                text = stringResource(if (lap.included) R.string.import_lap_discard else R.string.import_lap_restore).uppercase(),
-                style = MaterialTheme.typography.labelLarge,
-                color = if (lap.included) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-            )
-        }
-    }
-}
-
-private fun Modifier.width52(): Modifier = this.then(Modifier.size(width = 52.dp, height = 28.dp))
-
-@Composable
-private fun OthersSection(others: List<ParsedDriver>, expanded: Boolean, onToggle: () -> Unit) {
-    if (others.isEmpty()) return
-    val kart = MaterialTheme.kartColors
-    KartCard(Modifier.fillMaxWidth(), onClick = onToggle) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = stringResource(R.string.import_others, others.size),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f),
-            )
-            Text(if (expanded) "▴" else "▾", style = MaterialTheme.typography.titleMedium, color = kart.textMuted)
-        }
-        if (expanded) {
-            others.forEach { d ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 40.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(d.position?.toString() ?: "–", style = MaterialTheme.typography.bodyMedium, color = kart.textMuted, modifier = Modifier.size(width = 32.dp, height = 24.dp))
-                    Text(d.displayName, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f), maxLines = 1)
-                    Text(
-                        text = (d.reportedBestMs ?: d.laps.minOfOrNull { it.timeMs })?.let(LapTime::format) ?: stringResource(R.string.value_unset),
-                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = MonoFontFamily),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+private fun FormatPicker(detected: ImportFormat?, forced: ImportFormat?, onPick: (ImportFormat?) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.kartColors.card,
+        title = { Text(stringResource(R.string.import_format_title), style = MaterialTheme.typography.titleLarge) },
+        text = {
+            Column {
+                val options: List<ImportFormat?> = listOf(null) + ImportFormat.entries
+                options.forEach { option ->
+                    val selected = option == forced
+                    TextButton(onClick = { onPick(option) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("format_${option?.name ?: "AUTO"}")) {
+                        Text(
+                            (if (selected) "● " else "○ ") + (option?.let { formatLabel(it) } ?: stringResource(R.string.import_format_auto)),
+                            modifier = Modifier.fillMaxWidth(),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                    }
                 }
             }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 56.dp)) {
+                Text(stringResource(R.string.action_cancel).uppercase(), style = MaterialTheme.typography.titleSmall)
+            }
+        },
+    )
+}
+
+@Composable
+internal fun formatLabel(format: ImportFormat): String = stringResource(
+    when (format) {
+        ImportFormat.MATRIX -> R.string.import_format_matrix
+        ImportFormat.ROW_PER_DRIVER -> R.string.import_format_row_per_driver
+        ImportFormat.SINGLE_COLUMN -> R.string.import_format_single_column
+        ImportFormat.SUMMARY -> R.string.import_format_summary
+    },
+)
+
+// ---------------------------------------------------------------- Datos de la tanda
+
+/** Hoja con todos los datos de la tanda editables: destino, circuito, fecha, hora, tipo, kart, duración y título. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MetaSheet(state: ImportUiState, viewModel: ImportViewModel, onDate: () -> Unit, onTime: () -> Unit, onDismiss: () -> Unit) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surface,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(stringResource(R.string.import_meta_title).uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.kartColors.textMuted)
+            DestinationSection(
+                state = state,
+                onDestination = viewModel::setDestination,
+                onCircuit = viewModel::openCircuitPicker,
+                onNewCircuit = viewModel::openNewCircuit,
+                onDate = onDate,
+                onTime = onTime,
+                onType = viewModel::setType,
+                onKartMinus = viewModel::decrementKart,
+                onKartPlus = viewModel::incrementKart,
+                onDurationMinus = viewModel::decrementDuration,
+                onDurationPlus = viewModel::incrementDuration,
+                onLabel = viewModel::setLabel,
+                onSession = viewModel::openSessionPicker,
+            )
+            PrimaryButton(stringResource(R.string.import_meta_done), onDismiss, modifier = Modifier.testTag("meta_done"))
         }
     }
 }
@@ -589,11 +528,12 @@ private fun DestinationSection(
     onType: (SessionType) -> Unit,
     onKartMinus: () -> Unit,
     onKartPlus: () -> Unit,
+    onDurationMinus: () -> Unit,
+    onDurationPlus: () -> Unit,
     onLabel: (String) -> Unit,
     onSession: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        SectionLabel(stringResource(R.string.import_destination_title))
         ChipSelector(
             options = ImportDestination.entries,
             selected = state.destination,
@@ -608,9 +548,7 @@ private fun DestinationSection(
             ImportDestination.EXISTING_SESSION -> {
                 OutlinedButton(
                     onClick = onSession,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 56.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                     shape = MaterialTheme.shapes.medium,
                 ) {
                     val picked = state.selectedSession
@@ -627,9 +565,7 @@ private fun DestinationSection(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(
                         onClick = onCircuit,
-                        modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 56.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 56.dp).testTag("meta_circuit"),
                         shape = MaterialTheme.shapes.medium,
                     ) {
                         Text(
@@ -640,11 +576,9 @@ private fun DestinationSection(
                         )
                         Text("▾")
                     }
-                    OutlinedButton(
-                        onClick = onNewCircuit,
-                        modifier = Modifier.heightIn(min = 56.dp),
-                        shape = MaterialTheme.shapes.medium,
-                    ) { Text(stringResource(R.string.circuit_new).uppercase(), style = MaterialTheme.typography.titleSmall) }
+                    OutlinedButton(onClick = onNewCircuit, modifier = Modifier.heightIn(min = 56.dp), shape = MaterialTheme.shapes.medium) {
+                        Text(stringResource(R.string.circuit_new).uppercase(), style = MaterialTheme.typography.titleSmall)
+                    }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = onDate, modifier = Modifier.weight(1f).heightIn(min = 56.dp), shape = MaterialTheme.shapes.medium) {
@@ -666,18 +600,20 @@ private fun DestinationSection(
                     onDecrement = onKartMinus,
                     onIncrement = onKartPlus,
                 )
+                BigStepper(
+                    label = stringResource(R.string.label_duration),
+                    valueText = state.durationMin?.let { stringResource(R.string.format_duration_value, it) } ?: stringResource(R.string.value_unset),
+                    onDecrement = onDurationMinus,
+                    onIncrement = onDurationPlus,
+                )
                 RacingTextField(
                     value = state.label,
                     onValueChange = onLabel,
                     placeholder = stringResource(R.string.import_label_hint),
                     singleLine = true,
                 )
-                state.durationMin?.let {
-                    Text(stringResource(R.string.import_duration, it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.kartColors.textMuted)
-                }
             }
         }
-        Text(stringResource(R.string.import_me_saved_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.kartColors.textMuted)
     }
 }
 
@@ -701,11 +637,7 @@ private fun EditLapSheet(
         containerColor = MaterialTheme.colorScheme.surface,
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 16.dp),
+            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp).padding(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(title.uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.kartColors.textMuted)
@@ -713,56 +645,13 @@ private fun EditLapSheet(
                 text = timeText,
                 style = KartTextStyles.timeEntry,
                 color = if (hasDigits && !valid) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.alpha(if (hasDigits) 1f else 0.5f),
+                modifier = Modifier.alpha(if (hasDigits) 1f else 0.5f).testTag("edit_time"),
             )
             TimeKeypad(onDigits = onDigits, onBackspace = onBackspace, onClear = onClear, keyHeight = 56.dp)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.weight(1f)) { SecondaryButton(stringResource(R.string.action_cancel), onCancel, color = MaterialTheme.kartColors.textMuted) }
-                Box(Modifier.weight(1f)) { PrimaryButton(stringResource(R.string.action_accept), onConfirm, enabled = valid) }
+                Box(Modifier.weight(1f)) { PrimaryButton(stringResource(R.string.action_accept), onConfirm, enabled = valid, modifier = Modifier.testTag("edit_accept")) }
             }
-        }
-    }
-}
-
-// ---------------------------------------------------------------- Previews
-
-private fun previewDriver() = ParsedDriver(
-    name = "Nacho", kartNumber = 28, position = 5,
-    laps = listOf(83_488L, 80_902L, 82_209L, 81_767L, 79_074L, 79_505L).mapIndexed { i, ms -> ParsedLap(i + 1, ms) },
-    reportedBestMs = 79_074, reportedLapCount = 6, reportedAvgMs = 81_157,
-)
-
-/** Vista previa con una fila ámbar (celda sospechosa) y propuesta de corrección. */
-@Preview(widthDp = 393, heightDp = 900, showBackground = true, backgroundColor = 0xFF0A0A0C)
-@Composable
-private fun ImportPreviewWithSuspectRowPreview() {
-    KartLogTheme {
-        val laps = previewDriver().laps.map { PreviewLap(it.number, if (it.number == 1) 83_438 else it.timeMs, it.timeMs) }
-            .map { if (it.number == 1) it.copy(suspect = true) else it }
-        val state = ImportUiState(
-            parsed = ParsedDocument(label = "Sesión 46 GP3 DIEGO", drivers = listOf(previewDriver())),
-            selectedDriverKey = previewDriver().key, laps = laps, kartNumber = 28,
-            checks = com.nacho.kartlog.domain.importing.ImportValidation.check(
-                laps.map { it.number to it.timeMs }, 79_074, 6, 81_157,
-            ),
-        )
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            DriverChooser(state.parsed!!.drivers, state.selectedDriverKey) {}
-            PreviewSection(state, onEdit = {}, onToggle = {}, onApplySuggestion = {})
-        }
-    }
-}
-
-/** Pantalla vacía de entrada (sin analizar). */
-@Preview(widthDp = 393, heightDp = 500, showBackground = true, backgroundColor = 0xFF0A0A0C)
-@Composable
-private fun ImportEmptyPreview() {
-    KartLogTheme {
-        Column(Modifier.padding(16.dp)) {
-            InputSection(
-                state = ImportUiState(), ocrAvailable = true, showScanOptions = false,
-                onTextChange = {}, onPaste = {}, onToggleScan = {}, onCamera = {}, onGallery = {}, onAnalyze = {},
-            )
         }
     }
 }

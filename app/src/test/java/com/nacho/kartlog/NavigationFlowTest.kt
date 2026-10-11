@@ -107,6 +107,6 @@ class NavigationFlowTest {
         compose.waitUntil(5_000) { compose.onAllNodesWithTag("fab_main").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("fab_main").performClick()
         compose.onNodeWithTag("fab_import").performClick()
-        compose.waitUntil(5_000) { compose.onAllNodesWithText("Pega aquí el resultado").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("import_main").fetchSemanticsNodes().isNotEmpty() }
     }
 }

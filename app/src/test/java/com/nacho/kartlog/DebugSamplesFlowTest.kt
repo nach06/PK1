@@ -3,6 +3,7 @@ package com.nacho.kartlog
 import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -43,9 +44,11 @@ class DebugSamplesFlowTest {
         context.deleteDatabase(KartLogDatabase.NAME)
     }
 
-    private fun waitFor(text: String, ignoreCase: Boolean = true) = compose.waitUntil(10_000) {
-        compose.onAllNodesWithText(text, ignoreCase = ignoreCase).fetchSemanticsNodes().isNotEmpty()
+    private fun waitFor(text: String, ignoreCase: Boolean = true, substring: Boolean = false) = compose.waitUntil(10_000) {
+        compose.onAllNodesWithText(text, ignoreCase = ignoreCase, substring = substring).fetchSemanticsNodes().isNotEmpty()
     }
+
+    private fun waitForTag(tag: String) = compose.waitUntil(10_000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
 
     @Test
     fun sampleA_opensTheImporterWithTheEmailAnalysed() {
@@ -56,8 +59,8 @@ class DebugSamplesFlowTest {
         compose.onNodeWithTag("debug_header").performClick() // la sección Depuración arranca plegada
         waitFor("Importar muestra de texto A")
         compose.onNodeWithText("Importar muestra de texto A", ignoreCase = true).performScrollTo().performClick()
-        waitFor("¿Cuál eres tú?")
-        waitFor("Nacho · Kart 28")
+        waitForTag("who_banner")
+        waitFor("Nacho · Kart 28", substring = true)
     }
 
     @Test
@@ -69,8 +72,8 @@ class DebugSamplesFlowTest {
         compose.onNodeWithTag("debug_header").performClick()
         waitFor("Importar muestra de texto B")
         compose.onNodeWithText("Importar muestra de texto B", ignoreCase = true).performScrollTo().performClick()
-        waitFor("¿Cuál eres tú?")
-        waitFor("Kart 28")
+        waitForTag("who_banner")
+        waitFor("Kart 28", substring = true)
     }
 
     @Test
@@ -88,7 +91,7 @@ class DebugSamplesFlowTest {
         check(compose.onAllNodesWithText("Simular tanda en pista", ignoreCase = true).fetchSemanticsNodes().isEmpty()) { "debe arrancar plegada" }
 
         compose.onNodeWithTag("debug_header").performClick()
-        listOf("Simular tanda en pista", "Probar OCR con muestra", "Importar muestra de texto A", "Importar muestra de texto B", "Cargar datos de prueba", "Borrar todos los datos")
+        listOf("Simular tanda en pista", "Probar importación con muestra A/B (imagen)", "Importar muestra de texto A", "Importar muestra de texto B", "Cargar datos de prueba", "Borrar todos los datos")
             .forEach { waitFor(it) }
         compose.onNodeWithTag("debug_header").performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Simular tanda en pista", ignoreCase = true).fetchSemanticsNodes().isEmpty() }

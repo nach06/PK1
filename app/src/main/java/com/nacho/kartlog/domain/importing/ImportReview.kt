@@ -49,13 +49,15 @@ data class ReviewDriver(
     val reportedLapCount: Int?,
     val reportedAvgMs: Long?,
     val cells: List<ReviewCell>,
+    /** Posición de la columna en el documento (para llamar «Piloto N» a los que no traen nombre ni kart). */
+    val columnIndex: Int = 0,
 ) {
     val displayName: String
         get() = when {
             name != null && kartNumber != null -> "$name · Kart $kartNumber"
             name != null -> name
             kartNumber != null -> "Kart $kartNumber"
-            else -> "Piloto"
+            else -> "Piloto ${columnIndex + 1}"
         }
 }
 
@@ -290,6 +292,7 @@ data class ImportReview(
                     reportedLapCount = d.reportedLapCount,
                     reportedAvgMs = d.reportedAvgMs,
                     cells = (d.laps.map(::cell) + d.invalidCells.map { cell(it) }).sortedBy { it.number },
+                    columnIndex = d.columnIndex,
                 )
             }
             return ImportReview(drivers)

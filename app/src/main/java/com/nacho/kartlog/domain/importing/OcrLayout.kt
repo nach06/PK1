@@ -56,7 +56,11 @@ class OcrGrid(val lines: List<List<OcrGridPiece>>) {
 object OcrLayout {
     const val ROW_TOLERANCE = 0.6f
     private const val WORD_GAP = 0.6f
+    private const val MIN_COLUMN_SUPPORT = 2
     private val timeLike = Regex("""\d\s?[:.,'’"]\s?\d""")
+
+    /** Un tiempo de vuelta completo (`m:ss.mmm`, con las confusiones típicas del OCR): lo único que ancla las columnas. */
+    private val strictTime = Regex("""[0-9OoIlSB]{1,2}\s?[:;.,'’]\s?[0-9OoIlSB]{2}\s?[.,:;"”]\s?[0-9OoIlSB]{3}""")
 
     fun reconstruct(boxes: List<OcrBox>): String = reconstructGrid(boxes).text
 
@@ -138,7 +142,7 @@ object OcrLayout {
 
     /** Centros X de las columnas: agrupa los tiempos por cercanía horizontal. */
     private fun columnAnchors(rows: List<List<Item>>, medianHeight: Float): List<Float> {
-        val times = rows.flatten().filter { isTimeLike(it.d.text) }.sortedBy { it.d.centerX }
+        val times = rows.flatten().filter { isStrictTime(it.d.text) }.sortedBy { it.d.centerX }
         if (times.isEmpty()) return emptyList()
         val tolerance = max(median(times.map { it.d.width }) * 0.5f, medianHeight)
         val clusters = mutableListOf<MutableList<Float>>()
@@ -146,7 +150,9 @@ object OcrLayout {
             val last = clusters.lastOrNull()
             if (last != null && t.d.centerX - last.average().toFloat() <= tolerance) last += t.d.centerX else clusters += mutableListOf(t.d.centerX)
         }
-        return clusters.map { it.average().toFloat() }
+        // Una columna de verdad tiene varios tiempos: un tiempo suelto (una fecha, un GAP) no crea columna.
+        val supported = clusters.filter { it.size >= MIN_COLUMN_SUPPORT }.ifEmpty { clusters }
+        return supported.map { it.average().toFloat() }
     }
 
     private class SplitRow(val leading: List<OcrGridPiece>, val columns: List<OcrGridPiece>, val trailing: List<OcrGridPiece>)
@@ -169,7 +175,7 @@ object OcrLayout {
             val nearest = anchors.indices.minBy { abs(anchors[it] - b.d.centerX) }
             val distance = abs(anchors[nearest] - b.d.centerX)
             when {
-                isTimeLike(b.d.text) || distance <= columnTolerance * 0.75f -> columns[nearest] += b
+                isStrictTime(b.d.text) || distance <= columnTolerance * 0.75f -> columns[nearest] += b
                 b.d.centerX < anchors.first() -> leading += b
                 else -> trailing += b
             }
@@ -178,6 +184,8 @@ object OcrLayout {
     }
 
     private fun isTimeLike(text: String) = timeLike.containsMatchIn(text)
+
+    private fun isStrictTime(text: String) = strictTime.containsMatchIn(text)
 
     internal fun median(values: List<Float>): Float {
         if (values.isEmpty()) return 0f

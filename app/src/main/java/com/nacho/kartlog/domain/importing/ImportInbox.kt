@@ -32,8 +32,14 @@ class ImportInbox {
     }
 }
 
+/** Resultado del OCR de una imagen: las cajas, la tabla reconstruida (con la caja de cada celda) y el tamaño de la imagen leída. */
+data class OcrScan(val boxes: List<OcrBox>, val grid: OcrGrid, val imageWidth: Int, val imageHeight: Int) {
+    /** El texto que consume [LapTextParser]. */
+    val text: String get() = grid.text
+}
+
 /** Reconoce el texto de una imagen. La implementación real (ML Kit) vive en `data/ocr`. */
 interface ImageTextRecognizer {
-    /** Devuelve el texto ya reconstruido por filas y columnas, listo para [LapTextParser]. */
-    suspend fun recognize(imageUri: String): Result<String>
+    /** Lee la imagen y devuelve las cajas y la tabla reconstruida por filas y columnas, lista para [LapTextParser]. */
+    suspend fun scan(imageUri: String): Result<OcrScan>
 }

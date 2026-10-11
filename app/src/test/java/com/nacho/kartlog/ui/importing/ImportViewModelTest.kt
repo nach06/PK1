@@ -10,7 +10,13 @@ import com.nacho.kartlog.data.repository.ParticipantRepositoryImpl
 import com.nacho.kartlog.data.repository.SessionRepositoryImpl
 import com.nacho.kartlog.domain.importing.CheckState
 import com.nacho.kartlog.domain.importing.ImageTextRecognizer
+import com.nacho.kartlog.domain.importing.CellStatus
+import com.nacho.kartlog.domain.importing.ImportFormat
 import com.nacho.kartlog.domain.importing.ImportInbox
+import com.nacho.kartlog.domain.importing.ImportPhotoStore
+import com.nacho.kartlog.domain.importing.PhotoProblem
+import com.nacho.kartlog.domain.importing.Quad
+import com.nacho.kartlog.domain.importing.PhotoProcessor
 import com.nacho.kartlog.domain.importing.SharedContent
 import com.nacho.kartlog.domain.model.LapSource
 import com.nacho.kartlog.domain.model.NewSession
@@ -79,11 +85,24 @@ class ImportViewModelTest {
         context.deleteDatabase(KartLogDatabase.NAME)
     }
 
-    private fun viewModel(driverName: String = "", recognizer: ImageTextRecognizer? = null): ImportViewModel =
-        ImportViewModel(
-            circuits, sessions, laps, ImportRepositoryImpl(db.importDao()), FakeSettings(driverName), inbox, recognizer,
+    private val settings = FakeSettings("")
+
+    private fun viewModel(
+        driverName: String = "",
+        recognizer: ImageTextRecognizer? = null,
+        processor: PhotoProcessor? = null,
+        photoStore: ImportPhotoStore? = null,
+    ): ImportViewModel {
+        settings.setDriverName(driverName)
+        return ImportViewModel(
+            circuits, sessions, laps, ImportRepositoryImpl(db.importDao()), settings, inbox, recognizer,
             zone = ZoneId.of("UTC"), now = { 1_760_000_000_000 }, participantRepository = participants,
+            photoProcessor = processor, photoStore = photoStore,
         ).also { vm = it }
+    }
+
+    private fun ImportUiState.myTimes() = review!!.savedTimes(me!!)
+    private fun ImportUiState.cell(driver: com.nacho.kartlog.domain.importing.ReviewDriver, n: Int) = review!!.rows(driver.key).first { it.first.number == n }
 
     private fun run(block: suspend () -> Unit) = runBlocking { withTimeout(30_000) { block() } }
 
@@ -95,9 +114,11 @@ class ImportViewModelTest {
         vm.pasteAndAnalyze(fixture("muestra_a_correo_tabs.txt"))
         val s = vm.state { it.me != null }
 
-        // «Yo» preseleccionado por «Mi nombre de piloto» (sin distinguir mayúsculas).
+        // «Yo» preseleccionado por «Mi nombre de piloto» (sin distinguir mayúsculas), y la revisión abierta.
+        assertEquals(ImportStage.REVIEW, s.stage)
+        assertEquals(ImportFormat.MATRIX, s.format)
         assertEquals("Nacho", s.me?.name)
-        assertEquals(listOf(83488L, 80902L, 82209L, 81767L, 79074L, 79505L), s.laps.map { it.timeMs })
+        assertEquals(listOf(83488L, 80902L, 82209L, 81767L, 79074L, 79505L), s.myTimes())
         assertTrue(s.checks!!.allOk)
         assertEquals(CheckState.OK, s.checks!!.average)
         // Tanda nueva rellenada desde el documento.
@@ -106,9 +127,10 @@ class ImportViewModelTest {
         assertEquals(10, s.durationMin)
         assertEquals(SessionType.RACE, s.type)
         assertEquals(LocalDateTime.of(2026, 10, 3, 20, 16), LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(s.dateTime), ZoneId.of("UTC")))
-        // Sin circuito reconocido no se puede guardar: hay que elegirlo en la vista previa.
+        // Sin circuito reconocido no se puede guardar: hay que elegirlo, y se dice por qué.
         assertNull(s.circuitId)
         assertFalse(s.canSave)
+        assertEquals(BlockedReason.NO_CIRCUIT, s.blockedReason)
 
         val circuit = circuits.add("Karting Zuera", null)
         vm.selectCircuit(circuit)
@@ -130,7 +152,7 @@ class ImportViewModelTest {
         assertEquals(1, classification.first().position)
         val deyvis = classification.first { it.name == "Deyvis" }
         assertEquals(listOf(80938L, 77947L, 78361L, 77091L, 78289L, 76515L), db.participantDao().lapsOf(deyvis.id).map { it.timeMs })
-        // Se guarda el texto original (nunca la foto).
+        // Se guarda el texto original.
         db.sessionDao().observeById(sessionId).first()!!.session.importedRaw!!.let { assertTrue("Sesión 46 GP3 DIEGO" in it) }
     }
 
@@ -141,13 +163,14 @@ class ImportViewModelTest {
         vm.pasteAndAnalyze(fixture("muestra_b_asupark.txt"))
         var s = vm.state { it.parsed != null }
         assertNull(s.me)
-        assertFalse(s.canSave) // nada se guarda sin pasar por la vista previa
+        assertFalse(s.canSave) // nada se guarda sin elegir tu columna
+        assertEquals(BlockedReason.NO_ME, s.blockedReason)
         assertEquals(listOf("Kart 26", "Kart 28", "Kart 50", "Kart 54"), s.parsed!!.drivers.map { it.displayName })
 
         val kart28 = s.parsed!!.drivers.first { it.kartNumber == 28 }
-        vm.selectDriver(kart28.key)
+        vm.setMe(kart28.key)
         s = vm.state { it.me != null }
-        assertEquals(9, s.laps.size)
+        assertEquals(9, s.myTimes().size)
         assertEquals("Asupark", s.selectedCircuit?.name) // reconocido por coincidencia de nombre
         assertEquals(SessionType.FREE, s.type)
         assertEquals(28, s.kartNumber)
@@ -160,8 +183,9 @@ class ImportViewModelTest {
         val vm = viewModel()
         vm.pasteAndAnalyze("1  1:12.467\n2  1:13.001\n3  1:12.900")
         val s = vm.state { it.me != null }
-        assertEquals(3, s.laps.size)
+        assertEquals(3, s.myTimes().size)
         assertEquals("Piloto 1", s.me!!.displayName)
+        assertEquals(ImportFormat.SINGLE_COLUMN, s.format)
     }
 
     @Test
@@ -170,19 +194,30 @@ class ImportViewModelTest {
         vm.pasteAndAnalyze(fixture("muestra_a_correo_tabs.txt").replace("01:23.488", "01:23.438"))
         var s = vm.state { it.me != null }
         assertEquals(CheckState.WARN, s.checks!!.average)
-        assertEquals(83438L, s.laps.first { it.number == 1 }.timeMs) // no se corrigió sola
-        assertTrue(s.laps.first { it.number == 1 }.suspect)
-        assertEquals(83488L, s.checks!!.suggestion?.proposedMs)
+        assertEquals(83438L, s.myTimes().first()) // no se corrigió sola
+        assertEquals(CellStatus.DOUBTFUL, s.cell(s.me!!, 1).second)
+        assertEquals(83488L, s.suggestion?.proposedMs)
 
         vm.applySuggestion()
         s = vm.state { it.checks?.average == CheckState.OK }
-        assertEquals(83488L, s.laps.first { it.number == 1 }.timeMs)
-        assertTrue(s.laps.first { it.number == 1 }.edited)
-        assertFalse(s.laps.any { it.suspect })
+        assertEquals(83488L, s.myTimes().first())
+        assertEquals(CellStatus.OK, s.cell(s.me!!, 1).second)
+        assertTrue(s.cell(s.me!!, 1).first.edited)
     }
 
     @Test
-    fun editarConElTeclado_descartarYRecuperarVueltas() = run {
+    fun ignorarLaPropuesta_laOcultaPeroLaCeldaSigueAmbar() = run {
+        val vm = viewModel(driverName = "Nacho")
+        vm.pasteAndAnalyze(fixture("muestra_a_correo_tabs.txt").replace("01:23.488", "01:23.438"))
+        vm.state { it.suggestion != null }
+        vm.ignoreSuggestion()
+        val s = vm.state { it.suggestion == null }
+        assertEquals(CellStatus.DOUBTFUL, s.cell(s.me!!, 1).second)
+        assertEquals(83438L, s.myTimes().first())
+    }
+
+    @Test
+    fun editarConElTeclado_quitarYRecuperarVueltas() = run {
         val vm = viewModel(driverName = "Nacho")
         vm.pasteAndAnalyze(fixture("muestra_a_correo_tabs.txt"))
         vm.state { it.me != null }
@@ -193,15 +228,17 @@ class ImportViewModelTest {
         assertEquals("1:21.000", vm.state { it.editing?.digits == "121000" }.editing!!.timeText)
         vm.confirmEdit()
         var s = vm.state { it.editing == null }
-        assertEquals(81_000L, s.laps.first { it.number == 2 }.timeMs)
+        assertEquals(81_000L, s.myTimes()[1])
         assertEquals(CheckState.WARN, s.checks!!.average) // al cambiar una vuelta ya no cuadra la media del documento
 
-        vm.toggleLap(6)
-        s = vm.state { !it.laps.first { l -> l.number == 6 }.included }
-        assertEquals(5, s.includedLaps.size)
+        vm.deleteLap(6)
+        s = vm.state { it.myTimes().size == 5 }
         assertEquals(CheckState.WARN, s.checks!!.lapCount)
-        vm.toggleLap(6)
-        assertEquals(6, vm.state { it.laps.all { l -> l.included } }.includedLaps.size)
+        // Se recupera tecleándola de nuevo.
+        vm.startEdit(6)
+        "79505".forEach { vm.editDigits(it.toString()) }
+        vm.confirmEdit()
+        assertEquals(6, vm.state { it.myTimes().size == 6 }.myTimes().size)
 
         // Un tiempo inválido (segundos ≥ 60) no se puede confirmar.
         vm.startEdit(3)
@@ -214,15 +251,99 @@ class ImportViewModelTest {
     }
 
     @Test
-    fun sinVueltasIncluidas_noSePuedeGuardar() = run {
+    fun sinVueltasValidas_noSePuedeGuardar_yDiceLaRazon() = run {
         circuits.add("Asupark", null)
         val vm = viewModel()
         vm.pasteAndAnalyze("Asupark\n1  1:12.467\n2  1:13.001")
         vm.state { it.me != null }
         assertTrue(vm.state().canSave)
-        vm.toggleLap(1)
-        vm.toggleLap(2)
-        assertFalse(vm.state { it.includedLaps.isEmpty() }.canSave)
+        vm.deleteLap(1)
+        vm.deleteLap(2)
+        val s = vm.state { it.myTimes().isEmpty() }
+        assertFalse(s.canSave)
+        assertEquals(BlockedReason.NO_VALID_LAPS, s.blockedReason)
+    }
+
+    @Test
+    fun celdasRojasNoSeGuardan_yDudosasPidenConfirmacionExplicita() = run {
+        circuits.add("Asupark", null)
+        val vm = viewModel(driverName = "Nacho")
+        // V2 fuera de rango (roja) y V3 con una «O» corregida por el OCR (ámbar).
+        vm.pasteAndAnalyze("Asupark\nNacho\tDeyvis\n1\t1:12.000\t1:13.000\n2\t0:05.123\t1:13.500\n3\t1:1O.900\t1:13.200")
+        var s = vm.state { it.me != null }
+        assertEquals(listOf(72_000L, 70_900L), s.myTimes()) // la roja queda fuera
+        assertEquals(1, s.summary!!.doubtful)
+        assertEquals(1, s.summary!!.invalid)
+        assertTrue(s.canSave)
+
+        // GUARDAR no guarda: pide confirmar antes.
+        vm.save()
+        s = vm.state { it.confirmDoubts }
+        assertTrue(sessions.observeSummaries().first().isEmpty())
+        // «Revisar» cancela y no guarda nada.
+        vm.dismissDoubts()
+        assertFalse(vm.state { !it.confirmDoubts }.confirmDoubts)
+        assertTrue(sessions.observeSummaries().first().isEmpty())
+
+        // Al guardar igualmente, la roja no entra y la ámbar sí.
+        vm.save()
+        vm.state { it.confirmDoubts }
+        vm.confirmDoubts()
+        val id = vm.saved.first()
+        assertEquals(listOf(72_000L, 70_900L), laps.observeBySession(id).first().map { it.timeMs })
+    }
+
+    @Test
+    fun revisarYCorregirLasCeldas_evitaLaConfirmacion() = run {
+        circuits.add("Asupark", null)
+        val vm = viewModel(driverName = "Nacho")
+        vm.pasteAndAnalyze("Asupark\nNacho\tDeyvis\n1\t1:12.000\t1:13.000\n2\t0:05.123\t1:13.500\n3\t1:1O.900\t1:13.200")
+        vm.state { it.me != null }
+        // Corrige la roja con el teclado y confirma la ámbar.
+        vm.startEdit(2)
+        "112500".forEach { vm.editDigits(it.toString()) }
+        vm.confirmEdit()
+        vm.confirmLap(3)
+        val s = vm.state { it.summary?.needsConfirmation == false }
+        assertEquals(listOf(72_000L, 72_500L, 70_900L), s.myTimes())
+        vm.save()
+        // Sin celdas por revisar, guarda directamente (y la ámbar confirmada y la roja corregida entran).
+        val id = vm.saved.first()
+        assertEquals(listOf(72_000L, 72_500L, 70_900L), laps.observeBySession(id).first().map { it.timeMs })
+    }
+
+    @Test
+    fun cambiarElFormatoReinterpretaLaHoja() = run {
+        val vm = viewModel()
+        val rowPerDriver = "Resultados\nNacho\t1:17.263\t1:16.905\t1:18.020\nDeyvis\t1:15.100\t1:15.900\t1:14.800"
+        vm.pasteAndAnalyze(rowPerDriver)
+        var s = vm.state { it.parsed != null }
+        assertEquals(ImportFormat.ROW_PER_DRIVER, s.format)
+        assertEquals(2, s.review!!.drivers.size)
+        // Forzado como «solo mis vueltas»: un único piloto con todas las celdas.
+        vm.changeFormat(ImportFormat.SINGLE_COLUMN)
+        s = vm.state { it.format == ImportFormat.SINGLE_COLUMN }
+        assertEquals(1, s.review!!.drivers.size)
+        assertEquals(6, s.myTimes().size)
+        // Volver a detectar.
+        vm.changeFormat(null)
+        assertEquals(ImportFormat.ROW_PER_DRIVER, vm.state { it.format == ImportFormat.ROW_PER_DRIVER }.format)
+    }
+
+    @Test
+    fun unirYDividirPilotos_desdeLaRevision() = run {
+        val vm = viewModel(driverName = "Cortamargari")
+        vm.pasteAndAnalyze("Cortamargari\ttas\n1\t1:12.000\t1:13.000\n2\t1:12.500\t\n3\t1:11.900\t")
+        var s = vm.state { it.me != null }
+        assertEquals(2, s.review!!.drivers.size)
+        val other = s.review!!.drivers.first { it.name == "tas" }
+        vm.mergeInto(other.key)
+        s = vm.state { it.review!!.drivers.size == 1 }
+        assertEquals("Cortamargari tas", s.me!!.name)
+        vm.splitDriver()
+        s = vm.state { it.review!!.drivers.size == 2 }
+        assertEquals(listOf("Cortamargari", "tas"), s.review!!.drivers.map { it.name })
+        assertEquals(3, s.myTimes().size) // las vueltas se quedan con el primer trozo
     }
 
     @Test
@@ -237,8 +358,7 @@ class ImportViewModelTest {
         vm.state { it.me != null }
         vm.setDestination(ImportDestination.EXISTING_SESSION)
         vm.selectExistingSession(existing)
-        val s = vm.state { it.destination == ImportDestination.EXISTING_SESSION && it.laps.any { l -> l.possibleDuplicate } }
-        assertEquals(listOf(1), s.laps.filter { it.possibleDuplicate }.map { it.number })
+        val s = vm.state { it.destination == ImportDestination.EXISTING_SESSION && it.duplicateCount > 0 }
         assertEquals(1, s.duplicateCount)
         assertTrue(s.canSave)
 
@@ -296,39 +416,134 @@ class ImportViewModelTest {
         inbox.put(SharedContent.Text(fixture("muestra_a_correo_lineas.txt")))
         val s = vm.state { it.me != null }
         assertEquals("Deyvis", s.me?.name)
-        assertEquals(6, s.laps.size)
+        assertEquals(6, s.myTimes().size)
         assertNull(inbox.content.value) // el buzón queda vacío
     }
 
+    // ---------------- Foto ----------------
+
+    private fun photoVm(
+        scan: (String) -> com.nacho.kartlog.domain.importing.OcrScan,
+        problems: Set<PhotoProblem> = emptySet(),
+        driverName: String = "Deyvis",
+        store: ImportPhotoStore? = null,
+    ): Triple<ImportViewModel, FakeRecognizer, FakePhotoProcessor> {
+        val recognizer = FakeRecognizer(scan)
+        val processor = FakePhotoProcessor(problems)
+        return Triple(viewModel(driverName, recognizer, processor, store), recognizer, processor)
+    }
+
+    private fun sheetScan() = scanOf(boxesOf(fixture("muestra_a_correo_tabs.txt")))
+
     @Test
-    fun contenidoCompartido_imagen_pasaPorElOcr() = run {
-        val ocr = object : ImageTextRecognizer {
-            var requested: String? = null
-            override suspend fun recognize(imageUri: String): Result<String> {
-                requested = imageUri
-                return Result.success("1  1:12.467\n2  1:13.001")
-            }
-        }
-        val vm = viewModel(recognizer = ocr)
+    fun contenidoCompartido_imagen_abreElRecorte_yAnalizarLlevaALaRevision() = run {
+        val (vm, recognizer, processor) = photoVm({ sheetScan() })
         inbox.put(SharedContent.Image("content://foto/1"))
-        val s = vm.state { it.me != null }
-        assertEquals("content://foto/1", ocr.requested)
-        assertEquals(2, s.laps.size)
+        var s = vm.state { it.stage == ImportStage.CROP && it.photo != null }
+        // Esquinas iniciales = la foto entera; todavía no se ha leído nada.
+        assertEquals(Quad.full(1000, 800), s.photo!!.quad)
+        assertTrue(recognizer.requested.isEmpty())
+        // Las esquinas se mueven y se giran 90°.
+        val moved = Quad(floatArrayOf(40f, 960f, 950f, 30f), floatArrayOf(30f, 40f, 770f, 760f))
+        vm.setQuad(moved)
+        assertEquals(moved, vm.state { it.photo?.quad == moved }.photo!!.quad)
+        vm.rotatePhoto()
+        vm.state { processor.rotations == 1 }
+
+        vm.analyzePhoto()
+        s = vm.state { it.stage == ImportStage.REVIEW }
+        assertEquals(1, processor.prepared.size)
+        assertTrue(processor.prepared.single().second) // contraste mejorado por defecto
+        assertEquals(1, recognizer.requested.size)
+        assertEquals("Deyvis", s.me?.name)
+        assertEquals(6, s.myTimes().size)
+        assertTrue(s.scan != null && s.reviewImage != null)
     }
 
     @Test
-    fun errores_textoVacio_sinVueltas_yOcrFallido() = run {
+    fun fotoMovidaOOscura_avisaAntesDeAnalizar_yPermiteSeguirOCancelar() = run {
+        val (vm, recognizer, _) = photoVm({ sheetScan() }, problems = setOf(PhotoProblem.BLURRY))
+        vm.loadPhoto("content://foto/2")
+        vm.state { it.stage == ImportStage.CROP && it.photo != null }
+        vm.analyzePhoto()
+        var s = vm.state { it.showQualityPrompt }
+        assertTrue(recognizer.requested.isEmpty()) // aún no se ha leído
+        vm.dismissQualityPrompt()
+        assertFalse(vm.state { !it.showQualityPrompt }.showQualityPrompt)
+        vm.analyzePhoto()
+        vm.state { it.showQualityPrompt }
+        vm.analyzeAnyway()
+        s = vm.state { it.stage == ImportStage.REVIEW }
+        assertEquals(1, recognizer.requested.size)
+        assertTrue(s.review != null)
+    }
+
+    @Test
+    fun lecturaPocoFiable_noAbreLaRevision_yNoGuardaNada() = run {
+        // Pocas cajas y casi ninguna celda legible.
+        val (vm, _, _) = photoVm({ scanOf(boxesOf("Resultados\n1\t1:12.4\n2\t1:13.0")) })
+        vm.loadPhoto("content://foto/3")
+        vm.state { it.stage == ImportStage.CROP && it.photo != null }
+        vm.analyzePhoto()
+        val s = vm.state { it.error == ImportError.UNRELIABLE }
+        assertEquals(ImportStage.CROP, s.stage)
+        assertNull(s.review)
+        assertTrue(sessions.observeSummaries().first().isEmpty())
+    }
+
+    @Test
+    fun errores_textoVacio_sinVueltas_fotoIlegibleYOcrFallido() = run {
         val vm = viewModel()
         vm.analyze()
         assertEquals(ImportError.EMPTY_TEXT, vm.state { it.error != null }.error)
         vm.pasteAndAnalyze("hola, esto no tiene tiempos")
         assertEquals(ImportError.NOTHING_FOUND, vm.state { it.error == ImportError.NOTHING_FOUND }.error)
-        vm.recognizeImage("content://x") // sin motor de OCR configurado
+        vm.loadPhoto("content://x") // sin motor de OCR configurado
         assertEquals(ImportError.OCR_FAILED, vm.state { it.error == ImportError.OCR_FAILED }.error)
+
+        val (photoVm, recognizer, processor) = photoVm({ sheetScan() })
+        processor.failLoad = true
+        photoVm.loadPhoto("content://x")
+        assertEquals(ImportError.PHOTO_FAILED, photoVm.state { it.error == ImportError.PHOTO_FAILED }.error)
+        assertEquals(ImportStage.ENTRY, photoVm.state().stage)
+        processor.failLoad = false
+        recognizer.fail = true
+        photoVm.loadPhoto("content://y")
+        photoVm.state { it.photo != null }
+        photoVm.analyzePhoto()
+        assertEquals(ImportError.OCR_FAILED, photoVm.state { it.error == ImportError.OCR_FAILED }.error)
     }
 
     @Test
-    fun crearCircuitoDesdeLaVistaPrevia_loSeleccionaYNoGuardaNadaAntesDeTiempo() = run {
+    fun laFotoOriginalSoloSeConservaSiElAjusteLoPermite() = run {
+        circuits.add("Asupark", null)
+        val store = FakePhotoStore()
+        val (vm, _, _) = photoVm({ sheetScan() }, store = store)
+        vm.loadPhoto("content://foto/9")
+        vm.state { it.photo != null }
+        vm.analyzePhoto()
+        vm.state { it.stage == ImportStage.REVIEW }
+        vm.selectCircuit(circuits.add("Zuera", null))
+        vm.save()
+        val id = vm.saved.first()
+        assertEquals("content://foto/9", store.saved[id])
+
+        // Con el ajuste desactivado no se guarda la foto.
+        settings.setSaveImportPhoto(false)
+        val store2 = FakePhotoStore()
+        val (vm2, _, _) = photoVm({ sheetScan() }, store = store2)
+        vm2.loadPhoto("content://foto/10")
+        vm2.state { it.photo != null }
+        vm2.analyzePhoto()
+        vm2.state { it.stage == ImportStage.REVIEW }
+        vm2.selectCircuit(circuits.add("Alonso", null))
+        vm2.save()
+        vm2.saved.first()
+        assertTrue(store2.saved.isEmpty())
+    }
+
+    @Test
+    fun crearCircuitoDesdeLaRevision_loSeleccionaYNoGuardaNadaAntesDeTiempo() = run {
         val vm = viewModel()
         vm.pasteAndAnalyze("1  1:12.467\n2  1:13.001")
         vm.state { it.me != null }
@@ -339,5 +554,16 @@ class ImportViewModelTest {
         assertFalse(s.showNewCircuit)
         // Aún no se ha guardado ninguna tanda.
         assertTrue(sessions.observeSummaries().first().isEmpty())
+    }
+
+    @Test
+    fun volverALaEntrada_descartaLoLeido() = run {
+        val vm = viewModel()
+        vm.pasteAndAnalyze("1  1:12.467\n2  1:13.001")
+        vm.state { it.stage == ImportStage.REVIEW }
+        vm.backToEntry()
+        val s = vm.state { it.stage == ImportStage.ENTRY }
+        assertNull(s.review)
+        assertNull(s.parsed)
     }
 }

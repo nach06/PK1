@@ -36,7 +36,9 @@ import com.nacho.kartlog.data.settings.SharedPreferencesUserSettings
 import com.nacho.kartlog.domain.analytics.AnalyticsSource
 import com.nacho.kartlog.data.imports.FileImportPhotoStore
 import com.nacho.kartlog.domain.importing.ImageTextRecognizer
+import com.nacho.kartlog.data.ocr.AndroidPhotoProcessor
 import com.nacho.kartlog.domain.importing.ImportPhotoStore
+import com.nacho.kartlog.domain.importing.PhotoProcessor
 import com.nacho.kartlog.domain.importing.ImportInbox
 import com.nacho.kartlog.domain.settings.UserSettings
 import com.nacho.kartlog.ui.importing.ImportViewModel
@@ -78,12 +80,17 @@ class AppContainer(context: Context) {
     /** OCR del dispositivo (ML Kit, lo conecta KartLogApp); mientras sea `null` «Escanear» no está disponible. */
     var imageTextRecognizer: ImageTextRecognizer? = null
 
+    /** Recorte, enderezado y mejora de las fotos de las hojas; los tests lo sustituyen. */
+    var photoProcessor: PhotoProcessor = AndroidPhotoProcessor(context)
+
     val importViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
         initializer {
             ImportViewModel(
                 circuitRepository, sessionRepository, lapRepository, importRepository,
                 userSettings, importInbox, imageTextRecognizer,
                 participantRepository = participantRepository,
+                photoProcessor = photoProcessor,
+                photoStore = importPhotoStore,
             )
         }
     }
