@@ -40,10 +40,26 @@ class LapTextParserTest {
         assertEquals(LocalDateTime.of(2026, 10, 3, 20, 16), doc.dateTime)
         assertEquals(10, doc.durationMin)
         assertEquals(SessionType.RACE, doc.type) // «Resumen de tu carrera»
-        // Dos bloques (8 + 6 pilotos) fusionados, con el nombre partido en el segundo.
-        assertNotNull(doc.drivers.firstOrNull { it.name == "Alvarommk l" })
+        // Dos bloques (8 + 6 pilotos) fusionados; los nombres partidos en la matriz («Alvarommk l», «Cortamargari tas») se
+        // resuelven con el nombre completo de la tabla resumen.
+        assertEquals(
+            listOf(
+                "Deyvis", "Diego Sanchez", "Morqui", "Asensio", "Nacho", "Alvarommkl", "KEVGT40", "F.Gascón",
+                "Víctor", "LauraFC38", "Serw211", "Cortamargaritas", "J Robledo", "Mar",
+            ),
+            doc.drivers.map { it.name },
+        )
+        assertEquals(listOf(26, 2, 21, 18, 28, 9, 13, 19, 8, 6, 20, 10, 17, 25), doc.drivers.map { it.kartNumber })
         assertEquals((1..14).toList(), doc.drivers.map { it.position })
-        assertTrue(doc.drivers.all { it.laps.size == 6 && it.reportedAvgMs != null && it.reportedBestMs != null })
+        // J Robledo y Mar tienen la V6 vacía: 5 vueltas, y su resumen dice 5.
+        val sinV6 = listOf("J Robledo", "Mar").map { doc.driver(it) }
+        assertTrue(sinV6.all { it.laps.size == 5 && it.reportedLapCount == 5 })
+        assertEquals(listOf(88795L, 86498L, 85110L, 85696L, 85848L), doc.driver("J Robledo").times())
+        assertEquals(92750L, doc.driver("Mar").reportedBestMs)
+        assertTrue(doc.drivers.filter { it !in sinV6 }.all { it.laps.size == 6 })
+        assertTrue(doc.drivers.all { it.reportedAvgMs != null && it.reportedBestMs != null })
+        assertEquals(listOf(79263L, 78388L, 77875L, 78740L, 77884L, 77316L), doc.driver("Diego Sanchez").times())
+        assertEquals(listOf(86156L, 84200L, 82965L, 82326L, 81857L, 81731L), doc.driver("Cortamargaritas").times())
     }
 
     @Test
@@ -63,7 +79,8 @@ class LapTextParserTest {
 
     private fun assertMuestraB(doc: ParsedDocument) {
         assertEquals(listOf(26, 28, 50, 54), doc.drivers.map { it.kartNumber })
-        assertTrue(doc.drivers.all { it.name == null && it.laps.size == 9 })
+        assertTrue(doc.drivers.all { it.name == null })
+        assertEquals(listOf(9, 9, 8, 8), doc.drivers.map { it.laps.size })
         val k26 = doc.drivers.first { it.kartNumber == 26 }
         assertEquals(listOf(64730L, 64028L, 65032L, 64074L, 63241L, 63870L, 63906L, 64315L, 66846L), k26.times())
         assertEquals(64449L, k26.reportedAvgMs)
@@ -75,6 +92,24 @@ class LapTextParserTest {
         assertEquals("Asupark", doc.circuitName)
         // Las clasificaciones (Mejores de hoy/mes/absolutos) se ignoran: no crean pilotos ni vueltas.
         assertEquals(4, doc.drivers.size)
+        // La tabla «Resumen» (P, Kart, V., Mejor) da posición, nº de vueltas y mejor de cada kart.
+        assertEquals(listOf(1, 2, 3, 4), doc.drivers.map { it.position })
+        assertEquals(listOf(9, 9, 8, 8), doc.drivers.map { it.reportedLapCount })
+        assertEquals(listOf(63241L, 64516L, 67304L, 68237L), doc.drivers.map { it.reportedBestMs })
+        val k50 = doc.drivers.first { it.kartNumber == 50 }
+        assertEquals(listOf(69130L, 68630L, 67493L, 67875L, 67304L, 68192L, 68274L, 68551L), k50.times())
+        assertEquals(68181L, k50.reportedAvgMs)
+        assertEquals(69556L, doc.drivers.first { it.kartNumber == 54 }.reportedAvgMs)
+    }
+
+    @Test
+    fun muestraB_laVueltaLentaDelKart28_seConservaYNoEsLimpia() {
+        val k28 = parser.parse(fixture("muestra_b_asupark.txt")).drivers.first { it.kartNumber == 28 }
+        val lap8 = k28.laps.first { it.number == 8 }
+        assertEquals(85415L, lap8.timeMs) // no se descarta
+        val best = k28.times().min()
+        assertTrue("85415 > 107 % de $best", lap8.timeMs * 100 > best * 107)
+        assertTrue(k28.times().filter { it != 85415L }.all { it * 100 <= best * 107 })
     }
 
     @Test

@@ -133,4 +133,37 @@ class ImportValidationTest {
         assertEquals(1, checks.suggestion?.lapNumber)
         assertEquals(83488L, checks.suggestion?.proposedMs)
     }
+
+    @Test
+    fun muestraB_unaCeldaAlterada_rompeLaMediaYProponeLaCorreccion() {
+        val parser = LapTextParser()
+        // Kart 28, V8: 1:25,415 → 1:25,475 (un dígito) desmiente la media 1:07,551 del documento.
+        val doc = parser.parse(fixture("muestra_b_asupark.txt").replace("1:25,415", "1:25,475"))
+        val d = doc.drivers.first { it.kartNumber == 28 }
+        val checks = ImportValidation.check(d.laps.map { it.number to it.timeMs }, d.reportedBestMs, d.reportedLapCount, d.reportedAvgMs)
+        assertEquals(CheckState.WARN, checks.average)
+        assertEquals(CheckState.OK, checks.best)
+        // Cambiar 1:25,415 → 1:25,475 desplaza 60 ms la suma y otras 3 celdas (V1, V2, V3) admiten un cambio de un dígito
+        // con el mismo efecto: aritméticamente no se puede saber cuál es la errónea, así que NO se propone una (mejor
+        // callar que acertar a medias), pero la V8 queda entre las celdas marcadas en ámbar.
+        assertNull(checks.suggestion)
+        assertTrue(8 in checks.suspectLapNumbers)
+        // El resto de karts siguen en verde.
+        doc.drivers.filter { it.kartNumber != 28 }.forEach { o ->
+            assertTrue(ImportValidation.check(o.laps.map { it.number to it.timeMs }, o.reportedBestMs, o.reportedLapCount, o.reportedAvgMs).allOk)
+        }
+    }
+
+    @Test
+    fun muestraB_alterarLaMejorVuelta_rompeMejorYMedia_yProponeLaCorreccionUnica() {
+        val parser = LapTextParser()
+        // Kart 26, V5: 1:03,241 → 1:03,841. La «mejor» del documento deja de coincidir con el mínimo y la media se desvía.
+        val doc = parser.parse(fixture("muestra_b_asupark.txt").replaceFirst("1:03,241", "1:03,841"))
+        val d = doc.drivers.first { it.kartNumber == 26 }
+        val checks = ImportValidation.check(d.laps.map { it.number to it.timeMs }, d.reportedBestMs, d.reportedLapCount, d.reportedAvgMs)
+        assertEquals(CheckState.WARN, checks.best)
+        assertEquals(CheckState.WARN, checks.average)
+        assertEquals(5, checks.suggestion?.lapNumber)
+        assertEquals(63241L, checks.suggestion?.proposedMs)
+    }
 }

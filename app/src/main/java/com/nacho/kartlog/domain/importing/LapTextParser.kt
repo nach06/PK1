@@ -118,16 +118,21 @@ class LapTextParser(
         if (rows.isEmpty()) return drivers
         val used = mutableSetOf<SummaryRow>()
         val merged = drivers.map { driver ->
-            val byName = driver.name?.let(::normalizeKey)?.let { key -> rows.firstOrNull { it !in used && normalizeKey(it.name) == key } }
+            val byName = driver.name?.let(::normalizeKey)?.takeIf { it.isNotEmpty() }
+                ?.let { key -> rows.firstOrNull { it !in used && normalizeKey(it.name) == key } }
             val match = byName ?: driver.kartNumber?.let { kart ->
-                rows.firstOrNull { it !in used && it.kartNumber == kart && (driver.name == null || normalizeKey(it.name) == normalizeKey(driver.name)) }
+                rows.firstOrNull {
+                    it !in used && it.kartNumber == kart &&
+                        (driver.name == null || it.name.isBlank() || normalizeKey(it.name) == normalizeKey(driver.name))
+                }
             }
             if (match == null) {
                 driver
             } else {
                 used += match
                 driver.copy(
-                    name = driver.name ?: match.name,
+                    // El nombre de la tabla resumen es el completo; en la matriz puede venir partido en dos líneas.
+                    name = match.name.ifBlank { null } ?: driver.name,
                     kartNumber = driver.kartNumber ?: match.kartNumber,
                     position = match.position,
                     reportedBestMs = match.bestMs,
@@ -137,7 +142,7 @@ class LapTextParser(
         }
         val extras = rows.filter { it !in used }.mapIndexed { i, row ->
             ParsedDriver(
-                name = row.name,
+                name = row.name.ifBlank { null },
                 kartNumber = row.kartNumber,
                 position = row.position,
                 reportedBestMs = row.bestMs,

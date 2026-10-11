@@ -164,7 +164,10 @@ object GenericMatrixProfile : LapTextProfile {
                 continue
             }
             val last = groups.lastOrNull()
-            val isFragment = t.length <= 2 && t.all { it.isLetter() } && last?.name != null && last.kart == null
+            // Fragmento de un nombre largo partido en dos líneas («Cortamargari» + «tas»): si ya hay un nombre sin
+            // kart y la cabecera trae «Kart NN», un texto más antes del kart es la continuación.
+            val isFragment = last?.name != null && last.kart == null && !nameKart.matches(t) &&
+                (t.length <= 2 || kartTokens.isNotEmpty()) && t.all { it.isLetter() || it == '.' }
             if (isFragment && last != null) {
                 last.name = last.name + " " + t
                 continue
