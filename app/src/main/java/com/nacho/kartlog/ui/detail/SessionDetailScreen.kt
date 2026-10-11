@@ -139,17 +139,9 @@ fun SessionDetailScreen(
                 },
                 list = {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().testTag("lap_list"),
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                 ) {
-                    if (state.participants.isNotEmpty()) {
-                        item(key = "classification") {
-                            ClassificationCard(
-                                participants = state.participants,
-                                modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 8.dp),
-                            )
-                        }
-                    }
                     if (state.laps.isEmpty()) {
                         item {
                             Text(
@@ -172,6 +164,14 @@ fun SessionDetailScreen(
                                     chartExpanded = false
                                 },
                                 onDelete = { viewModel.requestDeleteLap(lap) },
+                            )
+                        }
+                    }
+                    if (state.participants.isNotEmpty()) {
+                        item(key = "classification") {
+                            ClassificationCard(
+                                participants = state.participants,
+                                modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 8.dp),
                             )
                         }
                     }

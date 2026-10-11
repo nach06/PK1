@@ -217,7 +217,7 @@
     <string name="empty_import">Importar tiempos</string>
 
     <!-- Detalle: importación -->
-    <string name="session_ranking_title">Clasificación de la sesión</string>
+    <string name="session_ranking_header">Clasificación de la sesión · %1$d pilotos</string>
     <string name="col_pos">Pos</string>
     <string name="col_driver">Piloto</string>
     <string name="col_gap">GAP</string>

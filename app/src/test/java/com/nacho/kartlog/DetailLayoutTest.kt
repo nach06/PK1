@@ -8,10 +8,13 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.lifecycle.viewModelScope
 import androidx.test.core.app.ApplicationProvider
 import com.nacho.kartlog.data.local.KartLogDatabase
+import com.nacho.kartlog.domain.model.ImportRequest
 import com.nacho.kartlog.domain.model.NewSession
+import com.nacho.kartlog.domain.model.ParticipantImport
 import com.nacho.kartlog.domain.model.SessionType
 import com.nacho.kartlog.domain.model.TrackCondition
 import com.nacho.kartlog.ui.detail.SessionDetailScreen

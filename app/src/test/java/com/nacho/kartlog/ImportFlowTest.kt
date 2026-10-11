@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.printToString
@@ -12,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.core.app.ApplicationProvider
 import com.nacho.kartlog.data.local.KartLogDatabase
@@ -83,7 +85,9 @@ class ImportFlowTest {
         compose.onNodeWithText("Guardar importación", ignoreCase = true).performSemanticsAction(SemanticsActions.OnClick)
 
         // Detalle de la tanda nueva: vueltas importadas (icono) y clasificación plegable con mi fila.
-        waitFor("Clasificación de la sesión")
+        compose.waitUntil(8_000) { compose.onAllNodesWithTag("lap_list").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("lap_list").performScrollToNode(androidx.compose.ui.test.hasTestTag("classification"))
+        waitFor("Clasificación de la sesión", substring = true)
         compose.waitUntil(8_000) { compose.onAllNodesWithContentDescription("Importada").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("classification").performClick()
         waitFor("Tú", substring = true)
