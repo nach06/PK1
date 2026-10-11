@@ -84,4 +84,6 @@ class ParticipantRepositoryImpl(private val dao: ParticipantDao) : ParticipantRe
 
 class ImportRepositoryImpl(private val dao: ImportDao) : ImportRepository {
     override suspend fun importSession(request: ImportRequest): Long = dao.importSession(request)
+
+    override suspend fun clearRivalData() = dao.clearRivalData()
 }

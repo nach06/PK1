@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -184,6 +185,25 @@ fun ImportScreen(
             }
             Spacer(Modifier.height(8.dp))
         }
+    }
+
+    if (state.confirmReplace) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissReplace,
+            containerColor = MaterialTheme.kartColors.card,
+            title = { Text(stringResource(R.string.import_replace_title), style = MaterialTheme.typography.titleLarge) },
+            text = { Text(stringResource(R.string.import_replace_message), style = MaterialTheme.typography.bodyLarge) },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmReplace, modifier = Modifier.heightIn(min = 56.dp)) {
+                    Text(stringResource(R.string.import_replace_confirm).uppercase(), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissReplace, modifier = Modifier.heightIn(min = 56.dp)) {
+                    Text(stringResource(R.string.action_cancel).uppercase(), style = MaterialTheme.typography.titleSmall)
+                }
+            },
+        )
     }
 
     state.editing?.let { editing ->

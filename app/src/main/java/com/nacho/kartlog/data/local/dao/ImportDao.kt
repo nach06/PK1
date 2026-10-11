@@ -37,6 +37,19 @@ abstract class ImportDao {
     @Query("DELETE FROM participants WHERE sessionId = :sessionId")
     protected abstract suspend fun deleteParticipants(sessionId: Long)
 
+    @Query("DELETE FROM participants")
+    protected abstract suspend fun deleteAllParticipants()
+
+    @Query("UPDATE sessions SET importedRaw = NULL")
+    protected abstract suspend fun clearAllImportedRaw()
+
+    /** Privacidad: borra los datos de los rivales (clasificaciones y texto original) sin tocar tus tandas ni tus vueltas. */
+    @Transaction
+    open suspend fun clearRivalData() {
+        deleteAllParticipants() // las vueltas de los rivales caen en cascada
+        clearAllImportedRaw()
+    }
+
     @Transaction
     open suspend fun importSession(request: ImportRequest): Long {
         val sessionId = request.newSession?.let { insertSession(it.toEntity()) } ?: requireNotNull(request.existingSessionId)

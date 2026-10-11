@@ -88,7 +88,7 @@ class ImportViewModelTest {
     private fun viewModel(driverName: String = "", recognizer: ImageTextRecognizer? = null): ImportViewModel =
         ImportViewModel(
             circuits, sessions, laps, ImportRepositoryImpl(db.importDao()), FakeSettings(driverName), inbox, recognizer,
-            zone = ZoneId.of("UTC"), now = { 1_760_000_000_000 },
+            zone = ZoneId.of("UTC"), now = { 1_760_000_000_000 }, participantRepository = participants,
         ).also { vm = it }
 
     private fun run(block: suspend () -> Unit) = runBlocking { withTimeout(30_000) { block() } }
@@ -252,6 +252,48 @@ class ImportViewModelTest {
         assertEquals(existing, vm.saved.first())
         assertEquals((1..8).toList(), laps.observeBySession(existing).first().map { it.number })
         assertEquals(listOf(LapSource.MANUAL, LapSource.MANUAL) + List(6) { LapSource.IMPORTED }, laps.observeBySession(existing).first().map { it.source })
+    }
+
+    @Test
+    fun tandaExistenteConClasificacion_pideConfirmarAntesDeSustituirla() = run {
+        val circuit = circuits.add("Asupark", null)
+        val existing = sessions.create(NewSession(circuit, 1_000, SessionType.FREE, 28, null, null, null, TrackCondition.DRY, ""))
+        // Primera importación: deja una clasificación en la tanda.
+        val first = viewModel(driverName = "Nacho")
+        first.pasteAndAnalyze(fixture("muestra_a_correo_tabs.txt"))
+        first.state { it.me != null }
+        first.setDestination(ImportDestination.EXISTING_SESSION)
+        first.selectExistingSession(existing)
+        first.state { it.destination == ImportDestination.EXISTING_SESSION && it.existingSessionId == existing }
+        first.save() // aún sin clasificación: guarda directamente
+        assertEquals(existing, first.saved.first())
+        assertEquals(14, participants.observeBySession(existing).first().size)
+        first.viewModelScope.cancel()
+
+        // Segunda importación sobre la misma tanda: pide confirmación y no guarda nada hasta confirmar.
+        val second = viewModel(driverName = "Deyvis")
+        second.pasteAndAnalyze(fixture("muestra_a_correo_lineas.txt"))
+        second.state { it.me != null }
+        second.setDestination(ImportDestination.EXISTING_SESSION)
+        second.selectExistingSession(existing)
+        second.state { it.destination == ImportDestination.EXISTING_SESSION && it.existingSessionId == existing }
+        second.save()
+        assertTrue(second.state { it.confirmReplace }.confirmReplace)
+        assertEquals(6, laps.observeBySession(existing).first().size)
+
+        second.dismissReplace()
+        assertEquals(false, second.state { !it.confirmReplace }.confirmReplace)
+        assertEquals(6, laps.observeBySession(existing).first().size)
+        assertTrue(participants.observeBySession(existing).first().first { it.isMe }.name == "Nacho")
+
+        second.save()
+        second.state { it.confirmReplace }
+        second.confirmReplace()
+        assertEquals(existing, second.saved.first())
+        assertEquals(12, laps.observeBySession(existing).first().size)
+        val classification = participants.observeBySession(existing).first()
+        assertEquals(14, classification.size)
+        assertEquals("Deyvis", classification.single { it.isMe }.name)
     }
 
     @Test

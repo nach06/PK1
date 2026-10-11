@@ -21,6 +21,7 @@ import com.nacho.kartlog.domain.model.TrackCondition
 import com.nacho.kartlog.domain.repository.CircuitRepository
 import com.nacho.kartlog.domain.repository.ImportRepository
 import com.nacho.kartlog.domain.repository.LapRepository
+import com.nacho.kartlog.domain.repository.ParticipantRepository
 import com.nacho.kartlog.domain.repository.SessionRepository
 import com.nacho.kartlog.domain.settings.UserSettings
 import com.nacho.kartlog.domain.util.LapTime
@@ -90,6 +91,7 @@ data class ImportUiState(
     val showCircuitPicker: Boolean = false,
     val showSessionPicker: Boolean = false,
     val showNewCircuit: Boolean = false,
+    val confirmReplace: Boolean = false,
 ) {
     val me: ParsedDriver? get() = parsed?.drivers?.firstOrNull { it.key == selectedDriverKey }
     val others: List<ParsedDriver> get() = parsed?.drivers.orEmpty().filter { it.key != selectedDriverKey }
@@ -128,6 +130,7 @@ private data class Form(
     val showCircuitPicker: Boolean = false,
     val showSessionPicker: Boolean = false,
     val showNewCircuit: Boolean = false,
+    val confirmReplace: Boolean = false,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -141,6 +144,7 @@ class ImportViewModel(
     private val recognizer: ImageTextRecognizer?,
     private val zone: ZoneId = ZoneId.systemDefault(),
     private val now: () -> Long = System::currentTimeMillis,
+    private val participantRepository: ParticipantRepository? = null,
 ) : ViewModel() {
 
     private val form = MutableStateFlow(Form(dateTime = now()))
@@ -161,6 +165,7 @@ class ImportViewModel(
             label = f.label, durationMin = f.durationMin, sessions = summaries,
             existingSessionId = f.existingSessionId, editing = f.editing,
             showCircuitPicker = f.showCircuitPicker, showSessionPicker = f.showSessionPicker, showNewCircuit = f.showNewCircuit,
+            confirmReplace = f.confirmReplace,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ImportUiState(dateTime = form.value.dateTime))
 
@@ -349,6 +354,28 @@ class ImportViewModel(
     // ---------------- Guardar ----------------
 
     fun save() {
+        val state = uiState.value
+        if (!state.canSave) return
+        val existingId = state.existingSessionId
+        if (state.destination == ImportDestination.EXISTING_SESSION && existingId != null && participantRepository != null) {
+            // Importar sobre una tanda que ya tiene clasificación la sustituye: se pide confirmación.
+            viewModelScope.launch {
+                val hasClassification = participantRepository.observeBySession(existingId).first().isNotEmpty()
+                if (hasClassification) form.update { it.copy(confirmReplace = true) } else doSave()
+            }
+            return
+        }
+        doSave()
+    }
+
+    fun confirmReplace() {
+        form.update { it.copy(confirmReplace = false) }
+        doSave()
+    }
+
+    fun dismissReplace() = form.update { it.copy(confirmReplace = false) }
+
+    private fun doSave() {
         val state = uiState.value
         if (!state.canSave) return
         val me = state.me ?: return

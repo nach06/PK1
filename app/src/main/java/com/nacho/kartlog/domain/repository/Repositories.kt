@@ -57,6 +57,9 @@ interface ParticipantRepository {
 }
 
 interface ImportRepository {
+    /** Vacía participantes, sus vueltas y el texto original importado de todas las tandas; no toca las vueltas propias. */
+    suspend fun clearRivalData()
+
     /**
      * Guarda en una sola transacción la sesión (o las vueltas añadidas a la existente), las vueltas
      * propias con origen IMPORTED y los participantes con las vueltas de los demás. Devuelve el id de la sesión.

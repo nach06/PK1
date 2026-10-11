@@ -55,6 +55,7 @@ class AppContainer(context: Context) {
             ImportViewModel(
                 circuitRepository, sessionRepository, lapRepository, importRepository,
                 userSettings, importInbox, imageTextRecognizer,
+                participantRepository = participantRepository,
             )
         }
     }
@@ -75,7 +76,7 @@ class AppContainer(context: Context) {
         DebugToolsFactory.create(context, database, circuitRepository, sessionRepository, lapRepository)
 
     val settingsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
-        initializer { SettingsViewModel(debugTools, SessionsCsvExporter(sessionRepository, lapRepository), userSettings, importInbox) }
+        initializer { SettingsViewModel(debugTools, SessionsCsvExporter(sessionRepository, lapRepository), userSettings, importInbox, importRepository) }
     }
 
     val sessionListViewModelFactory: ViewModelProvider.Factory = viewModelFactory {

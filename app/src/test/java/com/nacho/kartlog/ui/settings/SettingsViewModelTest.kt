@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.nacho.kartlog.data.local.KartLogDatabase
 import com.nacho.kartlog.data.repository.CircuitRepositoryImpl
 import com.nacho.kartlog.data.repository.LapRepositoryImpl
+import com.nacho.kartlog.data.repository.ParticipantRepositoryImpl
 import com.nacho.kartlog.data.repository.SessionRepositoryImpl
 import com.nacho.kartlog.domain.model.NewSession
 import com.nacho.kartlog.domain.model.SessionType
@@ -97,6 +98,34 @@ class SettingsViewModelTest {
             inbox.content.first { it != null },
         )
         assertTrue(vm.uiState.value.sampleChoices.isEmpty())
+    }
+
+    @Test
+    fun exportAll_neverIncludesRivalData_andClearRivalDataKeepsMyLaps() = run {
+        val circuit = CircuitRepositoryImpl(db.circuitDao()).add("Asupark", null)
+        val importer = com.nacho.kartlog.data.repository.ImportRepositoryImpl(db.importDao())
+        val sessionId = importer.importSession(
+            com.nacho.kartlog.domain.model.ImportRequest(
+                newSession = NewSession(circuit, 1_000, SessionType.FREE, 28, null, null, null, TrackCondition.DRY, "", importedRaw = "RIVAL_SECRETO"),
+                existingSessionId = null,
+                myLapTimesMs = listOf(80_000, 81_000),
+                me = com.nacho.kartlog.domain.model.ParticipantImport(2, "Nacho", 28, 80_000, 80_500, 2),
+                others = listOf(com.nacho.kartlog.domain.model.ParticipantImport(1, "Rival Uno", 7, 70_123, 71_000, 2, listOf(70_123, 71_877))),
+            ),
+        )
+        val vm = SettingsViewModel(
+            null, SessionsCsvExporter(SessionRepositoryImpl(db.sessionDao()), LapRepositoryImpl(db.lapDao())),
+            com.nacho.kartlog.ui.importing.FakeSettings(""), importRepository = importer, now = { 1_760_000_000_000 },
+        )
+        vm.exportAll()
+        val csv = withTimeout(10_000) { vm.shareFiles.first() }.content
+        assertTrue(csv.contains("80.000") || csv.contains("1:20.000") || csv.contains("80000"))
+        listOf("Rival Uno", "RIVAL_SECRETO", "70.123", "1:10.123", "70123").forEach { assertTrue("el CSV no debe contener «$it»", !csv.contains(it)) }
+
+        vm.clearRivalData()
+        assertEquals(SettingsMessage.RIVALS_CLEARED, vm.uiState.first { it.message != null }.message)
+        assertEquals(0, ParticipantRepositoryImpl(db.participantDao()).observeBySession(sessionId).first().size)
+        assertEquals(2, LapRepositoryImpl(db.lapDao()).observeBySession(sessionId).first().size)
     }
 
     private fun viewModel(): SettingsViewModel {

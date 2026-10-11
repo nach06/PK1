@@ -138,4 +138,25 @@ class ImportRepositoryTest {
     fun request_needsExactlyOneTarget() {
         ImportRequest(null, null, emptyList(), null, emptyList())
     }
+
+    @Test
+    fun clearRivalData_emptiesClassificationsAndRawText_butKeepsMyLaps() = run {
+        val circuit = CircuitRepositoryImpl(db.circuitDao()).add("Asupark", null)
+        val a = importer.importSession(ImportRequest(newSession(circuit), null, listOf(83_488, 80_902), me, listOf(deyvis)))
+        val b = importer.importSession(ImportRequest(newSession(circuit), null, listOf(79_074), me, listOf(deyvis)))
+        assertEquals(4, count("SELECT COUNT(*) FROM participants"))
+        assertEquals(12, count("SELECT COUNT(*) FROM participant_laps"))
+        assertEquals(2, count("SELECT COUNT(*) FROM sessions WHERE importedRaw IS NOT NULL"))
+
+        importer.clearRivalData()
+
+        assertEquals(0, count("SELECT COUNT(*) FROM participants"))
+        assertEquals(0, count("SELECT COUNT(*) FROM participant_laps"))
+        assertEquals(0, count("SELECT COUNT(*) FROM sessions WHERE importedRaw IS NOT NULL"))
+        // Mis tandas y mis vueltas (con su origen IMPORTED) siguen ahí.
+        assertEquals(2, count("SELECT COUNT(*) FROM sessions"))
+        assertEquals(listOf(83_488L, 80_902L), laps.observeBySession(a).first().map { it.timeMs })
+        assertEquals(listOf(79_074L), laps.observeBySession(b).first().map { it.timeMs })
+        assertTrue(laps.observeBySession(a).first().all { it.source == LapSource.IMPORTED })
+    }
 }

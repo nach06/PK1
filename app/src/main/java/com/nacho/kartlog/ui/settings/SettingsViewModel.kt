@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nacho.kartlog.domain.importing.ImportInbox
 import com.nacho.kartlog.domain.importing.SharedContent
+import com.nacho.kartlog.domain.repository.ImportRepository
 import com.nacho.kartlog.domain.settings.UserSettings
 import com.nacho.kartlog.domain.util.SessionsCsvExporter
 import kotlinx.coroutines.channels.Channel
@@ -18,7 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class SettingsMessage { SEEDED, WIPED, FAILED, NOTHING_TO_EXPORT, SAMPLES_MISSING }
+enum class SettingsMessage { SEEDED, WIPED, FAILED, NOTHING_TO_EXPORT, SAMPLES_MISSING, RIVALS_CLEARED }
 
 /** Fichero CSV listo para compartir. */
 data class ShareFile(val fileName: String, val content: String)
@@ -37,6 +38,7 @@ class SettingsViewModel(
     private val exporter: SessionsCsvExporter,
     private val userSettings: UserSettings,
     private val importInbox: ImportInbox? = null,
+    private val importRepository: ImportRepository? = null,
     private val now: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SettingsUiState(debugToolsAvailable = debugTools != null))
@@ -70,6 +72,19 @@ class SettingsViewModel(
     val driverName: StateFlow<String> = userSettings.driverName
 
     fun setDriverName(name: String) = userSettings.setDriverName(name)
+
+    /** Borra clasificaciones, vueltas de rivales y textos originales importados; tus vueltas se conservan. */
+    fun clearRivalData() {
+        val repository = importRepository ?: return
+        if (_uiState.value.isBusy) return
+        _uiState.update { it.copy(isBusy = true) }
+        viewModelScope.launch {
+            val result = runCatching { repository.clearRivalData() }
+            _uiState.update {
+                it.copy(isBusy = false, message = if (result.isSuccess) SettingsMessage.RIVALS_CLEARED else SettingsMessage.FAILED)
+            }
+        }
+    }
 
     fun seedDebugData() = runDebug(SettingsMessage.SEEDED) { it.seed() }
 

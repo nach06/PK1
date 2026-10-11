@@ -105,6 +105,12 @@
     <string name="action_continue">Continuar</string>
     <string name="settings_debug_title">Depuración (solo debug)</string>
     <string name="settings_seed">Cargar datos de prueba</string>
+    <string name="settings_clear_rivals">Borrar datos de rivales</string>
+    <string name="settings_clear_rivals_hint">Elimina las clasificaciones, las vueltas de otros pilotos y el texto original de las importaciones. Tus vueltas no se tocan. La exportación a CSV nunca incluye datos de rivales.</string>
+    <string name="settings_clear_rivals_title">¿Borrar datos de rivales?</string>
+    <string name="settings_clear_rivals_message">Se vaciarán las clasificaciones y las vueltas de otros pilotos de todas las tandas importadas, y el texto original que se guardó al importar. Tus tandas y tus vueltas se conservan.</string>
+    <string name="settings_clear_rivals_confirm">Borrar rivales</string>
+    <string name="settings_rivals_cleared">Datos de rivales borrados</string>
     <string name="settings_test_ocr">Probar OCR con muestra</string>
     <string name="settings_samples_missing">Añade muestras en app/src/debug/assets/muestras/</string>
     <string name="settings_wipe">Borrar todos los datos</string>
@@ -213,6 +219,9 @@
     <string name="import_duplicates_warning">%1$d vueltas tienen exactamente el mismo tiempo que otras de esa tanda: puede que ya las hubieras guardado</string>
     <string name="import_duration">Duración: %1$d min</string>
     <string name="import_label_hint">Título de la sesión (opcional)</string>
+    <string name="import_replace_title">¿Sustituir la clasificación?</string>
+    <string name="import_replace_message">Esta tanda ya tiene una clasificación importada. Se sustituirá por la nueva y las vueltas se añadirán a continuación de las que ya tiene.</string>
+    <string name="import_replace_confirm">Sustituir</string>
     <string name="import_save">Guardar importación</string>
     <string name="import_me_saved_hint">Se guardarán tus vueltas como importadas y la clasificación de la sesión</string>
     <string name="empty_import">Importar tiempos</string>

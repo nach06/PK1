@@ -47,12 +47,14 @@ fun SettingsScreen(
     val snackbar = remember { SnackbarHostState() }
     // 0 = sin diálogo, 1 = primera confirmación, 2 = segunda confirmación.
     var wipeStep by rememberSaveable { mutableIntStateOf(0) }
+    var confirmRivals by rememberSaveable { mutableStateOf(false) }
 
     val messageText = when (state.message) {
         SettingsMessage.SEEDED -> stringResource(R.string.settings_seeded)
         SettingsMessage.WIPED -> stringResource(R.string.settings_wiped)
         SettingsMessage.FAILED -> stringResource(R.string.settings_failed)
         SettingsMessage.NOTHING_TO_EXPORT -> stringResource(R.string.settings_nothing_to_export)
+        SettingsMessage.RIVALS_CLEARED -> stringResource(R.string.settings_rivals_cleared)
         SettingsMessage.SAMPLES_MISSING -> stringResource(R.string.settings_samples_missing)
         null -> null
     }
@@ -123,6 +125,19 @@ fun SettingsScreen(
                         color = MaterialTheme.kartColors.textMuted,
                         modifier = Modifier.padding(top = 8.dp),
                     )
+                    SecondaryButton(
+                        text = stringResource(R.string.settings_clear_rivals),
+                        onClick = { confirmRivals = true },
+                        enabled = !state.isBusy,
+                        color = MaterialTheme.kartColors.warning,
+                        modifier = Modifier.padding(top = 16.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_clear_rivals_hint),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.kartColors.textMuted,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
                 }
             }
 
@@ -171,6 +186,31 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+    }
+
+    if (confirmRivals) {
+        AlertDialog(
+            onDismissRequest = { confirmRivals = false },
+            containerColor = MaterialTheme.kartColors.card,
+            title = { Text(stringResource(R.string.settings_clear_rivals_title), style = MaterialTheme.typography.titleLarge) },
+            text = { Text(stringResource(R.string.settings_clear_rivals_message), style = MaterialTheme.typography.bodyLarge) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmRivals = false
+                        viewModel.clearRivalData()
+                    },
+                    modifier = Modifier.heightIn(min = 56.dp),
+                ) {
+                    Text(stringResource(R.string.settings_clear_rivals_confirm).uppercase(), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRivals = false }, modifier = Modifier.heightIn(min = 56.dp)) {
+                    Text(stringResource(R.string.action_cancel).uppercase(), style = MaterialTheme.typography.titleSmall)
+                }
+            },
+        )
     }
 
     if (state.sampleChoices.isNotEmpty()) {
