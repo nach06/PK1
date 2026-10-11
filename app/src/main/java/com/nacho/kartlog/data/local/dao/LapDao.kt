@@ -30,6 +30,9 @@ abstract class LapDao {
     @Query("SELECT * FROM laps WHERE sessionId = :sessionId ORDER BY number ASC")
     abstract fun observeBySession(sessionId: Long): Flow<List<LapEntity>>
 
+    @Query("SELECT * FROM laps ORDER BY sessionId, number")
+    abstract fun observeAll(): Flow<List<LapEntity>>
+
     /** Siguiente número de vuelta libre: máximo actual + 1 (1 si no hay vueltas). */
     @Query("SELECT COALESCE(MAX(number), 0) + 1 FROM laps WHERE sessionId = :sessionId")
     abstract suspend fun nextNumber(sessionId: Long): Int

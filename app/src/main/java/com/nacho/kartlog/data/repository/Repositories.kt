@@ -47,6 +47,8 @@ class LapRepositoryImpl(private val dao: LapDao) : LapRepository {
     override fun observeBySession(sessionId: Long): Flow<List<Lap>> =
         dao.observeBySession(sessionId).map { list -> list.map { it.toDomain() } }
 
+    override fun observeAll(): Flow<List<Lap>> = dao.observeAll().map { list -> list.map { it.toDomain() } }
+
     override suspend fun addManual(sessionId: Long, timeMs: Long): Long =
         dao.insertNext(sessionId, timeMs, LapSource.MANUAL)
 

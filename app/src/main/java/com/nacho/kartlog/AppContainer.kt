@@ -10,6 +10,7 @@ import com.nacho.kartlog.data.repository.LapRepositoryImpl
 import com.nacho.kartlog.data.repository.SessionRepositoryImpl
 import com.nacho.kartlog.debug.DebugTools
 import com.nacho.kartlog.debug.DebugToolsFactory
+import com.nacho.kartlog.domain.analytics.AnalyticsSource
 import com.nacho.kartlog.domain.repository.CircuitRepository
 import com.nacho.kartlog.domain.repository.LapRepository
 import com.nacho.kartlog.domain.repository.SessionRepository
@@ -25,6 +26,8 @@ class AppContainer(context: Context) {
     val circuitRepository: CircuitRepository = CircuitRepositoryImpl(database.circuitDao())
     val sessionRepository: SessionRepository = SessionRepositoryImpl(database.sessionDao())
     val lapRepository: LapRepository = LapRepositoryImpl(database.lapDao())
+
+    val analyticsSource = AnalyticsSource(sessionRepository, lapRepository)
 
     /** Herramientas de depuración: `null` en release. */
     val debugTools: DebugTools? =

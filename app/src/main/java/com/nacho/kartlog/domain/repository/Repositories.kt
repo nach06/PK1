@@ -32,6 +32,9 @@ interface LapRepository {
     /** Vueltas de la sesión ordenadas por número. */
     fun observeBySession(sessionId: Long): Flow<List<Lap>>
 
+    /** Todas las vueltas de todas las tandas (para análisis). */
+    fun observeAll(): Flow<List<Lap>>
+
     /** Añade una vuelta manual con el siguiente número libre de la sesión. */
     suspend fun addManual(sessionId: Long, timeMs: Long): Long
 
