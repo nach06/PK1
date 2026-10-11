@@ -110,6 +110,9 @@ fun DashboardScreen(
     when (state.timing.phase) {
         TimingPhase.RUNNING -> {
             KeepScreenOn()
+            var confirmLeave by remember { mutableStateOf(false) }
+            androidx.activity.compose.BackHandler { confirmLeave = true }
+            if (confirmLeave) LeaveDialog(onStay = { confirmLeave = false }, onExit = { confirmLeave = false; onBack() })
             RunningDashboard(timing = state.timing, onFinish = viewModel::finish, onPit = viewModel::requestPit, modifier = Modifier.fillMaxSize())
         }
         TimingPhase.STOPPED -> Scaffold(
@@ -151,6 +154,27 @@ fun DashboardScreen(
             onDismiss = viewModel::dismissCircuitPicker,
         )
     }
+}
+
+/** Atrás con la tanda en marcha: seguir en pista o salir dejándola corriendo (A4). Terminar solo con la pulsación larga. */
+@Composable
+private fun LeaveDialog(onStay: () -> Unit, onExit: () -> Unit) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onStay,
+        containerColor = MaterialTheme.kartColors.card,
+        title = { Text(stringResource(R.string.track_leave_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.testTag("leave_title")) },
+        text = { Text(stringResource(R.string.track_leave_message), style = MaterialTheme.typography.bodyLarge) },
+        confirmButton = {
+            TextButton(onClick = onStay, modifier = Modifier.heightIn(min = 56.dp).testTag("leave_stay")) {
+                Text(stringResource(R.string.track_leave_stay).uppercase(), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onExit, modifier = Modifier.heightIn(min = 56.dp).testTag("leave_exit")) {
+                Text(stringResource(R.string.track_leave_exit).uppercase(), style = MaterialTheme.typography.titleSmall)
+            }
+        },
+    )
 }
 
 /** Mantiene la pantalla encendida mientras se cronometra. */

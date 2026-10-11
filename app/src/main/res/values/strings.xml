@@ -290,6 +290,13 @@
     <string name="track_unreliable_lap">Alguna vuelta se midió con un hueco de señal GPS: su tiempo es menos fiable.</string>
     <string name="track_lap_kept">Se guardará</string>
     <string name="track_lap_discarded">No se guardará</string>
+    <string name="track_banner_lap">Tanda en pista · Vuelta %1$d · mejor %2$s</string>
+    <string name="track_banner_waiting">Tanda en pista · esperando la meta</string>
+    <string name="track_banner_back">Volver</string>
+    <string name="track_leave_title">¿Seguir en pista o salir sin terminar?</string>
+    <string name="track_leave_message">Si sales, la tanda sigue cronometrándose en segundo plano y verás un aviso en la parte inferior para volver. Para terminarla, mantén pulsado el botón de terminar.</string>
+    <string name="track_leave_stay">Seguir en pista</string>
+    <string name="track_leave_exit">Salir sin terminar</string>
     <string name="track_hold_to_finish">Mantén pulsado para terminar</string>
     <string name="track_summary_laps">Vueltas</string>
     <string name="track_no_laps">No se cerró ninguna vuelta: no hay nada que guardar.</string>

@@ -48,6 +48,7 @@ import com.nacho.kartlog.AppContainer
 import com.nacho.kartlog.R
 import com.nacho.kartlog.ui.analysis.AnalysisScreen
 import com.nacho.kartlog.ui.calibration.CalibrationScreen
+import com.nacho.kartlog.ui.components.RunningBanner
 import com.nacho.kartlog.ui.circuits.CircuitsScreen
 import com.nacho.kartlog.ui.dashboard.DashboardScreen
 import com.nacho.kartlog.ui.detail.SessionDetailScreen
@@ -105,6 +106,8 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
     val showBottomBar = TopLevelDestination.entries.any { dest ->
         currentDestination?.hierarchy?.any { it.route == dest.route } == true
     }
+
+    val timing by container.timingSession.state.collectAsState()
 
     // Contenido recibido con «Compartir → KartLog»: abre la pantalla de importación (que lo recoge del buzón).
     val shared by container.importInbox.content.collectAsState()
@@ -166,10 +169,15 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (showBottomBar) {
-                KartNavigationBar(
-                    isSelected = { dest -> currentDestination?.hierarchy?.any { it.route == dest.route } == true },
-                    onSelect = { navController.navigateTopLevel(it.route) },
-                )
+                androidx.compose.foundation.layout.Column {
+                    if (timing.phase == TimingPhase.RUNNING) {
+                        RunningBanner(timing = timing, onReturn = { navController.navigate(Routes.TRACK) { launchSingleTop = true } })
+                    }
+                    KartNavigationBar(
+                        isSelected = { dest -> currentDestination?.hierarchy?.any { it.route == dest.route } == true },
+                        onSelect = { navController.navigateTopLevel(it.route) },
+                    )
+                }
             }
         },
     ) { innerPadding ->
