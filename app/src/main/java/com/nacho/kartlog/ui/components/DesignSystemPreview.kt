@@ -28,7 +28,7 @@ import com.nacho.kartlog.ui.theme.kartColors
 private fun DesignSystemPreview() {
     KartLogTheme {
         var kart by remember { mutableIntStateOf(7) }
-        var temp by remember { mutableIntStateOf(24) }
+        var temp by remember { mutableStateOf<Int?>(24) }
         var type by remember { mutableStateOf("Libre") }
         var digits by remember { mutableStateOf("48532") }
         Column(
@@ -48,7 +48,7 @@ private fun DesignSystemPreview() {
             }
             BigStepper("Kart nº", "$kart", { kart-- }, { kart++ })
             ChipSelector(listOf("Libre", "Clasificación", "Carrera"), type, { type = it }, { it })
-            TempSlider("Temperatura ambiente", temp, { temp = it }, { "$it °C" })
+            TempSlider("Temperatura ambiente", temp, { temp = it }, { temp = null }, { "$it °C" })
             RacingTextField(value = "", onValueChange = {}, placeholder = "Notas")
             PrimaryButton(text = "Guardar vuelta", onClick = {})
             StatBadge(label = "Entrada", value = LapTime.formatDigits(digits), valueStyle = KartTextStyles.timeEntry)

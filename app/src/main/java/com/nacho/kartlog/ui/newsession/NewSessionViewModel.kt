@@ -9,28 +9,38 @@ import com.nacho.kartlog.domain.model.TrackCondition
 import com.nacho.kartlog.domain.repository.CircuitRepository
 import com.nacho.kartlog.domain.repository.SessionRepository
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZoneOffset
 
 data class NewSessionUiState(
+    /** Circuitos con los usados más recientemente primero; el resto, por nombre. */
     val circuits: List<Circuit> = emptyList(),
     val circuitId: Long? = null,
+    val dateTime: Long = 0L,
     val type: SessionType = SessionType.FREE,
     val kartNumber: Int? = null,
     val ballastKg: Int? = null,
-    val ambientTempC: Int = DEFAULT_AMBIENT_C,
-    val trackTempC: Int = DEFAULT_TRACK_C,
+    /** `null` hasta que el usuario toca el slider. */
+    val ambientTempC: Int? = null,
+    val trackTempC: Int? = null,
     val condition: TrackCondition = TrackCondition.DRY,
     val notes: String = "",
     val isSaving: Boolean = false,
+    val showCircuitPicker: Boolean = false,
     val circuitDialog: CircuitDialogState? = null,
 ) {
+    val selectedCircuit: Circuit? get() = circuits.firstOrNull { it.id == circuitId }
     val canSave: Boolean get() = circuitId != null && !isSaving
 }
 
@@ -42,19 +52,19 @@ data class CircuitDialogState(
 
 private data class Form(
     val circuitId: Long? = null,
+    val dateTime: Long,
     val type: SessionType = SessionType.FREE,
     val kartNumber: Int? = null,
     val ballastKg: Int? = null,
-    val ambientTempC: Int = DEFAULT_AMBIENT_C,
-    val trackTempC: Int = DEFAULT_TRACK_C,
+    val ambientTempC: Int? = null,
+    val trackTempC: Int? = null,
     val condition: TrackCondition = TrackCondition.DRY,
     val notes: String = "",
     val isSaving: Boolean = false,
+    val showCircuitPicker: Boolean = false,
     val circuitDialog: CircuitDialogState? = null,
 )
 
-private const val DEFAULT_AMBIENT_C = 20
-private const val DEFAULT_TRACK_C = 30
 private const val MAX_KART = 99
 private const val MAX_BALLAST_KG = 60
 private const val LENGTH_STEP_M = 50
@@ -63,14 +73,27 @@ private const val MAX_LENGTH_M = 10_000
 class NewSessionViewModel(
     private val circuits: CircuitRepository,
     private val sessionRepository: SessionRepository,
+    private val zone: ZoneId = ZoneId.systemDefault(),
+    now: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
 
-    private val form = MutableStateFlow(Form())
+    private val form = MutableStateFlow(Form(dateTime = now().truncatedToMinute()))
 
-    val uiState: StateFlow<NewSessionUiState> = combine(form, circuits.observeAll()) { f, list ->
+    /** Circuitos ordenados por uso reciente (última tanda creada) y, tras ellos, por nombre. */
+    private val orderedCircuits: Flow<Pair<List<Circuit>, Set<Long>>> =
+        combine(circuits.observeAll(), sessionRepository.observeSummaries()) { list, summaries ->
+            val lastUse = summaries.groupBy { it.circuit.id }.mapValues { (_, v) -> v.maxOf { it.session.id } }
+            val sorted = list.sortedWith(
+                compareByDescending<Circuit> { lastUse[it.id] ?: Long.MIN_VALUE }.thenBy { it.name.lowercase() },
+            )
+            sorted to lastUse.keys
+        }
+
+    val uiState: StateFlow<NewSessionUiState> = combine(form, orderedCircuits) { f, (list, _) ->
         NewSessionUiState(
             circuits = list,
             circuitId = f.circuitId,
+            dateTime = f.dateTime,
             type = f.type,
             kartNumber = f.kartNumber,
             ballastKg = f.ballastKg,
@@ -79,21 +102,47 @@ class NewSessionViewModel(
             condition = f.condition,
             notes = f.notes,
             isSaving = f.isSaving,
+            showCircuitPicker = f.showCircuitPicker,
             circuitDialog = f.circuitDialog,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NewSessionUiState())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NewSessionUiState(dateTime = form.value.dateTime))
 
     private val savedChannel = Channel<Long>(Channel.BUFFERED)
 
     /** Emite el id de la sesión recién creada para navegar a su detalle. */
     val saved = savedChannel.receiveAsFlow()
 
-    fun selectCircuit(id: Long) = form.update { it.copy(circuitId = id) }
+    init {
+        // Preselecciona el circuito de la última tanda creada; sin tandas, no preselecciona nada.
+        viewModelScope.launch {
+            val (sorted, used) = orderedCircuits.first()
+            val last = sorted.firstOrNull { it.id in used } ?: return@launch
+            form.update { if (it.circuitId == null) it.copy(circuitId = last.id) else it }
+        }
+    }
+
+    fun selectCircuit(id: Long) = form.update { it.copy(circuitId = id, showCircuitPicker = false) }
+    fun openCircuitPicker() = form.update { it.copy(showCircuitPicker = true) }
+    fun dismissCircuitPicker() = form.update { it.copy(showCircuitPicker = false) }
     fun selectType(type: SessionType) = form.update { it.copy(type = type) }
     fun selectCondition(condition: TrackCondition) = form.update { it.copy(condition = condition) }
     fun setAmbientTemp(value: Int) = form.update { it.copy(ambientTempC = value) }
+    fun clearAmbientTemp() = form.update { it.copy(ambientTempC = null) }
     fun setTrackTemp(value: Int) = form.update { it.copy(trackTempC = value) }
+    fun clearTrackTemp() = form.update { it.copy(trackTempC = null) }
     fun setNotes(value: String) = form.update { it.copy(notes = value) }
+
+    /** [utcMillis] es el valor del DatePicker de Material 3: medianoche UTC del día elegido. */
+    fun setDate(utcMillis: Long) = form.update { f ->
+        val date = Instant.ofEpochMilli(utcMillis).atZone(ZoneOffset.UTC).toLocalDate()
+        val time = Instant.ofEpochMilli(f.dateTime).atZone(zone).toLocalTime()
+        f.copy(dateTime = date.atTime(time).atZone(zone).toInstant().toEpochMilli())
+    }
+
+    fun setTime(hour: Int, minute: Int) = form.update { f ->
+        val date = Instant.ofEpochMilli(f.dateTime).atZone(zone).toLocalDate()
+        f.copy(dateTime = date.atTime(hour, minute).atZone(zone).toInstant().toEpochMilli())
+    }
 
     // Steppers: null = "sin dato". "+" desde null arranca en el mínimo; "−" en el mínimo vuelve a null.
     fun incrementKart() = form.update { it.copy(kartNumber = ((it.kartNumber ?: 0) + 1).coerceAtMost(MAX_KART)) }
@@ -110,7 +159,7 @@ class NewSessionViewModel(
     }
 
     // Alta rápida de circuito.
-    fun openCircuitDialog() = form.update { it.copy(circuitDialog = CircuitDialogState()) }
+    fun openCircuitDialog() = form.update { it.copy(circuitDialog = CircuitDialogState(), showCircuitPicker = false) }
     fun dismissCircuitDialog() = form.update { it.copy(circuitDialog = null) }
 
     fun setCircuitName(name: String) = form.update { f ->
@@ -155,12 +204,12 @@ class NewSessionViewModel(
                 val id = sessionRepository.create(
                     NewSession(
                         circuitId = circuitId,
-                        dateTime = System.currentTimeMillis(),
+                        dateTime = f.dateTime,
                         type = f.type,
                         kartNumber = f.kartNumber,
                         ballastKg = f.ballastKg?.toFloat(),
-                        ambientTempC = f.ambientTempC.toFloat(),
-                        trackTempC = f.trackTempC.toFloat(),
+                        ambientTempC = f.ambientTempC?.toFloat(),
+                        trackTempC = f.trackTempC?.toFloat(),
                         trackCondition = f.condition,
                         notes = f.notes.trim(),
                     ),
@@ -172,3 +221,5 @@ class NewSessionViewModel(
         }
     }
 }
+
+private fun Long.truncatedToMinute(): Long = this - this % 60_000

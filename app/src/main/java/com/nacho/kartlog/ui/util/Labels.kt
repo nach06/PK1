@@ -28,3 +28,13 @@ private val dateFormatter: DateTimeFormatter =
 
 fun formatDateTime(epochMs: Long): String =
     dateFormatter.format(Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()))
+
+private val dateOnlyFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("d MMM yyyy", Locale("es", "ES"))
+private val timeOnlyFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale("es", "ES"))
+
+fun formatDate(epochMs: Long): String =
+    dateOnlyFormatter.format(Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()))
+
+fun formatTime(epochMs: Long): String =
+    timeOnlyFormatter.format(Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()))

@@ -2,6 +2,7 @@ package com.nacho.kartlog.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -25,6 +26,7 @@ fun RacingTextField(
     isError: Boolean = false,
     supportingText: String? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
     val kart = MaterialTheme.kartColors
     OutlinedTextField(
@@ -40,6 +42,7 @@ fun RacingTextField(
         minLines = minLines,
         isError = isError,
         keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
         textStyle = MaterialTheme.typography.bodyLarge,
         shape = MaterialTheme.shapes.medium,
         colors = OutlinedTextFieldDefaults.colors(

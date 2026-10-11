@@ -139,4 +139,68 @@ class SessionFlowTest {
         assertFalse(vm.saveLap())
         db.close()
     }
+
+    @Test
+    fun newSession_temperaturesAreNullUnlessTouched() = withTimeoutBlocking {
+        val db = KartLogDatabase.create(context)
+        val circuits = CircuitRepositoryImpl(db.circuitDao())
+        val sessions = SessionRepositoryImpl(db.sessionDao())
+        circuits.add("Zuera", null)
+        val vm = NewSessionViewModel(circuits, sessions)
+        val initial = vm.uiState.first { it.circuits.isNotEmpty() }
+        assertEquals(null, initial.circuitId) // sin tandas previas no se preselecciona nada
+        assertEquals(null, initial.ambientTempC)
+        assertEquals(null, initial.trackTempC)
+
+        vm.selectCircuit(initial.circuits.single().id)
+        vm.setTrackTemp(33)
+        vm.save()
+        val id = vm.saved.first()
+        val detail = sessions.observeDetail(id).first { it != null }!!
+        assertEquals(null, detail.session.ambientTempC)
+        assertEquals(33f, detail.session.trackTempC)
+
+        vm.clearTrackTemp()
+        assertEquals(null, vm.uiState.first { it.trackTempC == null }.trackTempC)
+        db.close()
+    }
+
+    @Test
+    fun newSession_preselectsCircuitOfLastCreatedSession_andOrdersByRecency() = withTimeoutBlocking {
+        val db = KartLogDatabase.create(context)
+        val circuits = CircuitRepositoryImpl(db.circuitDao())
+        val sessions = SessionRepositoryImpl(db.sessionDao())
+        val a = circuits.add("Alfa", null)
+        val b = circuits.add("Beta", null)
+        circuits.add("Cero", null)
+        fun newSession(circuitId: Long) = com.nacho.kartlog.domain.model.NewSession(
+            circuitId, 1_000, com.nacho.kartlog.domain.model.SessionType.FREE, null, null, null, null,
+            com.nacho.kartlog.domain.model.TrackCondition.DRY, "",
+        )
+        sessions.create(newSession(b))
+        sessions.create(newSession(a)) // la última creada es de Alfa
+
+        val vm = NewSessionViewModel(circuits, sessions)
+        val state = vm.uiState.first { it.circuitId != null && it.circuits.size == 3 }
+        assertEquals(a, state.circuitId)
+        assertEquals(listOf("Alfa", "Beta", "Cero"), state.circuits.map { it.name }) // recientes y luego por nombre
+        db.close()
+    }
+
+    @Test
+    fun newSession_dateAndTimeAreEditable() = withTimeoutBlocking {
+        val db = KartLogDatabase.create(context)
+        val vm = NewSessionViewModel(
+            CircuitRepositoryImpl(db.circuitDao()),
+            SessionRepositoryImpl(db.sessionDao()),
+            zone = java.time.ZoneOffset.UTC,
+            now = { 1_700_000_000_000 },
+        )
+        val utcMidnight = java.time.LocalDate.of(2026, 3, 5).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+        vm.setDate(utcMidnight)
+        vm.setTime(18, 30)
+        val expected = java.time.LocalDateTime.of(2026, 3, 5, 18, 30).toInstant(java.time.ZoneOffset.UTC).toEpochMilli()
+        assertEquals(expected, vm.uiState.first { it.dateTime == expected }.dateTime)
+        db.close()
+    }
 }

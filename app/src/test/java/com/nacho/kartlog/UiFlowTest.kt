@@ -1,7 +1,9 @@
 package com.nacho.kartlog
 
 import android.content.Context
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -51,9 +53,12 @@ class UiFlowTest {
         compose.onNodeWithText("Aún no hay tandas").assertIsDisplayed()
         compose.onAllNodesWithText("NUEVA TANDA").onFirst().performClick()
 
-        // El circuito (creado antes vía repositorio; el diálogo de alta se cubre en SessionFlowTest)
-        // aparece como chip y se selecciona.
-        compose.onNodeWithText("Zuera").performScrollTo().performClick()
+        // El circuito (creado antes vía repositorio; el alta se cubre en SessionFlowTest) se elige en la hoja.
+        compose.onNodeWithText("Elige circuito").performScrollTo().performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Zuera").fetchSemanticsNodes().isNotEmpty() }
+        // Semántica en vez de toque: Robolectric (gráficos legacy) no resuelve el hit-test de la hoja redondeada.
+        compose.onNodeWithText("Zuera").performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Elige circuito").fetchSemanticsNodes().isEmpty() }
 
         // Guardar tanda -> detalle.
         compose.onNodeWithText("GUARDAR").performClick()
