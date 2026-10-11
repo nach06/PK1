@@ -1,113 +1,108 @@
-# KartLog — Plan del Sprint 5 (robustez de la tanda GPS, privacidad, medición real y calidad)
+# KartLog — Informe del Sprint 4.1 (fallos del emulador) + Sprint 5 (GPS fiable en pista + datos a salvo)
 
-> **Es un plan, no una entrega:** nada de lo que sigue está implementado. Sale de releer `SPRINT4.md` contra el código de la rama
-> (`claude/kartlog-sprint-1-3hhlkb`) y de los puntos que se arrastran de los Sprints 1–3.1. Cada hallazgo indica dónde está, por qué importa y qué tarea lo cierra.
+> El plan previo (análisis de `SPRINT4.md`) está en `SPRINT5_PLAN.md`.
+> Rama `claude/kartlog-sprint-1-3hhlkb`. **Un commit por tarea y `git push` tras cada una** (tabla de hashes al final).
 
-## 0. Cómo se ha hecho el análisis
-- Lectura completa de `SPRINT4.md` (decisiones, riesgos, lista visual) y contraste con el código: `TimingSession`, `GateDetector`, `GpsSessionSaver`, `AppContainer`, `AndroidManifest.xml`, `build.gradle.kts`, `ImportDao`, `ImportScreen`, `MlKitImageTextRecognizer`, los tests y el informe de lint.
-- Comprobado a mano en el repositorio (no son suposiciones): `android:allowBackup="true"`; `isMinifyEnabled = false` en release; no existe `.github/` (sin CI); las fotos de `cache/photos` nunca se borran; el simulador deja `container.locationSource` cambiado; la tanda GPS se guarda con `dateTime = now()` al pulsar GUARDAR; el lint tiene 36 avisos sin triar.
+## Estado
+- Verificación final: `assembleDebug assembleRelease testDebugUnitTest compileDebugAndroidTestKotlin lintDebug` → ver «Verificación» al final.
+- **Tests unitarios: 234, 0 fallos.** Los instrumentados (`androidTest`) siguen **sin ejecutarse** (compilan; no hay emulador en este entorno).
+- Mutación comprobada en la lógica nueva (se rompió a propósito y el test falló): FAB, renumeración, filtro de muestras, fecha de la tanda GPS, elipsis, ajuste/verificación de meta, borrador (flush), `MIGRATION_2_3`, versión de esquema de la copia y pendiente de la consistencia.
 
-## 1. Hallazgos (por severidad)
+## PARTE A — Sprint 4.1 (fallos del emulador, Pixel 3a API 35)
 
-### Alta — pérdida de datos, privacidad o medida incorrecta
-| ID | Hallazgo | Evidencia | Se cierra en |
-|---|---|---|---|
-| H1 | **Una tanda GPS vive solo en memoria** hasta pulsar GUARDAR. Si Android mata el proceso (batería, memoria, fabricante agresivo, crash) se pierden todas las vueltas y el trazado. También en estado «parada» tras «Parar» desde la notificación. | `TimingSession` guarda `laps` y `fixes` en RAM; `START_NOT_STICKY` | **A1** |
-| H2 | **Un cruce de meta perdido fusiona dos vueltas en silencio.** Si se descarta un cruce (precisión > 15 m, deriva lateral > ±10 m de la puerta, hueco de fixes) la vuelta siguiente mide *dos* vueltas y nada lo avisa ni lo marca. | `GateDetector`: devuelve `null` sin dejar rastro del candidato | **A2** |
-| H3 | **La copia de seguridad en la nube sube lo que A5 prometía proteger:** `allowBackup="true"` incluye la BD (rivales, `importedRaw`) y `filesDir/tracks` (historial de posiciones). | `AndroidManifest.xml:15` | **B1** |
-| H4 | **Se puede abandonar el Dashboard sin querer:** no hay `BackHandler`; un gesto atrás en pista cierra la pantalla (la tanda sigue en segundo plano, pero el piloto pierde el cronómetro). Y **EMPEZAR se habilita sin comprobar que haya GPS**. | `DashboardScreen`/`DashboardViewModel.start()` | **A3, A4** |
-| H5 | **Fecha y tipo de la tanda GPS incorrectos:** la fecha es la hora de GUARDAR (no la de salida), el tipo siempre `FREE`, y `durationMin` queda vacío. Una tanda guardada horas después aparece en otro día/mes. | `GpsSessionSaver.save()` | **A5** |
-| H6 | **El simulador contamina el GPS real:** «Simular tanda en pista» cambia `container.locationSource` y no se restaura; «Marcar meta» y «En pista» seguirían usando el óvalo falso hasta reiniciar la app. | `AppContainer`: `onSimulationReady = { locationSource = it }` | **A6** |
+**A1. FAB tapaba contenido en Tandas.** *Causa:* la FAB era un `floatingActionButton` flotante sobre la lista: siempre se solapa con las cards al hacer scroll, y el `contentPadding` solo protegía a la última. *Solución:* la acción principal vive ahora en una **franja reservada de 84 dp al pie** (la lista termina encima de ella); al desplegar la FAB se oscurece el fondo (scrim) y tocar fuera la cierra. Test por NavHost con 8 tandas: la lista nunca llega a la FAB, ningún texto visible de una card se solapa con ella y la última card queda ≥ 24 dp por encima (mutación: franja a 0 dp → falla).
 
-### Media — cumplimiento de lo pedido y riesgos de producto
-| ID | Hallazgo | Evidencia | Se cierra en |
-|---|---|---|---|
-| H7 | **A1 no cumplió el texto del encargo** en el caso ambiguo (`1:25,415` → `1:25,475`): se pidió «propone la corrección» y no se propone ninguna. Se explicó, pero el usuario se queda sin ayuda. | `ImportValidation.findSingleDigitFix` | **B4** |
-| H8 | **El OCR sigue sin validarse con una imagen real** (desde el Sprint 3). `OcrLayout` solo está probado con cajas sintéticas. | `SPRINT4.md` A2 pendiente de fotos | **P0, C0** |
-| H9 | **Las fotos «temporales» no se borran** (`cache/photos/escaneo.jpg`, copias de las muestras de debug). El Sprint 3 dijo «no se guarda la foto». | `ImportScreen.kt:152`, `SampleImages` | **B2** |
-| H10 | **Sin CI y sin ejecutar nunca los tests instrumentados** (`KartLogDaoTest`, `MigrationInstrumentedTest` solo compilan). Release **sin R8** (`isMinifyEnabled=false`): lo que se ha probado no es lo que se instalaría minificado. Peso del APK con ML Kit **sin medir**. | no hay `.github/`; `build.gradle.kts` | **D1–D3** |
-| H11 | **Parches de test en lugar de soluciones:** `Thread.sleep(300)` en 8 clases por consultas Room huérfanas (flaky intermitente, visto 3 veces) y `LocalLiveClock` para esquivar un bucle de `delay`. | `*FlowTest.kt` tearDown, `DashboardScreen` | **D5** |
-| H12 | **Decimales inconsistentes:** «±0.053 s» (tarjeta GPS, `Locale.ROOT`) frente a «±0,214» y «+0,060» (resto de la app). | `GpsAccuracyCard`, `LapTime` | **D6** |
-| H13 | **A3 a 360×640 dp solo caben 6 vueltas** (se pidió ≥ 7) y la FAB desplegable añade un toque a la acción más usada (crear tanda). | `SPRINT4.md` A3/A4 | **D7** |
-| H14 | **Importaciones duplicadas:** el mismo documento puede importarse dos veces en tandas distintas sin aviso; al sustituir una clasificación, `importedRaw` conserva el texto de la *primera* importación. | `ImportDao.fillImportedRaw` (solo si es NULL) | **B3** |
-| H15 | **La medida nunca se ha contrastado con un GPS real:** no sabemos si `elapsedRealtimeNanos` tiene jitter respecto al tiempo GNSS, si el proveedor *fused* suaviza, ni la frecuencia real. La interpolación ignora la velocidad Doppler y el rumbo que ya trae cada fix. | `GateDetector`, `FusedLocationSource` | **C1–C5** |
-| H16 | **Higiene de recursos:** sin *wake lock* parcial en el servicio; ficheros `tracks/` huérfanos tras `wipeAll`; los *backups* de tanda no se pueden sacar de la app (sin exportar trazado). | `TrackingService`, `DebugSeeder.wipeAll` | **A7, C1** |
+**A2. Numeración con huecos (V8, V7, V5…).** *Causa raíz:* no era un filtro ni una consulta: el número de vuelta es un **valor guardado** y al borrar una vuelta intermedia quedaba un hueco; solo se recalculaba el siguiente número. *Solución:* `LapDao.deleteAndRenumber` borra y renumera V1…Vn en una transacción (el índice único `(sessionId, number)` obliga a pasar antes por números negativos). Tests: borrar intermedia/primera/última/varias seguidas, conservar el origen de cada vuelta, medias y **RÉCORD** recalculados al borrar la mejor, y un test por NavHost (borrar V6 de 8 → quedan V1–V7 y la mejor se recalcula).
 
-### Baja
-- Lint: `UnusedResources` (2), `PluralsCandidate` (3), `UseKtx` (3), `ObsoleteSdkInt` (3), `MonochromeLauncherIcon`, 14 `GradleDependency` y 6 `NewerVersionAvailable` (→ **D4**).
-- `BUILD_TIME` en `BuildConfig` cambia en cada compilación y fuerza recompilar dependientes (→ **D4**).
-- Un `ACTION_SEND` recibido con el Dashboard en marcha navega fuera de él (→ **A4**).
-- La elipsis del circuito y otras medidas de texto no se pueden verificar con Robolectric «legacy» (→ **D7**: modo gráfico nativo).
+**A3. Muestras `.jpeg`.** `SampleImages` acepta `.png/.jpg/.jpeg/.webp` sin distinguir mayúsculas (`isSampleImage`, con test); `LEEME.txt` y los documentos citan ahora `muestra_b.jpeg`.
 
-## 2. Qué se necesita del responsable (bloquea parte del sprint)
-| # | Entrega | Para qué |
-|---|---|---|
-| P0.1 | Pasar la **lista visual del Sprint 4** en el móvil real y anotar fallos | H8, H15; todo lo «no comprobado en dispositivo» |
-| P0.2 | Copiar `muestra_a.png` y `muestra_b.jpeg` a `app/src/debug/assets/muestras/` y enviar el **Logcat `KartLogOcr`** | calibrar `ROW_TOLERANCE`/anclaje de columnas (C0) |
-| P0.3 | **Una tanda real en pista** con el Dashboard + los tiempos oficiales, y el trazado exportado (tras C1) | medir el error GPS vs oficial: decide el ESP32 |
-| P0.4 | Respuesta a las **decisiones del §5** | A5, B1, D7 |
+**A4. Probar el importador sin teclear.** Ajustes → Depuración → «Importar muestra de texto A/B»: leen los **mismos ficheros** de `app/src/test/resources/muestras/` (se añaden como assets solo de debug, una única copia) y los entregan al buzón del flujo real de Importar. Tests: parseo de ambos textos y NavHost (A → «Nacho · Kart 28»; B → karts).
 
-## 3. Plan por partes (un commit por tarea; `./gradlew testDebugUnitTest` al cerrar cada una)
+**A5. Depuración accesible.** Sección «Depuración» **plegable al principio de Ajustes** (arranca plegada; «Simular tanda en pista» y «Probar OCR» los primeros). Solo debug. Test por NavHost (es la primera tarjeta, plegada oculta los botones, desplegada los muestra).
 
-### PARTE A — Robustez de la tanda GPS (prioridad máxima)
-- **A1. Persistencia incremental de la tanda (H1).** `TrackRecorder`: añade cada fix a `tracks/draft.csv` (flush cada ≤ 5 s o 20 fixes) y guarda `draft.json` con `setup` + vueltas cerradas + hora de inicio cada vez que se cierra una vuelta. Al arrancar la app, si existe un borrador: diálogo «Hay una tanda GPS sin guardar (N vueltas · fecha)» → *Recuperar* (abre el resumen para guardar) / *Descartar*. El borrador se borra al guardar o descartar.
-  *Aceptación:* matar el proceso durante una tanda y reabrir ofrece recuperar todas las vueltas cerradas y el trazado hasta el último flush. *Tests:* recrear `AppContainer` sobre el mismo directorio (simula la muerte), borrador corrupto/truncado no rompe, guardar elimina el borrador.
-- **A2. Calidad de vuelta y cruces perdidos (H2).** El detector registra cada *candidato* descartado (motivo: precisión, fuera de puerta, rebote, hueco) y marca cada vuelta con `LapQuality`: `OK`, `UNRELIABLE_GAP`, `SUSPECT_LONG` (> 1,6 × mediana de las vueltas limpias y con candidato descartado dentro) o `AFTER_DROPPED_CANDIDATE`. Para aceptar derivas: tolerancia lateral = `ancho/2 + precisión del fix` y ancho por defecto configurable por circuito (20 m → propuesta 30 m). Dashboard y Detalle muestran ⚠ en esas vueltas; el Detalle ofrece **«Dividir vuelta»** (en el instante del candidato descartado, si se conoce) y «Eliminar». La calidad se guarda en `Lap` solo si se decide en §5 (si no, se deriva del trazado al abrir).
-  *Tests:* simular un cruce con deriva lateral de 12 m y otro con precisión 18 m en medio de una tanda → la vuelta fusionada sale marcada y «Dividir» devuelve las dos vueltas con error ≤ 50 ms; sin candidatos descartados no aparece ningún ⚠.
-- **A3. Comprobación de GPS antes de empezar (H4).** La preparación escucha el GPS (solo con la pantalla visible) y muestra «GPS ±x m · y Hz»; **EMPEZAR** exige un fix reciente (< 3 s) con precisión ≤ 10 m, con opción «Empezar igualmente» tras confirmar. *Tests:* sin fix → deshabilitado; precisión 12 m → aviso; con fix bueno → habilitado.
-- **A4. Protección contra gestos accidentales (H4).** `BackHandler` en el Dashboard en marcha: se ignora (con aviso discreto «Mantén pulsado para terminar»); un `ACTION_SEND` durante una tanda no navega (queda encolado hasta terminar). *Test por NavHost:* atrás en marcha no cambia de pantalla.
-- **A5. Datos correctos de la tanda GPS (H5).** `dateTime` = hora del **primer cruce** (o de EMPEZAR si no hubo), `durationMin` calculada, tipo elegible en la preparación (por defecto Libre) con las mismas fichas que «Nueva tanda». *Test:* guardar 3 h después conserva la fecha de salida.
-- **A6. Simulador aislado (H6).** El origen simulado deja de reemplazar al real: se pasa como argumento de la sesión (`TimingSession.start(source)`) y la UI de depuración lo selecciona solo para esa sesión; al terminar/descartar se restaura el `FusedLocationSource`. *Test:* tras simular, «Marcar meta» usa el origen real.
-- **A7. Higiene (H16).** `PARTIAL_WAKE_LOCK` mientras el servicio cronometra (con *timeout* de seguridad); barrido de `tracks/` al arrancar (ficheros sin sesión ni borrador → borrar); `wipeAll` también vacía `tracks/`. *Tests:* barrido conserva los ficheros con sesión y borra los huérfanos.
+**A6. Tipo de sesión GPS.** Selector Libre / Clasificación / Carrera / **Resistencia** (nuevo valor `ENDURANCE`, sin migración: se guarda como texto) en la preparación del Dashboard. La **fecha es la de EMPEZAR** (no la de guardar) y `durationMin` se calcula (EMPEZAR → parar). Test por NavHost: guardar 3 h después conserva fecha, tipo y 47 min (mutación comprobada).
 
-### PARTE B — Privacidad y datos importados
-- **B1. Copias de seguridad (H3).** Según la decisión §5-1: `allowBackup="false"` (recomendado, app personal sin nube) o `dataExtractionRules`/`fullBackupContent` que excluyan BD, `tracks/` y preferencias. Añadir **«Exportar copia completa»** (ZIP con BD + trazados, vía *Share*) y **«Importar copia»** para no perder datos al cambiar de móvil. *Tests:* el manifiesto declara la política elegida (test de lectura del XML); round-trip exportar→importar sobre una BD con rivales y trazados.
-- **B2. Fotos temporales (H9).** Borrar `cache/photos/*` al terminar el OCR (éxito, fallo o cancelación) y purgar al arrancar. *Test:* tras reconocer, el fichero ya no existe.
-- **B3. Duplicados y texto original (H14).** Huella (SHA-256 del texto normalizado) en `sessions.importedRawHash` (**Room v4** con migración explícita y test) → aviso «Este documento ya está importado en la tanda X»; al sustituir una clasificación se actualiza también `importedRaw`/huella. *Tests:* migración 3→4 y cadena 1→4; importar dos veces avisa; sustituir actualiza el texto.
-- **B4. Candidatos de corrección (H7).** Cuando la validación no puede elegir una celda, se muestran las candidatas ordenadas (V1/V2/V3/V8 con el valor que propondría cada una) como fichas; **nunca se aplica nada solo**. *Tests:* el caso `1:25,475` lista V8 entre las candidatas y aplicar V8 restaura la media; las otras no rompen la validación.
+**A7. Ficheros huérfanos.** `TrackStore.deleteAll()`; `wipeAll` de depuración borra también `tracks/`. Borrar una tanda ya borraba su trazado; ahora hay test por NavHost (borra la suya y conserva la de otra tanda). Borrar un circuito solo es posible sin tandas, así que no deja trazados.
 
-### PARTE C — Medir de verdad (decide el ESP32)
-- **C0. Calibrar el OCR con imágenes reales (H8)** *(depende de P0.2).* Ajustar `ROW_TOLERANCE`/anclaje con los logs; añadir como fixtures los textos reconstruidos reales y un test «foto → texto → pilotos» que compare con los valores de control de A y B. Si el resultado es insuficiente, plan B documentado (recorte manual de la imagen / pegar texto).
-- **C1. Exportar el trazado.** En el Detalle de una tanda GPS: «Exportar trazado (GPX/CSV)» por *Share*; y «Reproducir trazado» en depuración (`ReplayLocationSource.fromText`).
-- **C2. Registro de temporización.** Columna extra `utcMs` (`Location.time`) en el CSV de trazados (formato v2; el lector acepta v1) para medir el jitter entre `elapsedRealtimeNanos` y el tiempo GNSS y la frecuencia real. Informe en depuración: Hz medio, desviación del intervalo, precisión media.
-- **C3. Fuente GPS «puro».** `PlatformGpsLocationSource` (`LocationManager.GPS_PROVIDER`) como alternativa a *fused*, seleccionable en Ajustes → Depuración, para comparar con los mismos tiempos oficiales (B6).
-- **C4. Banco de pruebas offline del detector.** Con trazados grabados (C1) se comparan variantes: interpolación lineal actual vs. proyección con velocidad Doppler/rumbo, ancho de puerta, umbral de precisión. Se adopta una variante **solo si mejora el error medio frente al oficial** en los trazados reales.
-- **C5. Alineación automática en «Precisión vs oficial».** Elegir por defecto el desplazamiento que minimiza el error medio absoluto (el usuario puede cambiarlo).
+**A8. Elipsis del circuito.** Verificada de verdad: el test usa **Robolectric en modo gráfico nativo** (métricas de texto reales) con un nombre de 90 caracteres: una línea y `isLineEllipsized` (mutación: quitando `maxLines/overflow` falla). Esto también desbloquea otros tests de texto que antes eran imposibles.
 
-### PARTE D — Calidad, CI y deuda de tests
-- **D1. CI** (`.github/workflows/ci.yml`): `testDebugUnitTest lintDebug assembleRelease` en cada push, con caché de Gradle; artefactos: informes de test/lint y APK debug.
-- **D2. Tests instrumentados en CI** con emulador (API 35): `connectedDebugAndroidTest` (`KartLogDaoTest`, migraciones 1→2→3→4) y un *smoke test* de arranque. Es la primera vez que se ejecutarán.
-- **D3. Release real.** Activar R8 (`isMinifyEnabled=true`, `shrinkResources`) con reglas para Room/ML Kit si hacen falta; *smoke test* del APK release en emulador; **informe de tamaño** del APK (con y sin modelo ML Kit incluido) para decidir si se pasa al modelo no empaquetado.
-- **D4. Lint y dependencias.** Cerrar `UnusedResources`, `PluralsCandidate`, `UseKtx`, `ObsoleteSdkInt`, icono monocromo; subir dependencias con test tras cada grupo; `lint-baseline.xml` solo para lo que se decida diferir. `BUILD_TIME` solo en builds de depuración locales (en CI/Release, el hash).
-- **D5. Higiene de tests (H11).** `AppContainer.close()` (cierra BD y cancela `appScope`) llamado desde los `tearDown`; eliminar los `Thread.sleep(300)`; sustituir `LocalLiveClock` por un `Ticker` inyectable. *Criterio:* 5 ejecuciones seguidas de la suite completa sin un solo fallo intermitente.
-- **D6. Formato de números (H12).** Un único `NumberFormats` (coma decimal, `Locale("es","ES")` fijo para la UI; los tiempos de vuelta siguen `m:ss.mmm`) usado por consistencia, GPS, deltas, error medio; test que recorre las cadenas de UI y falla si aparece `\d\.\d{3} s`.
-- **D7. UI de Detalle y pruebas de texto (H13).** Cabecera compacta por debajo de 700 dp de alto para llegar a **≥ 7 vueltas a 360×640 dp**; revisar la FAB según §5-3; pasar los tests de texto a `@GraphicsMode(NATIVE)` de Robolectric (4.14.1 lo soporta) para poder verificar **la elipsis del circuito** y el recorte de MEDIA LIMPIA con métricas reales.
+## PARTE B — Sprint 5
 
-### PARTE E — Documentación y cierre
-- **E1.** Consolidar `SPRINT1..5.md` en `docs/` con un índice, y un `README` con: cómo comprobar la build (hash), comandos, estructura de capas y los tres modos de prueba del GPS (simulador, GPX en emulador, trazado grabado).
-- **E2.** `SPRINT5.md` (este fichero) se convierte en el informe: hallazgos cerrados, decisiones, riesgos residuales, lista visual actualizada.
+**B1. Meta más robusta** (`FinishAdjust`, `FinishVerification`, `CalibrationViewModel`, pantalla de meta).
+- **Ajuste manual:** desplazar la puerta −10…+10 m en pasos de 1 m y ancho 10–40 m (pasos de 5), con el Canvas actualizado en vivo; se puede ajustar una meta ya guardada («Ajustar meta») o la recién marcada. Se persiste en `Circuit` (misma tabla, sin columnas nuevas).
+- **Verificar meta** (tras guardar y desde la pantalla): el usuario da una vuelta y pulsa «AQUÍ» al cruzar la línea; el detector (con la meta guardada) localiza el cruce y se muestran: diferencia (tú − cruce detectado) en tiempo interpolado, rumbo de paso y su diferencia con el guardado, y separación del centro. Si pasa de **1 s o 20°** avisa y propone ajustar/repetir; si no se detecta cruce, lo dice.
+- **Sentido inverso:** al volver a marcar, si el rumbo nuevo difiere > 90° del guardado se avisa (la meta se sustituye; sin columnas nuevas).
+- Tests: dominio (desplazamiento exacto en metros, topes, tiempos de vuelta idénticos con la puerta movida, verificación buena/mal puesta/sin cruce), VM (topes, persistencia, cancelar, sentido inverso, verificación) y NavHost completo (ajustar +3 m y 25 m → guardar → verificar).
 
-## 4. Orden de ejecución y dependencias
-1. **Semana 1 (sin dependencias del responsable):** A1 → A2 → A3 → A4 → A5 → A6 → A7 → B1 → B2 (todo lo que protege datos y evita fallos en pista).
-2. **Semana 2:** B3 → B4 → D5 → D6 → D1/D2 (suelo de calidad antes de seguir añadiendo funciones).
-3. **Con datos del responsable (P0.x):** C0, C1, C2 → C3 → C4 → C5; D3 y D7 en paralelo.
-4. Cierre: D4, E1, E2 y la revisión visual.
+**B2. Dashboard: señal y robustez.**
+- **Salud GPS** en 3 niveles (`GpsHealth`: bueno ≤ 8 m, regular ≤ 15 m, malo) con punto de color y los Hz medidos en los últimos 5 s.
+- **Vueltas poco fiables:** cada vuelta recuerda si alguno de sus dos cruces tuvo un hueco de fixes > 2,5 s; el resumen lista esas vueltas con **Mantener/Descartar**, las cifras se recalculan y las descartadas no se guardan (test por NavHost: 6 vueltas, V3 descartada → 5 guardadas renumeradas).
+- **Borrador cada 30 s** (`FileDraftStore`): las posiciones se **añaden** a `tracks/draft.partial.csv` y la preparación va en `draft.partial.json` (y, en resistencia, las paradas pedidas en `draft.partial.pits`). Las vueltas no se guardan: se **recalculan** al recuperar pasando las posiciones por el detector (determinista, mismas vueltas al milisegundo). Al abrir la app, si hay borrador: «Tanda interrumpida» → **Recuperar** (abre el resumen para guardar) / **Descartar**. Un borrador de un circuito borrado se tira sin avisar. *Desvío del encargo:* el nombre es `draft.partial.*` y no `{sessionId}.partial.csv` porque **la sesión aún no existe** (se crea al guardar).
+- Tests: borrador (ida y vuelta, línea cortada por el crash, corrupto, orden begin→append→clear, volcado periódico y final al parar), restauración, huecos y los tres casos por NavHost (recuperar y guardar con su fecha original, descartar, sin borrador/circuito borrado).
 
-## 5. Decisiones que necesito del responsable (con mi propuesta)
-1. **Copias de seguridad (H3/B1):** ¿`allowBackup=false` + exportar/importar copia manual *(recomendado)*, o dejar la nube pero excluyendo rivales y trazados?
-2. **Calidad de vuelta (A2):** ¿se persiste en BD (nueva columna `lapQuality`, Room v4 junto a la huella de B3) o se deriva del trazado al abrir? *Propongo persistir*, porque así sobrevive a borrar el fichero del trazado.
-3. **FAB de Tandas (D7):** ¿mantener el desplegable (un toque más para «Nueva tanda») o toque = «Nueva tanda» y pulsación larga / flecha = resto? *Propongo toque corto = Nueva tanda y un segundo botón pequeño para el menú.*
-4. **Ancho de puerta por defecto (A2):** ¿20 m (actual) o 30 m? *Propongo 30 m con tolerancia por precisión*, a validar con la pista real.
-5. **Tipo de sesión GPS (A5):** ¿siempre elegible en la preparación, o recordar el último? *Propongo recordar el último.*
+**B3. GPS vs oficial.** Hecho: **sesgo sistemático** (≥ 3 vueltas, |media| > 50 ms y ≥ 80 % de las diferencias con el mismo signo) en el informe, y **«Precisión GPS ±0,xxx s (N tandas)»** en la card del circuito, calculada al vuelo (sin migración). *No hecho a propósito:* el botón «Desplazar meta X m / Aplicar al circuito». **Un desplazamiento de la puerta mueve igual la salida y la llegada de cada vuelta**, así que no cambia ningún tiempo de vuelta y no puede corregir un sesgo (solo lo haría si la velocidad de paso variase mucho entre vueltas, y entonces de forma aleatoria). Implementarlo habría dado una cifra falsa de precisión; el informe explica en pantalla de qué suele venir el sesgo (retardo del GPS / cómo cuenta la vuelta el cronometraje oficial). Si el sesgo real en pista es grande, la vía correcta es compensar el retardo del proveedor, no la meta: lo valoraremos con datos reales.
 
-## 6. Riesgos del propio plan
-- Varias tareas (A3, A7, C2, C3) solo se validan del todo en el móvil; dejaré tests de lógica y una lista visual, pero la confirmación depende de P0.1/P0.3.
-- Room v4 (B3 + decisión 2) obliga a una migración más: se cubre con `MigrationTest` encadenado 1→4 y el instrumentado en CI.
-- Activar R8 (D3) puede romper reflexión en ML Kit/Room: por eso va con *smoke test* de release antes de aceptarlo.
-- El trabajo de C4 solo vale si hay trazados reales; sin ellos se queda en infraestructura de comparación.
+**B4. Resistencia.** Room **v4** (`MIGRATION_3_4` explícita; `stints` + `laps.stintId` nulable; test 3→4 y cadena 1→4, y el instrumentado compila). En el Dashboard (tipo Resistencia): botón **«Pit / cambio»** → diálogo de dos toques (piloto opcional: nombres ya usados o «Escribir nombre»); la vuelta en curso se descarta y el siguiente cruce de meta cierra el **tiempo en boxes** (del último cruce antes al primero después, como se pidió) y abre el stint siguiente. El nº de vuelta ignora la parada. Se guardan los stints (rango de vueltas, piloto, parada que cierra cada uno), que se **recalculan al borrar vueltas**. Detalle: tarjeta plegable «Stints · N» con vueltas, mejor, media limpia y parada por stint, y el **tiempo total en boxes**. Las paradas también sobreviven a la recuperación de borrador. *Sin live timing de rivales.*
 
-## 7. Criterios de cierre del sprint
-- Ninguna de las pérdidas de datos H1–H3 reproducible (tests de recuperación, de privacidad y de borrado).
-- Suite completa verde **5 veces seguidas** y CI en verde en la rama.
-- `connectedDebugAndroidTest` ejecutado al menos una vez con éxito en emulador.
-- Una tanda real medida contra los tiempos oficiales y un veredicto escrito sobre el ESP32 (error medio y máximo, con trazado adjunto).
+**B5. Copia de seguridad.** Ajustes → «Copia de seguridad»: **Exportar** (zip con `manifest.json`, la BD con el WAL volcado y `tracks/`; sin borradores) y **Restaurar** desde el selector de archivos con confirmación («se SUSTITUIRÁN todos los datos…», con fecha, trazados y esquema de la copia). Valida antes de tocar nada (zip legible, manifiesto, BD que abre y cuya versión coincide, nombres sin rutas peligrosas); **rechaza** copias dañadas/incompletas y de **esquema más nuevo** con mensajes distintos, y no cambia nada si falla. Tras restaurar la app se **reinicia** (la BD se sustituye en disco). El diálogo avisa de que el zip **incluye datos de rivales** (no es el CSV público). Tests: exportar → borrar todo → restaurar → **mismos conteos en todas las tablas** y trazados, ocho tipos de copia mala, VM y diálogo.
+
+**B6. Análisis.** Sin pantallas nuevas: **«Hueco de mejora»** (media limpia − récord) y **«Consistencia por tanda»** con barras (últimas 10) y **tendencia** por mínimos cuadrados (mejorando / estable / empeorando, umbral 10 ms por tanda, ≥ 3 tandas). *Nota sobre «mejor teórico»:* sin sectores no existe un mejor teórico real; se muestra el hueco entre media y récord y así se dice en la pantalla.
+
+## Decisiones tomadas por mi cuenta (a validar)
+1. FAB: franja reservada de 84 dp al pie en vez de dejarla flotando (cuesta altura de lista, pero nunca tapa una card).
+2. Cualquier tanda GPS puede ser «Resistencia»; sin pit ni stints se comporta como una normal (con tipo Resistencia siempre se crea al menos un stint).
+3. «Pit / cambio»: el campo de texto no está visible por defecto (dos toques con guantes y sin teclado); además un `TextField` enfocado en el diálogo impedía que los tests de Compose llegaran a reposo.
+4. Verificación de meta: se compara el **cruce detectado** con el momento en que el usuario pulsa AQUÍ (no con una segunda calibración); umbral 1 s / 20°.
+5. Borrador: se rehacen las vueltas desde las posiciones en vez de guardarlas (menos estado en disco, mismos resultados).
+6. Restaurar acepta copias de esquema **igual o anterior** (Room migra al abrir) y rechaza las más nuevas.
+7. La copia no incluye preferencias (nombre de piloto, aviso al cruzar la meta).
+8. B3 sin «desplazar meta» (ver arriba).
+
+## Riesgos y NO comprobado en dispositivo
+- **Todo lo del GPS real sigue sin probarse en un móvil:** `FusedLocationSource`, servicio en primer plano, notificación, permisos, vibración/pitido, consumo. Tampoco el OCR (A2 del Sprint 4 sigue pendiente de las fotos).
+- **Recuperar tanda interrumpida:** probado simulando la muerte del proceso (ficheros en disco + app nueva), no matando la app de verdad; el reparto de volcados cada 30 s se prueba con reloj inyectado.
+- **Restaurar copia:** el reinicio real (`killProcess` + relanzar) no se puede probar aquí (los tests inyectan `restartApp`); comprobarlo en el móvil: tras restaurar la app debe volver a abrirse sola con los datos de la copia.
+- **Selector de archivos** de «Restaurar copia» (`OpenDocument`): solo comprobado el flujo posterior a elegir el fichero.
+- Los 3 tests intermitentes por consultas Room huérfanas siguen mitigados con `Thread.sleep(300)` (deuda D5 del plan).
+- Pit: si el pit lane no pasa por la línea de meta, «el primer cruce después» puede tardar una vuelta entera; el tiempo en boxes incluiría la vuelta de salida.
+- Verificar la meta con el `Fused` real puede dar `NoCrossing` si el proveedor entrega < 1 Hz: se ve el aviso y se repite.
+- Room v4: con la migración 3→4 hay que mirar en el móvil que una BD v3 real (la de la v. instalada) abre sin pérdida.
+
+## Lista de comprobación visual para el responsable
+1. **Tandas** (≥ 3 cards): la FAB está en una franja propia, no tapa «Media limpia» de ninguna card; al desplegarla el fondo se oscurece y tocar fuera la cierra.
+2. **Detalle:** borrar una vuelta intermedia deja la lista V1…Vn sin huecos y recalcula MEJOR / MEDIA LIMPIA.
+3. **Ajustes → Depuración** (arriba, plegada): «Simular tanda en pista», «Probar OCR con muestra» (con `muestra_a.png`/`muestra_b.jpeg` en `app/src/debug/assets/muestras/`), «Importar muestra de texto A/B».
+4. **Nueva tanda** con un circuito de nombre muy largo: el nombre se corta con «…» en una línea.
+5. **EN PISTA → preparación:** fichas Libre / Clasificación / Carrera / Resistencia. Tras guardar, la tanda aparece con su fecha de salida.
+6. **Circuitos → ⋮ → Marcar meta:** AJUSTAR META (± metros y ancho, el dibujo se mueve), VERIFICAR META (pulsar AQUÍ al cruzar: debe salir «Meta verificada»), y el aviso de sentido contrario si marcas al revés.
+7. **Dashboard en marcha:** punto de color y texto «GPS BUENO/REGULAR/MALO · ±x m · y Hz»; en Resistencia, «Stint N» y «PIT / CAMBIO» (al usarlo: «EN BOXES…» hasta cruzar la meta).
+8. **Resumen:** si hubo huecos de señal, las vueltas poco fiables salen con MANTENER/DESCARTAR.
+9. **Matar la app a mitad de una tanda** (deslizarla en recientes) y reabrirla: «Tanda interrumpida» → Recuperar muestra el resumen con las vueltas; Descartar la borra.
+10. **Detalle de una resistencia:** «Stints · N ▸» al final con tiempo total en boxes; desplegado, cada stint con vueltas, mejor y media limpia.
+11. **Detalle con GPS + oficial:** «Precisión del GPS vs oficial ±0,xxx s» (con coma) y, si procede, el aviso de sesgo sistemático; **Circuitos:** «Precisión GPS ±0,xxx s (N tandas)».
+12. **Ajustes → Copia de seguridad:** Exportar (aparece el menú de compartir con el .zip), Restaurar (elige el zip, lee el aviso, confirma: la app se reinicia sola con los datos de la copia).
+13. **Análisis:** «Hueco de mejora» y «Consistencia por tanda» con su tendencia.
+
+## Commits (todos publicados con `git push`)
+| Tarea | Hash |
+|---|---|
+| A1 FAB en franja reservada | `6d89e05` |
+| A2 renumeración al borrar | `21f00a7` |
+| A3 muestras .jpeg | `9bb4de7` |
+| A4 muestras de texto | `f92eb93` |
+| A5 Depuración plegable | `9d26faa` |
+| A6 tipo y fecha GPS | `b6d41b6` |
+| A7 trazados huérfanos | `6eedca6` |
+| A8 elipsis | `7316ccb` |
+| B1 meta robusta | `c08f0d7` |
+| B2 señal, vueltas dudosas y borrador | `791a0c9` |
+| B3 sesgo y precisión por circuito | `d728f27` |
+| B4 resistencia (WIP + final) | `cf8a3db`, `e83413e` |
+| B5 copia de seguridad | `db1a62a` |
+| B6 análisis | `00a6d72` |
+
+## Verificación final
+
+`./gradlew assembleDebug assembleRelease testDebugUnitTest compileDebugAndroidTestKotlin lintDebug` → **BUILD SUCCESSFUL** (EXIT 0).
+Tests unitarios/Robolectric: **234 ejecutados, 0 fallos, 0 omitidos**. Lint sin errores.
+Los tests instrumentados (migraciones) solo se compilan: no hay emulador en este entorno.
