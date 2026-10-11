@@ -3,6 +3,7 @@ package com.nacho.kartlog.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -20,12 +21,13 @@ import com.nacho.kartlog.ui.theme.kartColors
 fun KartCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    contentPadding: PaddingValues = PaddingValues(16.dp),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = CardDefaults.cardColors(containerColor = MaterialTheme.kartColors.card)
     val border = BorderStroke(1.dp, MaterialTheme.kartColors.cardBorder)
     val inner: @Composable ColumnScope.() -> Unit = {
-        Column(modifier = Modifier.padding(16.dp), content = content)
+        Column(modifier = Modifier.padding(contentPadding), content = content)
     }
     if (onClick != null) {
         Card(onClick = onClick, modifier = modifier, shape = CardShape, colors = colors, border = border, content = inner)

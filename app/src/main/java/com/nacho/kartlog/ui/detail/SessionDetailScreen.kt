@@ -18,15 +18,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nacho.kartlog.R
@@ -35,10 +38,10 @@ import com.nacho.kartlog.domain.model.SessionDetail
 import com.nacho.kartlog.domain.model.TrackCondition
 import com.nacho.kartlog.domain.util.LapTime
 import com.nacho.kartlog.ui.components.KartCard
+import com.nacho.kartlog.ui.components.KartOverflowMenu
 import com.nacho.kartlog.ui.components.KartTopBar
-import com.nacho.kartlog.ui.components.PrimaryButton
+import com.nacho.kartlog.ui.components.MenuAction
 import com.nacho.kartlog.ui.components.StatBadge
-import com.nacho.kartlog.ui.components.TimeKeypad
 import com.nacho.kartlog.ui.theme.KartTextStyles
 import com.nacho.kartlog.ui.theme.kartColors
 import com.nacho.kartlog.ui.util.formatDateTime
@@ -56,104 +59,119 @@ fun SessionDetailScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    // Teclado plegable. Estado inicial: desplegado solo si la tanda no tiene vueltas.
+    var keypadExpanded by rememberSaveable { mutableStateOf(false) }
+    var keypadInitialized by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.isLoading) {
+        if (!state.isLoading && !keypadInitialized) {
+            keypadExpanded = state.laps.isEmpty()
+            keypadInitialized = true
+        }
+    }
+
     // Sesión borrada (o inexistente): volver al histórico.
     LaunchedEffect(state.isLoading, state.detail == null) {
         if (!state.isLoading && state.detail == null) onBack()
     }
 
+    val detail = state.detail
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             KartTopBar(
-                title = state.detail?.circuit?.name ?: stringResource(R.string.detail_title),
+                title = detail?.circuit?.name ?: stringResource(R.string.detail_title),
                 onBack = onBack,
                 actions = {
-                    TextButton(
-                        onClick = viewModel::requestDeleteSession,
-                        modifier = Modifier.heightIn(min = 56.dp),
-                    ) {
-                        Text(
-                            stringResource(R.string.action_delete).uppercase(),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
+                    KartOverflowMenu(
+                        actions = listOf(
+                            MenuAction(
+                                label = stringResource(R.string.action_export_csv),
+                                enabled = state.laps.isNotEmpty() && detail != null,
+                                onClick = {
+                                    if (detail != null) {
+                                        scope.launch {
+                                            shareLapsCsv(context, detail.circuit.name, detail.session.dateTime, state.laps)
+                                        }
+                                    }
+                                },
+                            ),
+                            MenuAction(
+                                label = stringResource(R.string.action_delete_session),
+                                destructive = true,
+                                onClick = viewModel::requestDeleteSession,
+                            ),
+                        ),
+                    )
                 },
             )
         },
     ) { padding ->
-        val detail = state.detail
         if (detail == null) {
             Box(Modifier.fillMaxSize().padding(padding))
         } else {
-            LazyColumn(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                item { HeaderCard(detail) }
-                item { StatsRow(state) }
-                item {
-                    LapEntry(
-                        state = state,
-                        onDigits = viewModel::onDigits,
-                        onBackspace = viewModel::onBackspace,
-                        onClear = viewModel::onClear,
-                        onSave = {
-                            if (viewModel.saveLap()) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        },
-                        onCancelEdit = viewModel::cancelEditing,
-                    )
-                }
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            text = stringResource(R.string.laps_title).uppercase(),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.kartColors.textMuted,
-                        )
-                        TextButton(
-                            enabled = state.laps.isNotEmpty(),
-                            modifier = Modifier.heightIn(min = 56.dp),
-                            onClick = {
-                                scope.launch {
-                                    shareLapsCsv(context, detail.circuit.name, detail.session.dateTime, state.laps)
-                                }
-                            },
-                        ) {
+                HeaderCard(
+                    detail = detail,
+                    state = state,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+                )
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (state.laps.isEmpty()) {
+                        item {
                             Text(
-                                stringResource(R.string.action_export_csv).uppercase(),
-                                style = MaterialTheme.typography.titleSmall,
+                                text = stringResource(R.string.laps_empty),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.kartColors.textMuted,
+                            )
+                        }
+                    } else {
+                        // Más reciente primero: la última vuelta guardada queda junto al teclado.
+                        items(state.laps.asReversed(), key = { it.id }) { lap ->
+                            LapRow(
+                                lap = lap,
+                                isBest = lap.timeMs == state.bestLapMs,
+                                isEditing = lap.id == state.editingLap?.id,
+                                onEdit = {
+                                    viewModel.startEditing(lap)
+                                    keypadExpanded = true
+                                },
+                                onDelete = { viewModel.requestDeleteLap(lap) },
                             )
                         }
                     }
                 }
-                if (state.laps.isEmpty()) {
-                    item {
-                        Text(
-                            text = stringResource(R.string.laps_empty),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.kartColors.textMuted,
-                        )
-                    }
-                } else {
-                    // Más reciente primero: la última vuelta guardada queda justo bajo el teclado.
-                    items(state.laps.asReversed(), key = { it.id }) { lap ->
-                        LapRow(
-                            lap = lap,
-                            isBest = lap.timeMs == state.bestLapMs,
-                            isEditing = lap.id == state.editingLap?.id,
-                            onEdit = { viewModel.startEditing(lap) },
-                            onDelete = { viewModel.requestDeleteLap(lap) },
-                        )
-                    }
-                }
+                val editing = state.editingLap
+                LapEntryPanel(
+                    expanded = keypadExpanded,
+                    timeText = state.timeText,
+                    hasDigits = state.digits.isNotEmpty(),
+                    invalid = state.timeInvalid,
+                    canSave = state.canSave,
+                    label = if (editing != null) {
+                        stringResource(R.string.lap_entry_editing, editing.number)
+                    } else {
+                        stringResource(R.string.lap_entry_title, state.nextLapNumber)
+                    },
+                    isEditing = editing != null,
+                    onToggle = { keypadExpanded = !keypadExpanded },
+                    onDigits = viewModel::onDigits,
+                    onBackspace = viewModel::onBackspace,
+                    onClear = viewModel::onClear,
+                    onSave = {
+                        if (viewModel.saveLap()) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    },
+                    onCancelEdit = viewModel::cancelEditing,
+                )
             }
         }
     }
@@ -176,169 +194,70 @@ fun SessionDetailScreen(
     }
 }
 
+/** Cabecera compacta: datos de la tanda (solo los no nulos) y fila MEJOR / MEDIA. */
 @Composable
-private fun HeaderCard(detail: SessionDetail) {
+private fun HeaderCard(detail: SessionDetail, state: SessionDetailUiState, modifier: Modifier = Modifier) {
     val session = detail.session
     val kart = MaterialTheme.kartColors
-    KartCard(Modifier.fillMaxWidth()) {
+    val unset = stringResource(R.string.value_unset)
+
+    val line1 = buildList {
+        add(formatDateTime(session.dateTime))
+        add(stringResource(session.type.labelRes()))
+        session.kartNumber?.let { add(stringResource(R.string.format_kart, it)) }
+        session.ballastKg?.let { add(stringResource(R.string.format_ballast, it.toInt())) }
+    }.joinToString(" · ")
+    val line2 = buildList {
+        session.ambientTempC?.let { add(stringResource(R.string.format_temp_ambient, it.toInt())) }
+        session.trackTempC?.let { add(stringResource(R.string.format_temp_track, it.toInt())) }
+    }.joinToString(" · ")
+
+    KartCard(modifier = modifier.fillMaxWidth(), contentPadding = PaddingValues(12.dp)) {
         Text(
-            text = formatDateTime(session.dateTime),
-            style = MaterialTheme.typography.bodyLarge,
-            color = kart.textMuted,
+            text = line1,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
-        Row(
-            modifier = Modifier.padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = stringResource(session.type.labelRes()),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            session.kartNumber?.let {
-                Text(
-                    text = stringResource(R.string.format_kart, it),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-            session.ballastKg?.let {
-                Text(
-                    text = stringResource(R.string.format_ballast, it.toInt()),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-        }
-        val ambient = session.ambientTempC
-        val track = session.trackTempC
-        Row(
-            modifier = Modifier.padding(top = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            if (ambient != null && track != null) {
-                Text(
-                    text = stringResource(R.string.format_temps, ambient.toInt(), track.toInt()),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = kart.textMuted,
-                )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (line2.isNotEmpty()) {
+                Text(text = line2, style = MaterialTheme.typography.bodyMedium, color = kart.textMuted)
             }
             Text(
                 text = stringResource(session.trackCondition.labelRes()),
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (session.trackCondition == TrackCondition.DRY) {
-                    kart.textMuted
-                } else {
-                    kart.warning
-                },
+                color = if (session.trackCondition == TrackCondition.DRY) kart.textMuted else kart.warning,
             )
         }
         if (session.notes.isNotBlank()) {
             Text(
                 text = session.notes,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(top = 8.dp),
+                color = kart.textMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
-    }
-}
-
-@Composable
-private fun StatsRow(state: SessionDetailUiState) {
-    val kart = MaterialTheme.kartColors
-    val unset = stringResource(R.string.value_unset)
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        StatBadge(
-            label = stringResource(R.string.stat_best),
-            value = state.bestLapMs?.let(LapTime::format) ?: unset,
-            valueColor = if (state.bestLapMs != null) kart.telemetry else kart.textMuted,
-            valueStyle = KartTextStyles.bestLap,
-            modifier = Modifier.weight(1.2f),
-        )
-        StatBadge(
-            label = stringResource(R.string.stat_average),
-            value = state.averageMs?.let(LapTime::format) ?: unset,
-            modifier = Modifier.weight(0.8f),
-        )
-    }
-}
-
-@Composable
-private fun LapEntry(
-    state: SessionDetailUiState,
-    onDigits: (String) -> Unit,
-    onBackspace: () -> Unit,
-    onClear: () -> Unit,
-    onSave: () -> Unit,
-    onCancelEdit: () -> Unit,
-) {
-    val kart = MaterialTheme.kartColors
-    val editing = state.editingLap
-    KartCard(Modifier.fillMaxWidth()) {
-        Text(
-            text = (
-                if (editing != null) {
-                    stringResource(R.string.lap_entry_editing, editing.number)
-                } else {
-                    stringResource(R.string.lap_entry_title, state.nextLapNumber)
-                }
-                ).uppercase(),
-            style = MaterialTheme.typography.labelMedium,
-            color = if (editing != null) kart.warning else kart.textMuted,
-        )
-        Text(
-            text = state.timeText,
-            style = KartTextStyles.timeEntry,
-            color = when {
-                state.timeInvalid -> MaterialTheme.colorScheme.error
-                state.digits.isEmpty() -> kart.textMuted
-                else -> MaterialTheme.colorScheme.onSurface
-            },
-            textAlign = TextAlign.Center,
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp),
-        )
-        if (state.timeInvalid) {
-            Text(
-                text = stringResource(R.string.time_invalid),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-        }
-        TimeKeypad(
-            onDigits = onDigits,
-            onBackspace = onBackspace,
-            onClear = onClear,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Column(
-            modifier = Modifier.padding(top = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.Bottom,
         ) {
-            PrimaryButton(
-                text = stringResource(if (editing != null) R.string.action_update_lap else R.string.action_save_lap),
-                onClick = onSave,
-                enabled = state.canSave,
+            StatBadge(
+                label = stringResource(R.string.stat_best),
+                value = state.bestLapMs?.let(LapTime::format) ?: unset,
+                valueColor = if (state.bestLapMs != null) kart.telemetry else kart.textMuted,
+                valueStyle = KartTextStyles.bestLap,
+                modifier = Modifier.weight(1.2f),
             )
-            if (editing != null) {
-                TextButton(
-                    onClick = onCancelEdit,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 56.dp),
-                ) {
-                    Text(
-                        stringResource(R.string.action_cancel_edit).uppercase(),
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                }
-            }
+            StatBadge(
+                label = stringResource(R.string.stat_average),
+                value = state.averageMs?.let(LapTime::format) ?: unset,
+                modifier = Modifier.weight(0.8f),
+            )
         }
     }
 }

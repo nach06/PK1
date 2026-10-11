@@ -62,9 +62,10 @@ class UiFlowTest {
         }
 
         // Teclear 48532 y guardar.
-        listOf("4", "8", "5", "3", "2").forEach { compose.onNodeWithText(it).performScrollTo().performClick() }
+        listOf("4", "8", "5", "3", "2").forEach { compose.onNodeWithText(it).performClick() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("0:48.532").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("0:48.532").assertIsDisplayed()
-        compose.onNodeWithText("GUARDAR VUELTA").performScrollTo().performClick()
+        compose.onNodeWithText("GUARDAR VUELTA").performClick()
 
         // La vuelta aparece en lista y estadísticas; el campo se limpia y el contador avanza.
         compose.waitUntil(5_000) {

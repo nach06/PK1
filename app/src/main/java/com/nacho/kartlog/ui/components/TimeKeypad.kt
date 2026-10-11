@@ -21,6 +21,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nacho.kartlog.R
 import com.nacho.kartlog.ui.theme.KartTextStyles
@@ -43,20 +44,22 @@ fun TimeKeypad(
     onBackspace: () -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
+    keyHeight: Dp = 64.dp,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         KeyRows.forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { key ->
-                    Key(text = key, modifier = Modifier.weight(1f), onClick = { onDigits(key) })
+                    Key(text = key, keyHeight = keyHeight, modifier = Modifier.weight(1f), onClick = { onDigits(key) })
                 }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Key(text = "00", modifier = Modifier.weight(1f), onClick = { onDigits("00") })
-            Key(text = "0", modifier = Modifier.weight(1f), onClick = { onDigits("0") })
+            Key(text = "00", keyHeight = keyHeight, modifier = Modifier.weight(1f), onClick = { onDigits("00") })
+            Key(text = "0", keyHeight = keyHeight, modifier = Modifier.weight(1f), onClick = { onDigits("0") })
             Key(
                 text = "⌫",
+                keyHeight = keyHeight,
                 modifier = Modifier.weight(1f),
                 description = stringResource(R.string.keypad_backspace),
                 onClick = onBackspace,
@@ -70,6 +73,7 @@ fun TimeKeypad(
 @Composable
 private fun Key(
     text: String,
+    keyHeight: Dp,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     description: String? = null,
@@ -79,7 +83,7 @@ private fun Key(
     val shape = MaterialTheme.shapes.medium
     Box(
         modifier = modifier
-            .heightIn(min = 64.dp)
+            .heightIn(min = keyHeight)
             .clip(shape)
             .background(kart.card)
             .border(BorderStroke(1.dp, kart.cardBorder), shape)

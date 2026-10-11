@@ -3,6 +3,7 @@
     <string name="app_name">KartLog</string>
 
     <!-- Genérico -->
+    <string name="menu_more">Más opciones</string>
     <string name="action_back">Volver</string>
     <string name="action_cancel">Cancelar</string>
     <string name="action_add">Añadir</string>
@@ -67,12 +68,19 @@
     <string name="stat_average">Media</string>
     <string name="stat_laps">Vueltas</string>
     <string name="lap_entry_title">Vuelta %1$d</string>
-    <string name="lap_entry_editing">Editando vuelta %1$d</string>
+    <string name="lap_entry_editing">Editando V%1$d</string>
     <string name="action_save_lap">Guardar vuelta</string>
     <string name="action_update_lap">Actualizar vuelta</string>
     <string name="action_cancel_edit">Cancelar edición</string>
     <string name="time_invalid">Los segundos deben ser menores de 60</string>
     <string name="keypad_backspace">Borrar dígito</string>
+    <string name="action_delete_session">Borrar tanda</string>
+    <string name="action_open_keyboard">Abrir teclado</string>
+    <string name="action_close_keyboard">Plegar teclado</string>
+    <string name="lap_short">V%1$d</string>
+    <string name="badge_best">Mejor</string>
+    <string name="format_temp_ambient">Ambiente %1$d °C</string>
+    <string name="format_temp_track">Pista %1$d °C</string>
     <string name="action_export_csv">Exportar CSV</string>
     <string name="share_csv_title">Compartir vueltas</string>
     <string name="laps_title">Vueltas</string>
