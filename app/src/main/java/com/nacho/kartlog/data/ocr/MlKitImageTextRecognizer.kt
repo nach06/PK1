@@ -2,6 +2,8 @@ package com.nacho.kartlog.data.ocr
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
+import com.nacho.kartlog.BuildConfig
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -29,6 +31,7 @@ class MlKitImageTextRecognizer(private val context: Context) : ImageTextRecogniz
                 block.lines.flatMap { line -> line.elements.mapNotNull { element -> element.toBox() } }
             }
             val text = OcrLayout.reconstruct(boxes)
+            if (BuildConfig.DEBUG) logForTuning(boxes, text)
             check(text.isNotBlank()) { "sin texto reconocido" }
             text
         } finally {
@@ -46,5 +49,20 @@ class MlKitImageTextRecognizer(private val context: Context) : ImageTextRecogniz
             0f
         }
         return OcrBox(text, rect.left.toFloat(), rect.top.toFloat(), rect.right.toFloat(), rect.bottom.toFloat(), angle)
+    }
+
+    /** Solo debug: cajas y texto reconstruido, para ajustar `ROW_TOLERANCE` y el anclaje de columnas con datos reales. */
+    private fun logForTuning(boxes: List<OcrBox>, text: String) {
+        Log.d(TAG, "cajas=${boxes.size} · ROW_TOLERANCE=${OcrLayout.ROW_TOLERANCE}")
+        boxes.forEach {
+            Log.d(TAG, "caja '%s' x=%.0f..%.0f y=%.0f..%.0f ang=%.2f°".format(
+                it.text, it.left, it.right, it.top, it.bottom, Math.toDegrees(it.baselineAngle.toDouble()),
+            ))
+        }
+        Log.d(TAG, "texto reconstruido:\n" + text.replace("\t", "⇥"))
+    }
+
+    private companion object {
+        const val TAG = "KartLogOcr"
     }
 }

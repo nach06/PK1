@@ -29,7 +29,7 @@ class DebugSeederTest {
             val circuits = CircuitRepositoryImpl(db.circuitDao())
             val sessions = SessionRepositoryImpl(db.sessionDao())
             val laps = LapRepositoryImpl(db.lapDao())
-            val seeder = DebugSeeder(db, circuits, sessions, laps)
+            val seeder = DebugSeeder(db, circuits, sessions, laps, SampleImages(context))
 
             assertEquals(14, seeder.seed())
 

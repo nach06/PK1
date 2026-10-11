@@ -24,6 +24,7 @@ class DebugSeeder(
     private val circuits: CircuitRepository,
     private val sessions: SessionRepository,
     private val laps: LapRepository,
+    private val samples: SampleImages,
     private val zone: ZoneId = ZoneId.systemDefault(),
     private val today: () -> LocalDate = { LocalDate.now() },
 ) : DebugTools {
@@ -112,4 +113,8 @@ class DebugSeeder(
     override suspend fun wipeAll() {
         withContext(Dispatchers.IO) { database.clearAllTables() }
     }
+
+    override fun sampleNames(): List<String> = samples.names()
+
+    override suspend fun prepareSample(name: String): String? = samples.prepare(name)
 }

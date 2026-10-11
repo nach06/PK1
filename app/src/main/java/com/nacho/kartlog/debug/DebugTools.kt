@@ -7,4 +7,10 @@ interface DebugTools {
 
     /** Borra todos los datos de la app. */
     suspend fun wipeAll()
+
+    /** Nombres de las imágenes de muestra presentes en `app/src/debug/assets/muestras/` (vacío si no hay ninguna). */
+    fun sampleNames(): List<String>
+
+    /** Copia la muestra a la caché y devuelve su `Uri` (como cadena) lista para pasar por el OCR. */
+    suspend fun prepareSample(name: String): String?
 }

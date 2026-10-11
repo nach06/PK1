@@ -72,10 +72,10 @@ class AppContainer(context: Context) {
 
     /** Herramientas de depuración: `null` en release. */
     val debugTools: DebugTools? =
-        DebugToolsFactory.create(database, circuitRepository, sessionRepository, lapRepository)
+        DebugToolsFactory.create(context, database, circuitRepository, sessionRepository, lapRepository)
 
     val settingsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
-        initializer { SettingsViewModel(debugTools, SessionsCsvExporter(sessionRepository, lapRepository), userSettings) }
+        initializer { SettingsViewModel(debugTools, SessionsCsvExporter(sessionRepository, lapRepository), userSettings, importInbox) }
     }
 
     val sessionListViewModelFactory: ViewModelProvider.Factory = viewModelFactory {

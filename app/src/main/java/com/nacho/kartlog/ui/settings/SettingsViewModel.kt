@@ -2,6 +2,8 @@ package com.nacho.kartlog.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nacho.kartlog.domain.importing.ImportInbox
+import com.nacho.kartlog.domain.importing.SharedContent
 import com.nacho.kartlog.domain.settings.UserSettings
 import com.nacho.kartlog.domain.util.SessionsCsvExporter
 import kotlinx.coroutines.channels.Channel
@@ -16,7 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class SettingsMessage { SEEDED, WIPED, FAILED, NOTHING_TO_EXPORT }
+enum class SettingsMessage { SEEDED, WIPED, FAILED, NOTHING_TO_EXPORT, SAMPLES_MISSING }
 
 /** Fichero CSV listo para compartir. */
 data class ShareFile(val fileName: String, val content: String)
@@ -26,12 +28,15 @@ data class SettingsUiState(
     val message: SettingsMessage? = null,
     /** `true` solo en builds debug. */
     val debugToolsAvailable: Boolean = false,
+    /** Muestras entre las que elegir para «Probar OCR» (solo si hay más de una). */
+    val sampleChoices: List<String> = emptyList(),
 )
 
 class SettingsViewModel(
     private val debugTools: DebugTools?,
     private val exporter: SessionsCsvExporter,
     private val userSettings: UserSettings,
+    private val importInbox: ImportInbox? = null,
     private val now: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SettingsUiState(debugToolsAvailable = debugTools != null))
@@ -69,6 +74,31 @@ class SettingsViewModel(
     fun seedDebugData() = runDebug(SettingsMessage.SEEDED) { it.seed() }
 
     fun wipeAllData() = runDebug(SettingsMessage.WIPED) { it.wipeAll() }
+
+    /**
+     * Pasa una imagen de `app/src/debug/assets/muestras/` por el flujo real de «Escanear» (ML Kit → OcrLayout →
+     * parser → vista previa): se deja en el buzón de importación y el `NavHost` abre la pantalla.
+     */
+    fun testOcrWithSample() {
+        val tools = debugTools ?: return
+        val names = tools.sampleNames()
+        when {
+            names.isEmpty() -> _uiState.update { it.copy(message = SettingsMessage.SAMPLES_MISSING) }
+            names.size == 1 -> runSample(names.single())
+            else -> _uiState.update { it.copy(sampleChoices = names) }
+        }
+    }
+
+    fun runSample(name: String) {
+        val tools = debugTools ?: return
+        _uiState.update { it.copy(sampleChoices = emptyList()) }
+        viewModelScope.launch {
+            val uri = runCatching { tools.prepareSample(name) }.getOrNull()
+            if (uri == null) _uiState.update { it.copy(message = SettingsMessage.FAILED) } else importInbox?.put(SharedContent.Image(uri))
+        }
+    }
+
+    fun dismissSampleChoices() = _uiState.update { it.copy(sampleChoices = emptyList()) }
 
     fun messageShown() = _uiState.update { it.copy(message = null) }
 

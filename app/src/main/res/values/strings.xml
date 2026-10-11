@@ -104,6 +104,8 @@
     <string name="action_continue">Continuar</string>
     <string name="settings_debug_title">Depuración (solo debug)</string>
     <string name="settings_seed">Cargar datos de prueba</string>
+    <string name="settings_test_ocr">Probar OCR con muestra</string>
+    <string name="settings_samples_missing">Añade muestras en app/src/debug/assets/muestras/</string>
     <string name="settings_wipe">Borrar todos los datos</string>
     <string name="settings_wipe_title_1">¿Borrar todos los datos?</string>
     <string name="settings_wipe_message_1">Se eliminarán todos los circuitos, tandas y vueltas.</string>

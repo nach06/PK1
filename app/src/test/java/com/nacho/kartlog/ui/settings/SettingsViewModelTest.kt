@@ -53,6 +53,52 @@ class SettingsViewModelTest {
 
     private fun run(block: suspend () -> Unit) = runBlocking { withTimeout(20_000) { block() } }
 
+    private class FakeDebugTools(val samples: List<String>) : com.nacho.kartlog.debug.DebugTools {
+        override suspend fun seed() = 0
+        override suspend fun wipeAll() = Unit
+        override fun sampleNames() = samples
+        override suspend fun prepareSample(name: String) = "file:///cache/photos/$name"
+    }
+
+    private fun viewModelWithSamples(samples: List<String>, inbox: com.nacho.kartlog.domain.importing.ImportInbox): SettingsViewModel {
+        val exporter = SessionsCsvExporter(SessionRepositoryImpl(db.sessionDao()), LapRepositoryImpl(db.lapDao()))
+        return SettingsViewModel(FakeDebugTools(samples), exporter, com.nacho.kartlog.ui.importing.FakeSettings(""), inbox)
+    }
+
+    @Test
+    fun testOcr_withoutSamples_tellsWhereToPutThem() = run {
+        val inbox = com.nacho.kartlog.domain.importing.ImportInbox()
+        val vm = viewModelWithSamples(emptyList(), inbox)
+        vm.testOcrWithSample()
+        assertEquals(SettingsMessage.SAMPLES_MISSING, vm.uiState.first { it.message != null }.message)
+        assertNull(inbox.content.value)
+    }
+
+    @Test
+    fun testOcr_withOneSample_sendsItThroughTheRealScanFlow() = run {
+        val inbox = com.nacho.kartlog.domain.importing.ImportInbox()
+        viewModelWithSamples(listOf("muestra_a.png"), inbox).testOcrWithSample()
+        assertEquals(
+            com.nacho.kartlog.domain.importing.SharedContent.Image("file:///cache/photos/muestra_a.png"),
+            inbox.content.first { it != null },
+        )
+    }
+
+    @Test
+    fun testOcr_withSeveralSamples_asksWhichOne() = run {
+        val inbox = com.nacho.kartlog.domain.importing.ImportInbox()
+        val vm = viewModelWithSamples(listOf("muestra_a.png", "muestra_b.jpg"), inbox)
+        vm.testOcrWithSample()
+        assertEquals(listOf("muestra_a.png", "muestra_b.jpg"), vm.uiState.first { it.sampleChoices.isNotEmpty() }.sampleChoices)
+        assertNull(inbox.content.value)
+        vm.runSample("muestra_b.jpg")
+        assertEquals(
+            com.nacho.kartlog.domain.importing.SharedContent.Image("file:///cache/photos/muestra_b.jpg"),
+            inbox.content.first { it != null },
+        )
+        assertTrue(vm.uiState.value.sampleChoices.isEmpty())
+    }
+
     private fun viewModel(): SettingsViewModel {
         val exporter = SessionsCsvExporter(SessionRepositoryImpl(db.sessionDao()), LapRepositoryImpl(db.lapDao()))
         return SettingsViewModel(debugTools = null, exporter = exporter, userSettings = com.nacho.kartlog.ui.importing.FakeSettings(""), now = { 1_760_000_000_000 })

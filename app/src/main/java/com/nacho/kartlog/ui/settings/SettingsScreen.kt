@@ -53,6 +53,7 @@ fun SettingsScreen(
         SettingsMessage.WIPED -> stringResource(R.string.settings_wiped)
         SettingsMessage.FAILED -> stringResource(R.string.settings_failed)
         SettingsMessage.NOTHING_TO_EXPORT -> stringResource(R.string.settings_nothing_to_export)
+        SettingsMessage.SAMPLES_MISSING -> stringResource(R.string.settings_samples_missing)
         null -> null
     }
     val context = LocalContext.current
@@ -142,6 +143,11 @@ fun SettingsScreen(
                             enabled = !state.isBusy,
                         )
                         SecondaryButton(
+                            text = stringResource(R.string.settings_test_ocr),
+                            onClick = viewModel::testOcrWithSample,
+                            enabled = !state.isBusy,
+                        )
+                        SecondaryButton(
                             text = stringResource(R.string.settings_wipe),
                             onClick = { wipeStep = 1 },
                             enabled = !state.isBusy,
@@ -165,6 +171,29 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+    }
+
+    if (state.sampleChoices.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissSampleChoices,
+            containerColor = MaterialTheme.kartColors.card,
+            title = { Text(stringResource(R.string.settings_test_ocr), style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column {
+                    state.sampleChoices.forEach { name ->
+                        TextButton(onClick = { viewModel.runSample(name) }, modifier = Modifier.heightIn(min = 56.dp)) {
+                            Text(name, style = MaterialTheme.typography.titleSmall)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissSampleChoices, modifier = Modifier.heightIn(min = 56.dp)) {
+                    Text(stringResource(R.string.action_cancel).uppercase(), style = MaterialTheme.typography.titleSmall)
+                }
+            },
+        )
     }
 
     if (wipeStep > 0) {
