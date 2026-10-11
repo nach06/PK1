@@ -2,7 +2,6 @@ package com.nacho.kartlog.ui.history
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,7 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -118,7 +119,7 @@ fun SessionListScreen(
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 112.dp),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         state.items.forEach { item ->
@@ -164,19 +165,21 @@ private fun FilterRow(
     onCircuitClick: () -> Unit,
     onTypeClick: (SessionType) -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+    // LazyRow: arranca siempre sin desplazamiento (primer chip completo) y conserva el scroll horizontal.
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        state = rememberLazyListState(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Chip(
-            text = state.selectedCircuit?.name ?: stringResource(R.string.filter_circuit),
-            selected = state.filters.circuitId != null,
-            onClick = onCircuitClick,
-        )
-        SessionType.entries.forEach { type ->
+        item(key = "circuit") {
+            Chip(
+                text = state.selectedCircuit?.name ?: stringResource(R.string.filter_circuit),
+                selected = state.filters.circuitId != null,
+                onClick = onCircuitClick,
+            )
+        }
+        items(SessionType.entries, key = { it.name }) { type ->
             Chip(
                 text = stringResource(type.labelRes()),
                 selected = state.filters.type == type,

@@ -63,7 +63,7 @@ fun CircuitsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(state.rows, key = { it.circuit.id }) { stats ->

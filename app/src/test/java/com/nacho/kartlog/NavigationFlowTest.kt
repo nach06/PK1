@@ -62,6 +62,9 @@ class NavigationFlowTest {
         // Tandas: card con delta/RÉCORD (la más reciente tiene el récord 0:57.500).
         compose.waitUntil(5_000) { compose.onAllNodesWithText("RÉCORD").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("0:57.500", substring = true).assertExists()
+        // F8: la fila de filtros arranca sin desplazamiento (primer chip completo a la vista).
+        compose.onNodeWithText("Circuito").assertIsDisplayed()
+        compose.onNodeWithText("Libre").assertIsDisplayed()
 
         // Análisis: récord y ranking de karts.
         compose.onNodeWithText("Análisis").performClick()
