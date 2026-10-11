@@ -4,11 +4,12 @@ App Android personal para registrar y analizar tandas de karting. 100 % offline.
 Kotlin · Jetpack Compose · Material 3 · Room (KSP) · Navigation Compose · inyección manual (`AppContainer`).
 
 **Sprint 1:** crear tanda (con alta rápida de circuito) → meter vueltas con teclado propio → histórico y detalle → exportar CSV.
+**Sprint 1.5 + 2:** navegación inferior, análisis (récord, media limpia, ranking de karts, condiciones), gráficas (Vico), circuitos y exportación total. Ver `SPRINT1.md` y `SPRINT2.md`.
 
 ```
 ./gradlew assembleDebug                 # APK en app/build/outputs/apk/debug/
 ./gradlew testDebugUnitTest             # dominio + flujo funcional + UI (Robolectric)
-./gradlew connectedDebugAndroidTest     # tests de DAO (requiere emulador/dispositivo)
+./gradlew :app:connectedDebugAndroidTest   # tests de DAO (requiere emulador/dispositivo)
 ```
 
 Notas de entorno:

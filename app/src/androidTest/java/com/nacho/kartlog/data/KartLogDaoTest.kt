@@ -76,4 +76,30 @@ class KartLogDaoTest {
         assertTrue(db.lapDao().observeBySession(sessionId).first().isEmpty())
         assertEquals(null, db.sessionDao().observeById(sessionId).first())
     }
+
+    @Test
+    fun observeAllReturnsLapsOfEverySession() = runBlocking {
+        val s1 = newSession()
+        val s2 = newSession()
+        db.lapDao().insertNext(s1, 50_000, LapSource.MANUAL)
+        db.lapDao().insertNext(s2, 51_000, LapSource.MANUAL)
+        db.lapDao().insertNext(s2, 52_000, LapSource.MANUAL)
+        assertEquals(3, db.lapDao().observeAll().first().size)
+    }
+
+    @Test
+    fun circuitCountSessionsUpdateAndDelete() = runBlocking {
+        val dao = db.circuitDao()
+        val sessionId = newSession()
+        val circuit = db.sessionDao().observeById(sessionId).first()!!.circuit
+        assertEquals(1, dao.countSessions(circuit.id))
+
+        dao.update(circuit.copy(name = "Renombrado", lengthMeters = 1_200))
+        assertEquals(1_200, dao.getById(circuit.id)!!.lengthMeters)
+
+        val empty = dao.insert(CircuitEntity(name = "Sin tandas"))
+        assertEquals(0, dao.countSessions(empty))
+        dao.deleteById(empty)
+        assertEquals(null, dao.getById(empty))
+    }
 }

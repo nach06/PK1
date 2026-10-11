@@ -64,7 +64,7 @@ fun SessionCard(stats: SessionStats, onClick: () -> Unit, modifier: Modifier = M
             Spacer(Modifier.width(8.dp))
             when {
                 stats.isRecord -> Text(
-                    text = stringResource(R.string.badge_record),
+                    text = stringResource(R.string.badge_record).uppercase(),
                     style = MaterialTheme.typography.labelLarge,
                     color = kart.telemetry,
                     maxLines = 1,
