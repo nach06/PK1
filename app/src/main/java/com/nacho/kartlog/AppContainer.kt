@@ -12,6 +12,7 @@ import com.nacho.kartlog.debug.DebugTools
 import com.nacho.kartlog.debug.DebugToolsFactory
 import com.nacho.kartlog.domain.analytics.AnalyticsSource
 import com.nacho.kartlog.domain.repository.CircuitRepository
+import com.nacho.kartlog.domain.util.SessionsCsvExporter
 import com.nacho.kartlog.domain.repository.LapRepository
 import com.nacho.kartlog.domain.repository.SessionRepository
 import com.nacho.kartlog.ui.analysis.AnalysisSelection
@@ -46,7 +47,7 @@ class AppContainer(context: Context) {
         DebugToolsFactory.create(database, circuitRepository, sessionRepository, lapRepository)
 
     val settingsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
-        initializer { SettingsViewModel(debugTools) }
+        initializer { SettingsViewModel(debugTools, SessionsCsvExporter(sessionRepository, lapRepository)) }
     }
 
     val sessionListViewModelFactory: ViewModelProvider.Factory = viewModelFactory {

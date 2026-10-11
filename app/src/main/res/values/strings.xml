@@ -164,4 +164,10 @@
         <item quantity="one">%1$s tiene %2$d tanda. Borra o mueve sus tandas antes de eliminar el circuito.</item>
         <item quantity="other">%1$s tiene %2$d tandas. Borra sus tandas antes de eliminar el circuito.</item>
     </plurals>
+
+    <string name="settings_data_title">Datos</string>
+    <string name="settings_export_all">Exportar todo a CSV</string>
+    <string name="settings_export_hint">Una fila por vuelta de todas las tandas.</string>
+    <string name="settings_nothing_to_export">No hay vueltas que exportar</string>
+    <string name="settings_version">%1$s · versión %2$s</string>
 </resources>

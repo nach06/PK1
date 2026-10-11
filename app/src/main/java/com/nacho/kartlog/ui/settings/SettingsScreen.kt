@@ -24,7 +24,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nacho.kartlog.R
@@ -32,6 +34,7 @@ import com.nacho.kartlog.ui.components.KartCard
 import com.nacho.kartlog.ui.components.KartTopBar
 import com.nacho.kartlog.ui.components.PrimaryButton
 import com.nacho.kartlog.ui.theme.kartColors
+import com.nacho.kartlog.ui.util.shareCsv
 
 @Composable
 fun SettingsScreen(
@@ -47,8 +50,17 @@ fun SettingsScreen(
         SettingsMessage.SEEDED -> stringResource(R.string.settings_seeded)
         SettingsMessage.WIPED -> stringResource(R.string.settings_wiped)
         SettingsMessage.FAILED -> stringResource(R.string.settings_failed)
+        SettingsMessage.NOTHING_TO_EXPORT -> stringResource(R.string.settings_nothing_to_export)
         null -> null
     }
+    val context = LocalContext.current
+    LaunchedEffect(viewModel) {
+        viewModel.shareFiles.collect { shareCsv(context, it.fileName, it.content) }
+    }
+    val versionName = remember(context) {
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
+    }
+
     LaunchedEffect(state.message) {
         if (messageText != null) {
             snackbar.showSnackbar(messageText)
@@ -69,6 +81,27 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            KartCard(Modifier.fillMaxWidth()) {
+                Text(
+                    text = stringResource(R.string.settings_data_title).uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.kartColors.textMuted,
+                )
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    PrimaryButton(
+                        text = stringResource(R.string.settings_export_all),
+                        onClick = viewModel::exportAll,
+                        enabled = !state.isBusy,
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_export_hint),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.kartColors.textMuted,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+            }
+
             if (state.debugToolsAvailable) {
                 KartCard(Modifier.fillMaxWidth()) {
                     Text(
@@ -102,6 +135,14 @@ fun SettingsScreen(
                     }
                 }
             }
+
+            Text(
+                text = stringResource(R.string.settings_version, stringResource(R.string.app_name), versionName),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.kartColors.textMuted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 

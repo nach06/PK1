@@ -17,12 +17,17 @@ private val fileDate: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd-
 
 /** Genera el CSV de la sesión en `cache/exports` y abre el selector de compartir de Android. */
 suspend fun shareLapsCsv(context: Context, circuitName: String, dateTime: Long, laps: List<Lap>) {
+    val safeName = circuitName.replace(Regex("[^A-Za-z0-9]+"), "_").trim('_').ifEmpty { "tanda" }
+    val stamp = fileDate.format(Instant.ofEpochMilli(dateTime).atZone(ZoneId.systemDefault()))
+    shareCsv(context, "kartlog_${safeName}_$stamp.csv", LapCsv.build(laps))
+}
+
+/** Escribe [content] en `cache/exports/[fileName]` y abre el selector de compartir de Android. */
+suspend fun shareCsv(context: Context, fileName: String, content: String) {
     val intent = withContext(Dispatchers.IO) {
         val dir = File(context.cacheDir, "exports").apply { mkdirs() }
-        val safeName = circuitName.replace(Regex("[^A-Za-z0-9]+"), "_").trim('_').ifEmpty { "tanda" }
-        val stamp = fileDate.format(Instant.ofEpochMilli(dateTime).atZone(ZoneId.systemDefault()))
-        val file = File(dir, "kartlog_${safeName}_$stamp.csv")
-        file.writeText(LapCsv.build(laps), Charsets.UTF_8)
+        val file = File(dir, fileName)
+        file.writeText(content, Charsets.UTF_8)
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         Intent(Intent.ACTION_SEND).apply {
             type = "text/csv"
