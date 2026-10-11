@@ -94,3 +94,45 @@ class OcrLayoutTest {
         assertTrue(OcrLayout.reconstruct(listOf(OcrBox("  ", 0f, 0f, 10f, 10f))).isEmpty())
     }
 }
+
+class OcrGridTest {
+    private fun box(text: String, x: Float, y: Float, w: Float = 100f, conf: Float = 1f) = OcrBox(text, x, y, x + w, y + 20f, 0f, conf)
+
+    @Test
+    fun everyCellKeepsItsBoxInOriginalImageCoordinates() {
+        val boxes = listOf(
+            box("Vuelta", 10f, 10f, 60f), box("Nacho", 200f, 10f, 70f), box("Deyvis", 400f, 10f, 70f),
+            box("1", 10f, 50f, 14f), box("1:17.263", 200f, 50f, conf = 0.55f), box("1:15.100", 400f, 50f),
+            box("2", 10f, 90f, 14f), box("1:16.905", 200f, 90f), box("1:14.800", 400f, 90f),
+        )
+        val grid = OcrLayout.reconstructGrid(boxes)
+        assertEquals(OcrLayout.reconstruct(boxes), grid.text)
+        // Línea 1 = primera vuelta; columna 1 = Nacho.
+        val cell = grid.boxAt(1, 1)!!
+        assertEquals("1:17.263", cell.text)
+        assertEquals(200f, cell.left, 0.01f)
+        assertEquals(50f, cell.top, 0.01f)
+        assertEquals(0.55f, cell.confidence, 1e-6f)
+        assertEquals("1:14.800", grid.boxAt(2, 2)!!.text)
+        assertEquals(null, grid.boxAt(9, 9))
+    }
+
+    @Test
+    fun theCellBoxIsInOriginalCoordinates_evenWhenThePhotoIsTilted() {
+        val skew = 0.05f
+        fun tilted(text: String, cx: Float, cy: Float, w: Float): OcrBox {
+            val rx = cx * kotlin.math.cos(skew) - cy * kotlin.math.sin(skew)
+            val ry = cx * kotlin.math.sin(skew) + cy * kotlin.math.cos(skew)
+            return OcrBox(text, rx - w / 2, ry - 10f, rx + w / 2, ry + 10f, skew)
+        }
+        val boxes = listOf(
+            tilted("1", 60f, 100f, 14f), tilted("1:17.263", 260f, 100f, 110f), tilted("1:15.100", 460f, 100f, 110f),
+            tilted("2", 60f, 140f, 14f), tilted("1:16.905", 260f, 140f, 110f), tilted("1:14.800", 460f, 140f, 110f),
+        )
+        val grid = OcrLayout.reconstructGrid(boxes)
+        val original = boxes.first { it.text == "1:16.905" }
+        val found = grid.boxAt(1, 1)!!
+        assertEquals(original.left, found.left, 0.01f)
+        assertEquals(original.top, found.top, 0.01f)
+    }
+}

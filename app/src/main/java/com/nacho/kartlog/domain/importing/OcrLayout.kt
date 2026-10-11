@@ -17,11 +17,28 @@ data class OcrBox(
     val right: Float,
     val bottom: Float,
     val baselineAngle: Float = 0f,
+    /** Confianza del reconocimiento en [0, 1] (1 si el motor no la da). */
+    val confidence: Float = 1f,
 ) {
     val centerX get() = (left + right) / 2f
     val centerY get() = (top + bottom) / 2f
     val height get() = bottom - top
     val width get() = right - left
+}
+
+/** Una celda de la tabla reconstruida: su texto y la caja que la delimita en la imagen original (sin enderezar). */
+data class OcrGridPiece(val text: String, val box: OcrBox?)
+
+/**
+ * Tabla reconstruida: una lista de filas con sus celdas. [text] es lo que consume [LapTextParser] (una línea por fila, celdas
+ * separadas por tabulador) y las coordenadas `(línea, columna)` de ese texto sirven para volver a la caja de la imagen.
+ */
+class OcrGrid(val lines: List<List<OcrGridPiece>>) {
+    val text: String
+        get() = lines.joinToString("\n") { row -> row.joinToString("\t") { it.text } }
+
+    /** Caja de la celda `(línea, columna)` del texto reconstruido, si existe. */
+    fun boxAt(line: Int, col: Int): OcrBox? = lines.getOrNull(line)?.getOrNull(col)?.box
 }
 
 /**
@@ -41,21 +58,29 @@ object OcrLayout {
     private const val WORD_GAP = 0.6f
     private val timeLike = Regex("""\d\s?[:.,'’"]\s?\d""")
 
-    fun reconstruct(boxes: List<OcrBox>): String {
+    fun reconstruct(boxes: List<OcrBox>): String = reconstructGrid(boxes).text
+
+    /** Igual que [reconstruct], pero conserva la caja (en coordenadas de la imagen original) de cada celda. */
+    fun reconstructGrid(boxes: List<OcrBox>): OcrGrid {
         val usable = boxes.filter { it.text.isNotBlank() && it.height > 0f }
-        if (usable.isEmpty()) return ""
+        if (usable.isEmpty()) return OcrGrid(emptyList())
         val deskewed = deskew(usable)
+        val items = deskewed.mapIndexed { i, d -> Item(d, usable[i]) }
         val medianHeight = median(deskewed.map { it.height })
-        val rows = groupRows(deskewed, medianHeight * ROW_TOLERANCE).map { mergeWords(it, medianHeight * WORD_GAP) }
+        val rows = groupRows(items, medianHeight * ROW_TOLERANCE).map { mergeWords(it, medianHeight * WORD_GAP) }
         val anchors = columnAnchors(rows, medianHeight)
         val split = rows.map { splitRow(it, anchors, medianHeight) }
         // Columna de etiquetas (nº de vuelta): si alguna fila la tiene, todas reservan su hueco.
         val leadingWidth = split.maxOf { it.leading.size }
-        return split.joinToString("\n") { r ->
-            val leading = r.leading + List(leadingWidth - r.leading.size) { "" }
-            (leading + r.columns + r.trailing).dropLastWhile { it.isEmpty() }.joinToString("\t")
+        val lines = split.map { r ->
+            val leading = r.leading + List(leadingWidth - r.leading.size) { OcrGridPiece("", null) }
+            (leading + r.columns + r.trailing).dropLastWhile { it.text.isEmpty() }
         }
+        return OcrGrid(lines)
     }
+
+    /** Una palabra con su caja enderezada (para agrupar) y su caja original (para señalarla en la imagen). */
+    private class Item(val d: OcrBox, val o: OcrBox)
 
     /** Gira los centros alrededor del origen para anular la inclinación mediana. */
     internal fun deskew(boxes: List<OcrBox>): List<OcrBox> {
@@ -72,35 +97,38 @@ object OcrLayout {
         }
     }
 
-    private fun groupRows(boxes: List<OcrBox>, tolerance: Float): List<List<OcrBox>> {
-        val rows = mutableListOf<MutableList<OcrBox>>()
+    private fun groupRows(items: List<Item>, tolerance: Float): List<List<Item>> {
+        val rows = mutableListOf<MutableList<Item>>()
         var rowCenter = 0f
-        for (b in boxes.sortedBy { it.centerY }) {
+        for (b in items.sortedBy { it.d.centerY }) {
             val current = rows.lastOrNull()
-            if (current != null && abs(b.centerY - rowCenter) <= tolerance) {
+            if (current != null && abs(b.d.centerY - rowCenter) <= tolerance) {
                 current += b
-                rowCenter = current.map { it.centerY }.average().toFloat()
+                rowCenter = current.map { it.d.centerY }.average().toFloat()
             } else {
                 rows += mutableListOf(b)
-                rowCenter = b.centerY
+                rowCenter = b.d.centerY
             }
         }
-        return rows.map { row -> row.sortedBy { it.left } }
+        return rows.map { row -> row.sortedBy { it.d.left } }
     }
 
+    private fun union(a: OcrBox, b: OcrBox, text: String) = a.copy(
+        text = text,
+        left = minOf(a.left, b.left), right = max(a.right, b.right),
+        top = minOf(a.top, b.top), bottom = max(a.bottom, b.bottom),
+        confidence = minOf(a.confidence, b.confidence),
+    )
+
     /** Une palabras vecinas separadas por menos de [maxGap] (nombres con espacios, «Kart 26»). */
-    private fun mergeWords(row: List<OcrBox>, maxGap: Float): List<OcrBox> {
-        val out = mutableListOf<OcrBox>()
+    private fun mergeWords(row: List<Item>, maxGap: Float): List<Item> {
+        val out = mutableListOf<Item>()
         for (b in row) {
             val last = out.lastOrNull()
-            val bothTimes = last != null && isTimeLike(last.text) && isTimeLike(b.text)
-            if (last != null && !bothTimes && b.left - last.right <= maxGap && !(isTimeLike(last.text) || isTimeLike(b.text))) {
-                out[out.lastIndex] = last.copy(
-                    text = last.text + " " + b.text,
-                    right = max(last.right, b.right),
-                    top = minOf(last.top, b.top),
-                    bottom = max(last.bottom, b.bottom),
-                )
+            val bothTimes = last != null && isTimeLike(last.d.text) && isTimeLike(b.d.text)
+            if (last != null && !bothTimes && b.d.left - last.d.right <= maxGap && !(isTimeLike(last.d.text) || isTimeLike(b.d.text))) {
+                val text = last.d.text + " " + b.d.text
+                out[out.lastIndex] = Item(union(last.d, b.d, text), union(last.o, b.o, text))
             } else {
                 out += b
             }
@@ -109,36 +137,44 @@ object OcrLayout {
     }
 
     /** Centros X de las columnas: agrupa los tiempos por cercanía horizontal. */
-    private fun columnAnchors(rows: List<List<OcrBox>>, medianHeight: Float): List<Float> {
-        val times = rows.flatten().filter { isTimeLike(it.text) }.sortedBy { it.centerX }
+    private fun columnAnchors(rows: List<List<Item>>, medianHeight: Float): List<Float> {
+        val times = rows.flatten().filter { isTimeLike(it.d.text) }.sortedBy { it.d.centerX }
         if (times.isEmpty()) return emptyList()
-        val tolerance = max(median(times.map { it.width }) * 0.5f, medianHeight)
+        val tolerance = max(median(times.map { it.d.width }) * 0.5f, medianHeight)
         val clusters = mutableListOf<MutableList<Float>>()
         for (t in times) {
             val last = clusters.lastOrNull()
-            if (last != null && t.centerX - last.average().toFloat() <= tolerance) last += t.centerX else clusters += mutableListOf(t.centerX)
+            if (last != null && t.d.centerX - last.average().toFloat() <= tolerance) last += t.d.centerX else clusters += mutableListOf(t.d.centerX)
         }
         return clusters.map { it.average().toFloat() }
     }
 
-    private class SplitRow(val leading: List<String>, val columns: List<String>, val trailing: List<String>)
+    private class SplitRow(val leading: List<OcrGridPiece>, val columns: List<OcrGridPiece>, val trailing: List<OcrGridPiece>)
 
-    private fun splitRow(row: List<OcrBox>, anchors: List<Float>, medianHeight: Float): SplitRow {
-        if (anchors.isEmpty()) return SplitRow(emptyList(), row.map { it.text }, emptyList())
-        val leading = mutableListOf<String>()
-        val columns = Array(anchors.size) { mutableListOf<String>() }
-        val trailing = mutableListOf<String>()
+    /** Une las palabras de una celda: texto separado por espacios y caja que las abarca (en la imagen original). */
+    private fun piece(items: List<Item>): OcrGridPiece {
+        if (items.isEmpty()) return OcrGridPiece("", null)
+        val text = items.joinToString(" ") { it.o.text }
+        val box = items.map { it.o }.reduce { acc, b -> union(acc, b, text) }
+        return OcrGridPiece(text, box)
+    }
+
+    private fun splitRow(row: List<Item>, anchors: List<Float>, medianHeight: Float): SplitRow {
+        if (anchors.isEmpty()) return SplitRow(emptyList(), row.map { piece(listOf(it)) }, emptyList())
+        val leading = mutableListOf<Item>()
+        val columns = Array(anchors.size) { mutableListOf<Item>() }
+        val trailing = mutableListOf<Item>()
         val columnTolerance = max(anchors.zipWithNext { a, b -> b - a }.minOrNull()?.div(2f) ?: Float.MAX_VALUE, medianHeight)
         for (b in row) {
-            val nearest = anchors.indices.minBy { abs(anchors[it] - b.centerX) }
-            val distance = abs(anchors[nearest] - b.centerX)
+            val nearest = anchors.indices.minBy { abs(anchors[it] - b.d.centerX) }
+            val distance = abs(anchors[nearest] - b.d.centerX)
             when {
-                isTimeLike(b.text) || distance <= columnTolerance * 0.75f -> columns[nearest] += b.text
-                b.centerX < anchors.first() -> leading += b.text
-                else -> trailing += b.text
+                isTimeLike(b.d.text) || distance <= columnTolerance * 0.75f -> columns[nearest] += b
+                b.d.centerX < anchors.first() -> leading += b
+                else -> trailing += b
             }
         }
-        return SplitRow(leading, columns.map { it.joinToString(" ") }, trailing)
+        return SplitRow(leading.map { piece(listOf(it)) }, columns.map { piece(it) }, trailing.map { piece(listOf(it)) })
     }
 
     private fun isTimeLike(text: String) = timeLike.containsMatchIn(text)
