@@ -100,6 +100,9 @@
     <string name="delete_session_message">Se eliminarán la tanda y todas sus vueltas. No se puede deshacer.</string>
 
     <!-- Ajustes -->
+    <string name="nav_sessions">Tandas</string>
+    <string name="nav_analysis">Análisis</string>
+    <string name="nav_circuits">Circuitos</string>
     <string name="nav_settings">Ajustes</string>
     <string name="action_continue">Continuar</string>
     <string name="settings_debug_title">Depuración (solo debug)</string>
