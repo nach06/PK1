@@ -314,6 +314,7 @@ private fun HeaderCard(
                     },
                     highlightIndex = bestIndex.takeIf { it >= 0 },
                     xSpacing = if (state.laps.size > 12) 2 else 1,
+                    clipOutliers = true,
                 )
                 }
             }

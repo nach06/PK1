@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,6 +45,7 @@ import com.patrykandpatrick.vico.core.common.shape.CorneredShape
  * @param referenceMs línea horizontal de referencia (p. ej. la media limpia), opcional.
  * @param referenceLabel etiqueta de la línea de referencia.
  * @param highlightIndex punto resaltado en verde telemetría (la mejor vuelta).
+ * @param clipOutliers calcula el eje con las vueltas limpias y recorta las demás (punto hueco ámbar).
  */
 @Composable
 fun TimeLineChart(
@@ -55,40 +57,53 @@ fun TimeLineChart(
     referenceLabel: String? = null,
     highlightIndex: Int? = null,
     xSpacing: Int = 1,
+    /** `true` en la gráfica de vueltas: las salidas de boxes se recortan en el borde superior. */
+    clipOutliers: Boolean = false,
 ) {
     require(x.size == timesMs.size) { "x e y deben tener el mismo tamaño" }
     val kart = MaterialTheme.kartColors
     val lineColor = MaterialTheme.colorScheme.onSurface
     val axisTextSize = 11.sp
 
-    val model = remember(x, timesMs) {
-        CartesianChartModel(LineCartesianLayerModel.build { series(x, timesMs) })
+    val scale = remember(timesMs, referenceMs, clipOutliers) { computeChartScale(timesMs, referenceMs, clipOutliers) }
+    val model = remember(x, scale) {
+        CartesianChartModel(LineCartesianLayerModel.build { series(x, scale.plottedMs) })
     }
-    // El rango de Y se ajusta a los datos (el automático incluye siempre el cero y aplastaría la gráfica).
-    val rangeProvider = remember(timesMs, referenceMs) {
-        val all = timesMs + listOfNotNull(referenceMs)
-        val min = all.min().toDouble()
-        val max = all.max().toDouble()
-        val pad = ((max - min) * 0.12).coerceAtLeast(300.0)
-        CartesianLayerRangeProvider.fixed(minY = min - pad, maxY = max + pad)
-    }
+    // El rango de Y se fija a los datos (el automático incluye siempre el cero y aplastaría la gráfica).
+    val rangeProvider = remember(scale) { CartesianLayerRangeProvider.fixed(minY = scale.minY, maxY = scale.maxY) }
 
     val normalPoint = LineCartesianLayer.Point(
         rememberShapeComponent(fill = fill(lineColor), shape = CorneredShape.Pill),
         sizeDp = 6f,
     )
+    // Punto hueco ámbar: vuelta fuera de escala, recortada en el borde superior.
+    val clippedPoint = LineCartesianLayer.Point(
+        rememberShapeComponent(
+            fill = fill(Color.Transparent),
+            shape = CorneredShape.Pill,
+            strokeFill = fill(kart.warning),
+            strokeThickness = 2.dp,
+        ),
+        sizeDp = 10f,
+    )
     val bestPoint = LineCartesianLayer.Point(
         rememberShapeComponent(fill = fill(kart.telemetry), shape = CorneredShape.Pill),
         sizeDp = 14f,
     )
-    val pointProvider = remember(normalPoint, bestPoint, x, highlightIndex) {
+    val pointProvider = remember(normalPoint, bestPoint, clippedPoint, x, highlightIndex, scale) {
         object : LineCartesianLayer.PointProvider {
             override fun getPoint(
                 entry: LineCartesianLayerModel.Entry,
                 seriesIndex: Int,
                 extraStore: ExtraStore,
-            ): LineCartesianLayer.Point =
-                if (highlightIndex != null && entry.x == x.getOrNull(highlightIndex)) bestPoint else normalPoint
+            ): LineCartesianLayer.Point {
+                val index = x.indexOf(entry.x)
+                return when {
+                    index in scale.clippedIndexes -> clippedPoint
+                    highlightIndex != null && index == highlightIndex -> bestPoint
+                    else -> normalPoint
+                }
+            }
 
             override fun getLargestPoint(extraStore: ExtraStore): LineCartesianLayer.Point = bestPoint
         }
