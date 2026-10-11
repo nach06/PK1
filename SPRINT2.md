@@ -94,3 +94,64 @@ Instalar la variante **debug**, abrir **Ajustes → Cargar datos de prueba** y r
 **Ajustes y barra inferior**
 - [ ] La barra (Tandas, Análisis, Circuitos, Ajustes) resalta el destino activo en rojo; al volver a una pestaña conserva su posición y filtros; desaparece en Nueva tanda y Detalle.
 - [ ] «Exportar todo a CSV» abre el selector de compartir; la versión aparece abajo; la tarjeta «Depuración» solo existe en debug; «Borrar todos los datos» pide dos confirmaciones.
+
+
+---
+
+# Sprint 2.1 — Correcciones visuales tras validar en emulador (Pixel 3a API 35)
+
+## Estado
+F1–F9 **hechas, un commit por tarea**. Compila (debug y release), **57 tests unitarios en verde** (se ejecutaron tras cada tarea;
+F2 se repitió tres veces seguidas sin intermitencias). Esquema de Room intacto. **Sigue pendiente la validación visual**:
+lo único que ahora verifican los tests de UI es la *estructura* (qué se ve, qué se oculta, qué queda en pantalla), no el aspecto.
+
+## Tareas
+| Tarea | Qué se hizo | Cómo se comprobó |
+|---|---|---|
+| **F1** | Gráfica y teclado son **mutuamente excluyentes** (abrir uno pliega el otro; editar una vuelta abre el teclado y pliega la gráfica). El teclado es ahora una cuadrícula propia (`Layout`) cuyas filas miden `min(alto preferido, alto disponible / 4)`, y en el panel va con `weight(1f, fill = false)`: **encoge en vez de recortarse**, así que GUARDAR VUELTA nunca queda fuera. | `DetailLayoutTest` (360×640 dp, 10 vueltas): gráfica abierta ↔ teclado, teclas 1/5/9/00/0/⌫ y GUARDAR VUELTA a la vista. |
+| **F2** | Franja `V10 1:12.858 · V9 1:12.951` (las 2 últimas guardadas) encima del display, solo con el teclado abierto. Teclas de 52 dp (antes 56). | Mismo test: la franja es visible con el teclado abierto. |
+| **F3** | Eje Y calculado con las **vueltas limpias**: mínimo = mejor − 0,3 s, máximo = mayor limpia + 0,3 s (la media limpia siempre entra en el rango). Las vueltas fuera de rango se **recortan en el borde superior** y se dibujan como **punto hueco ámbar**. Eje Y en `m:ss.mmm`. Lógica pura en `computeChartScale`. | `ChartScaleTest` (5 casos: salida de boxes recortada, sin salidas, referencia, una vuelta, evolución sin recorte). |
+| **F4** | Causa: Vico usa por defecto zoom `max(fijo 32 dp/punto, Content)` y desplazamiento, así que 10 vueltas no cabían y se cortaban. Ahora **sin scroll ni zoom y con `Zoom.Content`**, más 12 dp de holgura fija en ambos extremos. Etiquetas del eje X cada 1 vuelta (≤ 12) o cada 2 (13–24). | **Solo análisis del código fuente de Vico 2.5.1; no verificable aquí** (ver riesgos). |
+| **F5** | Sin texto sobre el gráfico: queda la línea ámbar. Leyenda **fuera del área de dibujo**: `— Media limpia 1:12.981` (línea ámbar) y `● Mejor` (punto verde); sale además `○ Fuera de escala` cuando hay vueltas recortadas. En el Análisis el punto se llama «Récord». | `DetailLayoutTest` comprueba los tres textos de la leyenda. |
+| **F6** | `StatBadge` admite `minValueSize` y alto de valor fijo; MEDIA LIMPIA usa `AutoSizeText` (baja hasta 18 sp) y los pesos pasan a 1,1/0,9. | Cálculo: fuente mono = 0,6 em/carácter → `1:12.981` y `0:47.388` (8 caracteres) a 28 sp miden 134 dp; el ancho de MEDIA en un Pixel 3a (393 dp) es ≈ 144 dp y en 360 dp ≈ 137 dp, así que caben sin encoger. `@Preview` `StatsRowPreview` con ambos valores. |
+| **F7** | Circuito por defecto del Análisis = el de **más tandas con vueltas**; empate → el de la tanda más reciente. La elección se recuerda mientras la app siga en memoria (`AnalysisSelection` vive en el `AppContainer`). Las tres cifras, en una `Row` con 12 dp de separación, alineadas arriba y con valor de alto fijo (40 dp) que encoge hasta 18 sp. | `AnalysisModelTest` (defecto, desempate, tandas vacías no cuentan, selección explícita). |
+| **F8** | `contentPadding` superior 8 dp e inferior 96 dp en Tandas y Circuitos. Los filtros pasan a `LazyRow` con `contentPadding` horizontal 16 dp: empieza siempre en 0 (primer chip completo) y conserva el scroll horizontal. | `NavigationFlowTest`: el chip «Circuito» y «Libre» están a la vista. |
+| **F9** | Nuevo `SecondaryButton` (contorno 2 dp). Ajustes: «Exportar todo a CSV» y «Cargar datos de prueba» con contorno `primary`; «Borrar todos los datos» con contorno y texto de aviso (ámbar). El nombre del circuito seleccionado en Nueva tanda usa `maxLines = 1` + elipsis. | Compila; el texto de los botones sigue en mayúsculas (lo cubre `NavigationFlowTest`). |
+
+`@Preview` añadidos: gráfica con 10 vueltas y una salida de boxes (`LapChartPreview`, F3/F4/F5), panel de teclado con poca altura
+(`LapEntryPanelTightPreview`, F1/F2) y fila MEJOR/MEDIA (`StatsRowPreview`, F6).
+
+## Decisiones tomadas por mi cuenta (a validar)
+1. **Leyenda con un tercer elemento** («○ Fuera de escala», solo si hay vueltas recortadas): el punto hueco ámbar necesita explicación y no cabía en el texto de la media.
+2. **Evolución de tandas (Análisis) no recorta**: el recorte de F3 solo aplica a la gráfica de vueltas (`clipOutliers = true`); en la de evolución cada punto ya es una mejor vuelta.
+3. **Altura de teclas:** preferida 52 dp; si el panel no cabe, baja por debajo de 52 dp *antes* que perder GUARDAR VUELTA (prioridad de F1 sobre F2).
+4. **Los pesos de MEJOR/MEDIA** pasan de 1,2/0,8 a 1,1/0,9 para dar a MEDIA el ancho que necesitaba.
+5. **Gráfica del detalle sigue plegada por defecto**, y se pliega al abrir el teclado.
+6. Se retiró la comprobación automática de F4 que había intentado (desplazamiento máximo de Vico = 0): resultó vacía —Robolectric no ejecuta la fase de dibujo en la que Vico calcula el scroll, y pasaba igual con el zoom por defecto—, así que prefiero no dejar un test que dé falsa seguridad.
+
+## Riesgos
+- **F4 sin verificación objetiva.** La corrección sale de leer el código de Vico (`rememberVicoZoomState` por defecto = `max(fixed, Content)`; `Zoom.Content` ajusta al ancho). Es lo primero a mirar en el emulador.
+- **Teclas por debajo de 52 dp** en pantallas muy bajas (< ~600 dp de alto útil con gráfica cerrada): el objetivo táctil mínimo de 56 dp deja de cumplirse, a cambio de que GUARDAR VUELTA siga visible.
+- **Cabecera con la gráfica abierta** ocupa ≈ 450 dp; en móviles bajos la lista de vueltas puede quedar con casi nada mientras se ve la gráfica (es el comportamiento buscado: gráfica o teclado, no ambos).
+- Los tests de UI usan Robolectric con métricas de texto simplificadas: no validan tamaños reales de fuente.
+
+## Comprobación visual para el responsable (Pixel 3a, datos del DebugSeeder)
+**Detalle de tanda (≥ 10 vueltas, con salida de boxes)**
+- [ ] Abrir la gráfica: se ven **todas** las vueltas hasta el borde derecho, sin scroll; etiquetas del eje X cada 1 o 2 vueltas; la salida de boxes aparece como **punto hueco ámbar pegado arriba** y el resto de la línea ocupa bien el alto.
+- [ ] Eje Y en `m:ss.mmm`; línea ámbar de la media; **ningún texto sobre el área del gráfico**; debajo, la leyenda `— Media limpia …`, `● Mejor` y `○ Fuera de escala`.
+- [ ] Con la gráfica abierta, pulsar «ABRIR TECLADO»: la gráfica se pliega y el teclado aparece **entero** (1–9, 00, 0, ⌫ y GUARDAR VUELTA). Al pulsar «GRÁFICA DE VUELTAS» con el teclado abierto, este se pliega.
+- [ ] Teclado abierto: sobre el display se ve `V10 … · V9 …` y, bajo el panel, **al menos 1–2 filas de vueltas**.
+- [ ] MEDIA LIMPIA completa (`1:12.981`, `0:47.388`), sin recorte por la derecha; MEJOR en una línea.
+- [ ] Editar una vuelta (tocar una fila) abre el teclado en modo edición y pliega la gráfica.
+
+**Análisis**
+- [ ] Abre el circuito con más tandas con vueltas (no el de la última tanda); al elegir otro y cambiar de pestaña y volver, **se mantiene**.
+- [ ] RÉCORD · MEDIA LIMPIA · TANDAS en una fila alineada arriba, con cifras de igual altura y sin cortes.
+
+**Tandas y Circuitos**
+- [ ] La última card queda **por encima** del botón flotante (Tandas) y hay aire arriba del primer elemento.
+- [ ] Los chips de filtro empiezan con «Circuito» completo y siguen desplazándose en horizontal.
+
+**Ajustes y Nueva tanda**
+- [ ] «Exportar todo a CSV» y «Cargar datos de prueba» con **contorno rojo** (no rellenos); «Borrar todos los datos» con **contorno ámbar**.
+- [ ] Elegir un circuito de nombre largo: el botón del selector lo muestra con «…».

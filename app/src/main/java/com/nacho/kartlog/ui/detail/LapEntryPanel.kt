@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -210,4 +212,21 @@ private fun RecentLapsStrip(laps: List<Lap>) {
         softWrap = false,
         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
     )
+}
+
+/** F1: con poca altura (cabecera + panel en 470 dp) las teclas encogen y GUARDAR VUELTA sigue a la vista. */
+@Preview(widthDp = 393, heightDp = 470, showBackground = true, backgroundColor = 0xFF0A0A0C)
+@Composable
+private fun LapEntryPanelTightPreview() {
+    KartLogTheme {
+        androidx.compose.foundation.layout.Column(Modifier.fillMaxSize()) {
+            androidx.compose.foundation.layout.Spacer(Modifier.height(160.dp)) // hueco de la cabecera
+            LapEntryPanel(
+                expanded = true, timeText = "1:12.858", hasDigits = true, invalid = false, canSave = true,
+                label = "Vuelta 11", isEditing = false,
+                recentLaps = listOf(Lap(10, 1, 10, 72_858, LapSource.MANUAL), Lap(9, 1, 9, 72_951, LapSource.MANUAL)),
+                onToggle = {}, onDigits = {}, onBackspace = {}, onClear = {}, onSave = {}, onCancelEdit = {},
+            )
+        }
+    }
 }
