@@ -1,5 +1,10 @@
 package com.nacho.kartlog.ui.settings
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.nacho.kartlog.ui.util.formatDateTime
+import com.nacho.kartlog.ui.util.shareBackup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
@@ -60,6 +65,10 @@ fun SettingsScreen(
         SettingsMessage.WIPED -> stringResource(R.string.settings_wiped)
         SettingsMessage.FAILED -> stringResource(R.string.settings_failed)
         SettingsMessage.NOTHING_TO_EXPORT -> stringResource(R.string.settings_nothing_to_export)
+        SettingsMessage.BACKUP_FAILED -> stringResource(R.string.backup_failed)
+        SettingsMessage.RESTORE_INVALID -> stringResource(R.string.restore_invalid)
+        SettingsMessage.RESTORE_NEWER -> stringResource(R.string.restore_newer)
+        SettingsMessage.RESTORE_IO -> stringResource(R.string.restore_io)
         SettingsMessage.RIVALS_CLEARED -> stringResource(R.string.settings_rivals_cleared)
         SettingsMessage.SAMPLES_MISSING -> stringResource(R.string.settings_samples_missing)
         null -> null
@@ -67,6 +76,10 @@ fun SettingsScreen(
     val context = LocalContext.current
     LaunchedEffect(viewModel) {
         viewModel.shareFiles.collect { shareCsv(context, it.fileName, it.content) }
+    }
+    LaunchedEffect(viewModel) { viewModel.backupFiles.collect { shareBackup(context, it) } }
+    val pickBackup = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        uri?.let { viewModel.prepareRestore { context.contentResolver.openInputStream(it) } }
     }
     val versionName = remember(context) {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
@@ -229,6 +242,32 @@ fun SettingsScreen(
                 }
             }
 
+            KartCard(Modifier.fillMaxWidth().testTag("backup_card")) {
+                Text(
+                    text = stringResource(R.string.backup_title).uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.kartColors.textMuted,
+                )
+                Column(modifier = Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SecondaryButton(
+                        text = stringResource(R.string.backup_export),
+                        onClick = viewModel::exportBackup,
+                        enabled = !state.isBusy,
+                    )
+                    SecondaryButton(
+                        text = stringResource(R.string.backup_restore),
+                        onClick = { pickBackup.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) },
+                        enabled = !state.isBusy,
+                        color = MaterialTheme.kartColors.warning,
+                    )
+                    Text(
+                        text = stringResource(R.string.backup_hint),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.kartColors.textMuted,
+                    )
+                }
+            }
+
             Text(
                 text = stringResource(
                     R.string.settings_version,
@@ -243,6 +282,31 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+    }
+
+    state.pendingRestore?.let { info ->
+        AlertDialog(
+            onDismissRequest = viewModel::cancelRestore,
+            containerColor = MaterialTheme.kartColors.card,
+            title = { Text(stringResource(R.string.restore_title), style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Text(
+                    stringResource(R.string.restore_message, formatDateTime(info.createdAtMs), info.trackCount, info.schemaVersion),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.testTag("restore_message"),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmRestore, modifier = Modifier.heightIn(min = 56.dp).testTag("restore_confirm")) {
+                    Text(stringResource(R.string.restore_confirm).uppercase(), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::cancelRestore, modifier = Modifier.heightIn(min = 56.dp)) {
+                    Text(stringResource(R.string.action_cancel).uppercase(), style = MaterialTheme.typography.titleSmall)
+                }
+            },
+        )
     }
 
     if (confirmRivals) {

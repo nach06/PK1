@@ -6,6 +6,8 @@ import java.io.File
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.nacho.kartlog.data.backup.BackupService
+import com.nacho.kartlog.data.backup.ZipBackupService
 import com.nacho.kartlog.data.gps.FileDraftStore
 import com.nacho.kartlog.data.gps.FileTrackStore
 import com.nacho.kartlog.data.gps.FusedLocationSource
@@ -19,6 +21,7 @@ import com.nacho.kartlog.ui.dashboard.DashboardViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.withContext
 import com.nacho.kartlog.ui.calibration.CalibrationViewModel
 import com.nacho.kartlog.data.local.KartLogDatabase
 import com.nacho.kartlog.data.repository.CircuitRepositoryImpl
@@ -128,8 +131,22 @@ class AppContainer(context: Context) {
         initializer { CalibrationViewModel(circuitId, circuitRepository, locationSource) }
     }
 
+    /** Copia de seguridad completa (BD + trazados) en un zip. Incluye datos de rivales. */
+    val backupService: BackupService = ZipBackupService(
+        databaseFile = context.getDatabasePath(KartLogDatabase.NAME),
+        tracksDir = File(context.filesDir, "tracks"),
+        cacheDir = context.cacheDir,
+        schemaVersion = KartLogDatabase.VERSION,
+        appVersion = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty(),
+        checkpoint = { withContext(Dispatchers.IO) { database.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(FULL)").use { it.moveToFirst() } } },
+        closeDatabase = { database.close() },
+    )
+
+    /** Tras restaurar una copia la app se reinicia para abrir la BD nueva; los tests lo sustituyen. */
+    var restartApp: () -> Unit = { com.nacho.kartlog.ui.util.restartApp(context) }
+
     val settingsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
-        initializer { SettingsViewModel(debugTools, SessionsCsvExporter(sessionRepository, lapRepository), userSettings, importInbox, importRepository, onSimulationReady = { locationSource = it }) }
+        initializer { SettingsViewModel(debugTools, SessionsCsvExporter(sessionRepository, lapRepository), userSettings, importInbox, importRepository, onSimulationReady = { locationSource = it }, backup = backupService, restartApp = { restartApp() }) }
     }
 
     val sessionListViewModelFactory: ViewModelProvider.Factory = viewModelFactory {

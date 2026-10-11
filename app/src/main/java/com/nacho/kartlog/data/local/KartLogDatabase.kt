@@ -27,7 +27,7 @@ import com.nacho.kartlog.data.local.entity.StintEntity
         ParticipantLapEntity::class,
         StintEntity::class,
     ],
-    version = 4,
+    version = KartLogDatabase.VERSION,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -41,6 +41,9 @@ abstract class KartLogDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "kartlog.db"
+
+        /** Versión del esquema Room (la que se guarda en cada copia de seguridad). */
+        const val VERSION = 4
 
         fun create(context: Context): KartLogDatabase =
             Room.databaseBuilder(context.applicationContext, KartLogDatabase::class.java, NAME)

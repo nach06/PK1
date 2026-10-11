@@ -39,3 +39,14 @@ suspend fun shareCsv(context: Context, fileName: String, content: String) {
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     context.startActivity(chooser)
 }
+
+/** Comparte la copia de seguridad (.zip) con el selector de Android. El fichero ya está en `cache/exports` (FileProvider). */
+fun shareBackup(context: Context, file: File) {
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "application/zip"
+        putExtra(Intent.EXTRA_STREAM, uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(intent, context.getString(R.string.backup_share_title)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+}

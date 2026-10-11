@@ -354,4 +354,18 @@
     <string name="stint_row_detail">V%1$d–V%2$d · %3$d vueltas</string>
     <string name="stint_row_stats">Mejor %1$s · media limpia %2$s</string>
     <string name="stint_row_pit">Parada %1$s</string>
+
+    <!-- Copia de seguridad -->
+    <string name="backup_title">Copia de seguridad</string>
+    <string name="backup_export">Exportar copia</string>
+    <string name="backup_restore">Restaurar copia</string>
+    <string name="backup_hint">La copia (.zip) incluye TODO: tandas, vueltas, trazados GPS y también los datos de rivales importados. No es el CSV público: guárdala solo donde confíes. Restaurar sustituye todos los datos actuales.</string>
+    <string name="backup_share_title">Copia de seguridad de KartLog</string>
+    <string name="backup_failed">No se pudo crear la copia de seguridad</string>
+    <string name="restore_title">¿Restaurar esta copia?</string>
+    <string name="restore_message">Copia del %1$s con %2$d trazados (esquema %3$d). Se SUSTITUIRÁN todos los datos actuales (tandas, vueltas, trazados y datos de rivales) y la app se reiniciará. No se puede deshacer.</string>
+    <string name="restore_confirm">Restaurar</string>
+    <string name="restore_invalid">Ese fichero no es una copia de seguridad válida de KartLog (está dañado o incompleto). No se ha cambiado nada.</string>
+    <string name="restore_newer">Esa copia es de una versión más nueva de KartLog y esta app no puede leerla. Actualiza la app e inténtalo de nuevo. No se ha cambiado nada.</string>
+    <string name="restore_io">No se pudo escribir la copia en el dispositivo. Revisa el espacio libre.</string>
 </resources>

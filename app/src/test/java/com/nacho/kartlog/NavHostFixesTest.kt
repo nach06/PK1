@@ -16,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.core.app.ApplicationProvider
@@ -154,5 +155,8 @@ class NavHostFixesTest {
         waitFor("EXPORTAR TODO A CSV")
         compose.onNodeWithText("EXPORTAR TODO A CSV").assertIsDisplayed()
         compose.onNodeWithText("BORRAR DATOS DE RIVALES").assertIsDisplayed()
+        // B5: copia de seguridad completa (exportar / restaurar).
+        compose.onNodeWithText("EXPORTAR COPIA").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("RESTAURAR COPIA").performScrollTo().assertIsDisplayed()
     }
 }

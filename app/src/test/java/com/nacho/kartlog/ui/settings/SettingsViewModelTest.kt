@@ -139,6 +139,60 @@ class SettingsViewModelTest {
         assertEquals(2, LapRepositoryImpl(db.lapDao()).observeBySession(sessionId).first().size)
     }
 
+    private class FakeBackup(var inspectResult: Result<com.nacho.kartlog.data.backup.BackupInfo>) : com.nacho.kartlog.data.backup.BackupService {
+        var restored = 0
+        override suspend fun export() = java.io.File("kartlog_backup_x.zip")
+        override suspend fun inspect(open: () -> java.io.InputStream?) = inspectResult
+        override suspend fun restore(open: () -> java.io.InputStream?): Result<com.nacho.kartlog.data.backup.BackupInfo> {
+            restored++
+            return inspectResult
+        }
+    }
+
+    private val info = com.nacho.kartlog.data.backup.BackupInfo(4, 1_760_000_000_000, 3, "0.1.0")
+
+    private fun backupVm(backup: FakeBackup, onRestart: () -> Unit) =
+        SettingsViewModel(
+            null, SessionsCsvExporter(SessionRepositoryImpl(db.sessionDao()), LapRepositoryImpl(db.lapDao())),
+            com.nacho.kartlog.ui.importing.FakeSettings(""), backup = backup, restartApp = onRestart,
+        )
+
+    @Test
+    fun restore_asksForConfirmationFirst_thenReplacesAndRestarts() = run {
+        val backup = FakeBackup(Result.success(info))
+        var restarts = 0
+        val vm = backupVm(backup) { restarts++ }
+        vm.prepareRestore { null }
+        assertEquals(info, vm.uiState.first { it.pendingRestore != null }.pendingRestore)
+        assertEquals("hasta confirmar no se sustituye nada", 0, backup.restored)
+
+        vm.cancelRestore()
+        assertNull(vm.uiState.value.pendingRestore)
+        vm.confirmRestore() // sin copia pendiente no hace nada
+        assertEquals(0, backup.restored)
+
+        vm.prepareRestore { null }
+        vm.uiState.first { it.pendingRestore != null }
+        vm.confirmRestore()
+        withTimeout(10_000) { while (restarts == 0) kotlinx.coroutines.delay(20) }
+        assertEquals(1, backup.restored)
+        assertEquals(1, restarts)
+    }
+
+    @Test
+    fun restore_ofAnInvalidOrNewerCopy_showsAClearMessage_andDoesNotRestart() = run {
+        var restarts = 0
+        val invalid = backupVm(FakeBackup(Result.failure(com.nacho.kartlog.data.backup.BackupException(com.nacho.kartlog.data.backup.BackupError.INVALID, "x")))) { restarts++ }
+        invalid.prepareRestore { null }
+        assertEquals(SettingsMessage.RESTORE_INVALID, invalid.uiState.first { it.message != null }.message)
+        assertNull(invalid.uiState.value.pendingRestore)
+
+        val newer = backupVm(FakeBackup(Result.failure(com.nacho.kartlog.data.backup.BackupException(com.nacho.kartlog.data.backup.BackupError.NEWER_SCHEMA, "x")))) { restarts++ }
+        newer.prepareRestore { null }
+        assertEquals(SettingsMessage.RESTORE_NEWER, newer.uiState.first { it.message != null }.message)
+        assertEquals(0, restarts)
+    }
+
     private fun viewModel(): SettingsViewModel {
         val exporter = SessionsCsvExporter(SessionRepositoryImpl(db.sessionDao()), LapRepositoryImpl(db.lapDao()))
         return SettingsViewModel(debugTools = null, exporter = exporter, userSettings = com.nacho.kartlog.ui.importing.FakeSettings(""), now = { 1_760_000_000_000 })
