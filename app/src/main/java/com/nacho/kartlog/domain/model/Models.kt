@@ -102,6 +102,8 @@ data class ImportRequest(
     /** Fila del propio usuario en la clasificación (sin vueltas propias: van a [Lap]). */
     val me: ParticipantImport?,
     val others: List<ParticipantImport>,
+    /** Texto original; en una sesión existente se guarda si esta aún no tenía uno. */
+    val importedRaw: String? = null,
 ) {
     init {
         require((newSession == null) != (existingSessionId == null)) { "Indica una sesión nueva o una existente" }

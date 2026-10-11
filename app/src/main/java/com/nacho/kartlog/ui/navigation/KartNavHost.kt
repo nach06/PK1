@@ -17,6 +17,8 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -37,6 +39,7 @@ import com.nacho.kartlog.ui.analysis.AnalysisScreen
 import com.nacho.kartlog.ui.circuits.CircuitsScreen
 import com.nacho.kartlog.ui.detail.SessionDetailScreen
 import com.nacho.kartlog.ui.history.SessionListScreen
+import com.nacho.kartlog.ui.importing.ImportScreen
 import com.nacho.kartlog.ui.newsession.NewSessionScreen
 import com.nacho.kartlog.ui.settings.SettingsScreen
 import com.nacho.kartlog.ui.theme.kartColors
@@ -47,6 +50,7 @@ object Routes {
     const val CIRCUITS = "circuits"
     const val SETTINGS = "settings"
     const val NEW = "sessions/new"
+    const val IMPORT = "sessions/import"
     const val SESSION_ID = "sessionId"
     const val DETAIL = "sessions/{$SESSION_ID}"
 
@@ -84,6 +88,14 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
         currentDestination?.hierarchy?.any { it.route == dest.route } == true
     }
 
+    // Contenido recibido con «Compartir → KartLog»: abre la pantalla de importación (que lo recoge del buzón).
+    val shared by container.importInbox.content.collectAsState()
+    LaunchedEffect(shared != null) {
+        if (shared != null && navController.currentDestination?.route != Routes.IMPORT) {
+            navController.navigate(Routes.IMPORT) { launchSingleTop = true }
+        }
+    }
+
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -108,6 +120,7 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
                 SessionListScreen(
                     viewModel = viewModel(factory = container.sessionListViewModelFactory),
                     onNewSession = { navController.navigate(Routes.NEW) },
+                    onImport = { navController.navigate(Routes.IMPORT) { launchSingleTop = true } },
                     onOpenSession = { navController.navigate(Routes.detail(it)) },
                 )
             }
@@ -130,6 +143,18 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
                     onSaved = { id ->
                         navController.navigate(Routes.detail(id)) {
                             popUpTo(Routes.NEW) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable(Routes.IMPORT) {
+                ImportScreen(
+                    viewModel = viewModel(factory = container.importViewModelFactory),
+                    ocrAvailable = container.imageTextRecognizer != null,
+                    onBack = { navController.popBackStack() },
+                    onSaved = { id ->
+                        navController.navigate(Routes.detail(id)) {
+                            popUpTo(Routes.IMPORT) { inclusive = true }
                         }
                     },
                 )

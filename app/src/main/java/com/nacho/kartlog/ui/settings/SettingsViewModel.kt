@@ -2,6 +2,7 @@ package com.nacho.kartlog.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nacho.kartlog.domain.settings.UserSettings
 import com.nacho.kartlog.domain.util.SessionsCsvExporter
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -30,6 +31,7 @@ data class SettingsUiState(
 class SettingsViewModel(
     private val debugTools: DebugTools?,
     private val exporter: SessionsCsvExporter,
+    private val userSettings: UserSettings,
     private val now: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SettingsUiState(debugToolsAvailable = debugTools != null))
@@ -58,6 +60,11 @@ class SettingsViewModel(
             }
         }
     }
+
+    /** Nombre guardado de «Mi nombre de piloto». */
+    val driverName: StateFlow<String> = userSettings.driverName
+
+    fun setDriverName(name: String) = userSettings.setDriverName(name)
 
     fun seedDebugData() = runDebug(SettingsMessage.SEEDED) { it.seed() }
 

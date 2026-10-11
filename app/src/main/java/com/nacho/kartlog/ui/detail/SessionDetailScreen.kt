@@ -142,6 +142,14 @@ fun SessionDetailScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                 ) {
+                    if (state.participants.isNotEmpty()) {
+                        item(key = "classification") {
+                            ClassificationCard(
+                                participants = state.participants,
+                                modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 8.dp),
+                            )
+                        }
+                    }
                     if (state.laps.isEmpty()) {
                         item {
                             Text(

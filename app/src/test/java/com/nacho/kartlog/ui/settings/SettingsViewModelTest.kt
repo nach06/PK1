@@ -55,7 +55,7 @@ class SettingsViewModelTest {
 
     private fun viewModel(): SettingsViewModel {
         val exporter = SessionsCsvExporter(SessionRepositoryImpl(db.sessionDao()), LapRepositoryImpl(db.lapDao()))
-        return SettingsViewModel(debugTools = null, exporter = exporter, now = { 1_760_000_000_000 })
+        return SettingsViewModel(debugTools = null, exporter = exporter, userSettings = com.nacho.kartlog.ui.importing.FakeSettings(""), now = { 1_760_000_000_000 })
     }
 
     @Test

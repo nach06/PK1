@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -19,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -81,6 +83,27 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            KartCard(Modifier.fillMaxWidth()) {
+                Text(
+                    text = stringResource(R.string.settings_driver_title).uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.kartColors.textMuted,
+                )
+                val savedName by viewModel.driverName.collectAsStateWithLifecycle()
+                var nameDraft by rememberSaveable(savedName) { mutableStateOf(savedName) }
+                OutlinedTextField(
+                    value = nameDraft,
+                    onValueChange = {
+                        nameDraft = it
+                        viewModel.setDriverName(it)
+                    },
+                    label = { Text(stringResource(R.string.settings_driver_name)) },
+                    supportingText = { Text(stringResource(R.string.settings_driver_name_hint)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                )
+            }
+
             KartCard(Modifier.fillMaxWidth()) {
                 Text(
                     text = stringResource(R.string.settings_data_title).uppercase(),

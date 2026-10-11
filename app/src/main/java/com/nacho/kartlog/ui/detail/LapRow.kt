@@ -8,7 +8,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -58,9 +61,17 @@ fun LapRow(
                 text = stringResource(R.string.lap_short, lap.number),
                 style = MaterialTheme.typography.titleSmall,
                 color = if (isEditing) kart.warning else kart.textMuted,
-                modifier = Modifier.width(52.dp),
+                modifier = Modifier.width(if (lap.source == LapSource.IMPORTED) 36.dp else 52.dp),
                 maxLines = 1,
             )
+            if (lap.source == LapSource.IMPORTED) {
+                Icon(
+                    imageVector = Icons.Default.FileDownload,
+                    contentDescription = stringResource(R.string.lap_imported),
+                    tint = kart.textMuted,
+                    modifier = Modifier.width(16.dp),
+                )
+            }
             Text(
                 text = LapTime.format(lap.timeMs),
                 style = KartTextStyles.lapTime,

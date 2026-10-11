@@ -12,7 +12,12 @@ import com.nacho.kartlog.data.repository.ParticipantRepositoryImpl
 import com.nacho.kartlog.data.repository.SessionRepositoryImpl
 import com.nacho.kartlog.debug.DebugTools
 import com.nacho.kartlog.debug.DebugToolsFactory
+import com.nacho.kartlog.data.settings.SharedPreferencesUserSettings
 import com.nacho.kartlog.domain.analytics.AnalyticsSource
+import com.nacho.kartlog.domain.importing.ImageTextRecognizer
+import com.nacho.kartlog.domain.importing.ImportInbox
+import com.nacho.kartlog.domain.settings.UserSettings
+import com.nacho.kartlog.ui.importing.ImportViewModel
 import com.nacho.kartlog.domain.repository.CircuitRepository
 import com.nacho.kartlog.domain.util.SessionsCsvExporter
 import com.nacho.kartlog.domain.repository.ImportRepository
@@ -37,6 +42,23 @@ class AppContainer(context: Context) {
     val participantRepository: ParticipantRepository = ParticipantRepositoryImpl(database.participantDao())
     val importRepository: ImportRepository = ImportRepositoryImpl(database.importDao())
 
+    val userSettings: UserSettings = SharedPreferencesUserSettings(context)
+
+    /** Buzón del contenido recibido con «Compartir → KartLog». */
+    val importInbox = ImportInbox()
+
+    /** OCR del dispositivo (se conecta en S3-5); mientras sea `null` «Escanear» no está disponible. */
+    var imageTextRecognizer: ImageTextRecognizer? = null
+
+    val importViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
+        initializer {
+            ImportViewModel(
+                circuitRepository, sessionRepository, lapRepository, importRepository,
+                userSettings, importInbox, imageTextRecognizer,
+            )
+        }
+    }
+
     val analyticsSource = AnalyticsSource(sessionRepository, lapRepository)
     val analysisSelection = AnalysisSelection()
 
@@ -53,7 +75,7 @@ class AppContainer(context: Context) {
         DebugToolsFactory.create(database, circuitRepository, sessionRepository, lapRepository)
 
     val settingsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
-        initializer { SettingsViewModel(debugTools, SessionsCsvExporter(sessionRepository, lapRepository)) }
+        initializer { SettingsViewModel(debugTools, SessionsCsvExporter(sessionRepository, lapRepository), userSettings) }
     }
 
     val sessionListViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
@@ -65,6 +87,6 @@ class AppContainer(context: Context) {
     }
 
     fun sessionDetailViewModelFactory(sessionId: Long): ViewModelProvider.Factory = viewModelFactory {
-        initializer { SessionDetailViewModel(sessionId, sessionRepository, lapRepository) }
+        initializer { SessionDetailViewModel(sessionId, sessionRepository, lapRepository, participantRepository) }
     }
 }

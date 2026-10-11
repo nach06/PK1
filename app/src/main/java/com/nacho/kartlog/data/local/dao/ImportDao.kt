@@ -31,6 +31,9 @@ abstract class ImportDao {
     @Query("SELECT COALESCE(MAX(number), 0) FROM laps WHERE sessionId = :sessionId")
     protected abstract suspend fun lastLapNumber(sessionId: Long): Int
 
+    @Query("UPDATE sessions SET importedRaw = :raw WHERE id = :sessionId AND importedRaw IS NULL")
+    protected abstract suspend fun fillImportedRaw(sessionId: Long, raw: String)
+
     @Query("DELETE FROM participants WHERE sessionId = :sessionId")
     protected abstract suspend fun deleteParticipants(sessionId: Long)
 
@@ -38,7 +41,10 @@ abstract class ImportDao {
     open suspend fun importSession(request: ImportRequest): Long {
         val sessionId = request.newSession?.let { insertSession(it.toEntity()) } ?: requireNotNull(request.existingSessionId)
         // En una sesión existente la clasificación importada sustituye a la anterior.
-        if (request.existingSessionId != null) deleteParticipants(sessionId)
+        if (request.existingSessionId != null) {
+            deleteParticipants(sessionId)
+            request.importedRaw?.let { fillImportedRaw(sessionId, it) }
+        }
 
         var number = lastLapNumber(sessionId)
         request.myLapTimesMs.forEach { timeMs ->

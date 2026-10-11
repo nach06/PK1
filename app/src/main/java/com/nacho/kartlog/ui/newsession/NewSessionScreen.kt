@@ -45,6 +45,8 @@ import com.nacho.kartlog.ui.components.BigStepper
 import com.nacho.kartlog.ui.components.ChipSelector
 import com.nacho.kartlog.ui.components.CircuitEditSheet
 import com.nacho.kartlog.ui.components.CircuitPickerSheet
+import com.nacho.kartlog.ui.components.SessionDatePickerDialog
+import com.nacho.kartlog.ui.components.SessionTimePickerDialog
 import com.nacho.kartlog.ui.components.KartCard
 import com.nacho.kartlog.ui.components.KartTopBar
 import com.nacho.kartlog.ui.components.PrimaryButton
@@ -290,53 +292,4 @@ private fun Section(title: String, content: @Composable () -> Unit) {
         )
         content()
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SessionDatePickerDialog(dateTime: Long, onConfirm: (utcMillis: Long) -> Unit, onDismiss: () -> Unit) {
-    // El DatePicker trabaja en UTC: medianoche UTC del día local seleccionado.
-    val initial = Instant.ofEpochMilli(dateTime).atZone(ZoneId.systemDefault()).toLocalDate()
-        .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-    val pickerState = rememberDatePickerState(initialSelectedDateMillis = initial)
-    DatePickerDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(
-                onClick = { pickerState.selectedDateMillis?.let(onConfirm) ?: onDismiss() },
-                modifier = Modifier.heightIn(min = 56.dp),
-            ) { Text(stringResource(R.string.action_accept).uppercase(), style = MaterialTheme.typography.titleSmall) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 56.dp)) {
-                Text(stringResource(R.string.action_cancel).uppercase(), style = MaterialTheme.typography.titleSmall)
-            }
-        },
-        colors = DatePickerDefaults.colors(containerColor = MaterialTheme.kartColors.card),
-    ) {
-        DatePicker(state = pickerState, colors = DatePickerDefaults.colors(containerColor = MaterialTheme.kartColors.card))
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SessionTimePickerDialog(dateTime: Long, onConfirm: (hour: Int, minute: Int) -> Unit, onDismiss: () -> Unit) {
-    val time = Instant.ofEpochMilli(dateTime).atZone(ZoneId.systemDefault()).toLocalTime()
-    val pickerState = rememberTimePickerState(initialHour = time.hour, initialMinute = time.minute, is24Hour = true)
-    androidx.compose.material3.AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.kartColors.card,
-        text = { TimePicker(state = pickerState) },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(pickerState.hour, pickerState.minute) },
-                modifier = Modifier.heightIn(min = 56.dp),
-            ) { Text(stringResource(R.string.action_accept).uppercase(), style = MaterialTheme.typography.titleSmall) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 56.dp)) {
-                Text(stringResource(R.string.action_cancel).uppercase(), style = MaterialTheme.typography.titleSmall)
-            }
-        },
-    )
 }

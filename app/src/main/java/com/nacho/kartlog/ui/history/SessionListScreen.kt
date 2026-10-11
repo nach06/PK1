@@ -38,6 +38,7 @@ import com.nacho.kartlog.ui.components.KartOverflowMenu
 import com.nacho.kartlog.ui.components.KartTopBar
 import com.nacho.kartlog.ui.components.MenuAction
 import com.nacho.kartlog.ui.components.PrimaryButton
+import com.nacho.kartlog.ui.components.SecondaryButton
 import com.nacho.kartlog.ui.theme.kartColors
 import com.nacho.kartlog.ui.util.labelRes
 import java.time.YearMonth
@@ -49,6 +50,7 @@ import java.util.Locale
 fun SessionListScreen(
     viewModel: SessionListViewModel,
     onNewSession: () -> Unit,
+    onImport: () -> Unit,
     onOpenSession: (Long) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -66,6 +68,7 @@ fun SessionListScreen(
                 actions = {
                     KartOverflowMenu(
                         actions = listOf(
+                            MenuAction(label = stringResource(R.string.import_menu), onClick = onImport),
                             MenuAction(
                                 label = (if (state.filters.sort == SessionSort.DATE) checked else "") +
                                     stringResource(R.string.sort_by_date),
@@ -104,6 +107,8 @@ fun SessionListScreen(
                 message = stringResource(R.string.history_empty_message),
                 actionLabel = stringResource(R.string.action_new_session),
                 onAction = onNewSession,
+                secondaryLabel = stringResource(R.string.import_menu),
+                onSecondary = onImport,
                 modifier = Modifier.padding(padding),
             )
             else -> Column(Modifier.fillMaxSize().padding(padding)) {
@@ -217,6 +222,8 @@ private fun EmptyState(
     actionLabel: String,
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
+    secondaryLabel: String? = null,
+    onSecondary: (() -> Unit)? = null,
 ) {
     Column(
         modifier = modifier
@@ -240,5 +247,9 @@ private fun EmptyState(
         )
         Spacer(Modifier.height(24.dp))
         PrimaryButton(text = actionLabel, onClick = onAction)
+        if (secondaryLabel != null && onSecondary != null) {
+            Spacer(Modifier.height(12.dp))
+            SecondaryButton(text = secondaryLabel, onClick = onSecondary)
+        }
     }
 }

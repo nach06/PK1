@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nacho.kartlog.domain.analytics.Analytics
 import com.nacho.kartlog.domain.model.Lap
+import com.nacho.kartlog.domain.model.Participant
 import com.nacho.kartlog.domain.model.SessionDetail
+import com.nacho.kartlog.domain.repository.ParticipantRepository
 import com.nacho.kartlog.domain.repository.LapRepository
 import com.nacho.kartlog.domain.repository.SessionRepository
 import com.nacho.kartlog.domain.util.LapTime
@@ -12,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -22,6 +25,8 @@ data class SessionDetailUiState(
     val detail: SessionDetail? = null,
     /** Vueltas ordenadas por número ascendente. */
     val laps: List<Lap> = emptyList(),
+    /** Clasificación importada de la sesión (vacía si la tanda no viene de una importación). */
+    val participants: List<Participant> = emptyList(),
     val bestLapMs: Long? = null,
     /** Media limpia (vueltas <= 107 % de la mejor). */
     val cleanAverageMs: Long? = null,
@@ -49,6 +54,7 @@ class SessionDetailViewModel(
     private val sessionId: Long,
     private val sessionRepository: SessionRepository,
     private val lapRepository: LapRepository,
+    participantRepository: ParticipantRepository? = null,
 ) : ViewModel() {
 
     private val local = MutableStateFlow(Local())
@@ -56,12 +62,14 @@ class SessionDetailViewModel(
     val uiState: StateFlow<SessionDetailUiState> = combine(
         sessionRepository.observeDetail(sessionId),
         lapRepository.observeBySession(sessionId),
+        participantRepository?.observeBySession(sessionId) ?: flowOf(emptyList()),
         local,
-    ) { detail, laps, l ->
+    ) { detail, laps, participants, l ->
         SessionDetailUiState(
             isLoading = false,
             detail = detail,
             laps = laps,
+            participants = participants,
             bestLapMs = LapTime.bestLapMs(laps),
             cleanAverageMs = Analytics.cleanAverageMs(laps.map { it.timeMs }),
             consistencyMs = laps.map { it.timeMs }.takeIf(Analytics::hasMeaningfulConsistency)?.let(Analytics::consistencyMs),

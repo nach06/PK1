@@ -2,4 +2,6 @@
 <paths>
     <!-- CSV exportados: se escriben en cache/exports y se comparten por FileProvider. -->
     <cache-path name="exports" path="exports/" />
+    <!-- Fotos de «Escanear»: se escriben en cache/photos y se pasan al OCR; no se guardan en la app. -->
+    <cache-path name="photos" path="photos/" />
 </paths>
