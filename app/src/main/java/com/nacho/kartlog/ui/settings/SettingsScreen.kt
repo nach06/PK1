@@ -105,6 +105,21 @@ fun SettingsScreen(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 )
+                val feedbackOn by viewModel.lapFeedback.collectAsStateWithLifecycle()
+                androidx.compose.foundation.layout.Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.settings_lap_feedback), style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            stringResource(R.string.settings_lap_feedback_hint),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.kartColors.textMuted,
+                        )
+                    }
+                    androidx.compose.material3.Switch(checked = feedbackOn, onCheckedChange = viewModel::setLapFeedback)
+                }
             }
 
             KartCard(Modifier.fillMaxWidth()) {

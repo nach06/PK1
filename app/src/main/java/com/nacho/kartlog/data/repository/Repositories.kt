@@ -91,6 +91,9 @@ class LapRepositoryImpl(private val dao: LapDao) : LapRepository {
     override suspend fun addManual(sessionId: Long, timeMs: Long): Long =
         dao.insertNext(sessionId, timeMs, LapSource.MANUAL)
 
+    override suspend fun addAll(sessionId: Long, timesMs: List<Long>, source: LapSource) =
+        dao.insertAll(sessionId, timesMs, source)
+
     override suspend fun updateTime(lapId: Long, timeMs: Long) = dao.updateTime(lapId, timeMs)
 
     override suspend fun delete(lapId: Long) = dao.deleteById(lapId)

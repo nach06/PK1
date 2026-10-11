@@ -4,6 +4,7 @@ import com.nacho.kartlog.domain.model.Circuit
 import com.nacho.kartlog.domain.model.FinishLine
 import com.nacho.kartlog.domain.model.ImportRequest
 import com.nacho.kartlog.domain.model.Lap
+import com.nacho.kartlog.domain.model.LapSource
 import com.nacho.kartlog.domain.model.NewSession
 import com.nacho.kartlog.domain.model.Participant
 import com.nacho.kartlog.domain.model.SessionDetail
@@ -49,6 +50,9 @@ interface LapRepository {
 
     /** Añade una vuelta manual con el siguiente número libre de la sesión. */
     suspend fun addManual(sessionId: Long, timeMs: Long): Long
+
+    /** Añade varias vueltas seguidas con el mismo origen (p. ej. `GPS`), numeradas a continuación de las que haya. */
+    suspend fun addAll(sessionId: Long, timesMs: List<Long>, source: LapSource)
 
     suspend fun updateTime(lapId: Long, timeMs: Long)
 

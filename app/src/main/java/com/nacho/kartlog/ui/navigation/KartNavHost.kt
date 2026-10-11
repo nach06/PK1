@@ -38,6 +38,7 @@ import com.nacho.kartlog.R
 import com.nacho.kartlog.ui.analysis.AnalysisScreen
 import com.nacho.kartlog.ui.calibration.CalibrationScreen
 import com.nacho.kartlog.ui.circuits.CircuitsScreen
+import com.nacho.kartlog.ui.dashboard.DashboardScreen
 import com.nacho.kartlog.ui.detail.SessionDetailScreen
 import com.nacho.kartlog.ui.history.SessionListScreen
 import com.nacho.kartlog.ui.importing.ImportScreen
@@ -52,6 +53,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val NEW = "sessions/new"
     const val IMPORT = "sessions/import"
+    const val TRACK = "sessions/track"
     const val CIRCUIT_ID = "circuitId"
     const val FINISH = "circuits/{$CIRCUIT_ID}/finish"
 
@@ -126,6 +128,7 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
                     viewModel = viewModel(factory = container.sessionListViewModelFactory),
                     onNewSession = { navController.navigate(Routes.NEW) },
                     onImport = { navController.navigate(Routes.IMPORT) { launchSingleTop = true } },
+                    onTrack = { navController.navigate(Routes.TRACK) { launchSingleTop = true } },
                     onOpenSession = { navController.navigate(Routes.detail(it)) },
                 )
             }
@@ -162,6 +165,21 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
                     viewModel = viewModel(key = "finish-$circuitId", factory = container.calibrationViewModelFactory(circuitId)),
                     onBack = { navController.popBackStack() },
                     onSaved = { navController.popBackStack() },
+                )
+            }
+            composable(Routes.TRACK) {
+                val feedback by container.userSettings.lapFeedback.collectAsState()
+                DashboardScreen(
+                    viewModel = viewModel(factory = container.dashboardViewModelFactory),
+                    timingEvents = container.timingSession.events,
+                    feedbackEnabled = feedback,
+                    onBack = { navController.popBackStack() },
+                    onMarkFinish = { navController.navigate(Routes.finish(it)) },
+                    onSaved = { id ->
+                        navController.navigate(Routes.detail(id)) {
+                            popUpTo(Routes.TRACK) { inclusive = true }
+                        }
+                    },
                 )
             }
             composable(Routes.IMPORT) {

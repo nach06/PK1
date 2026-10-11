@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -61,9 +62,17 @@ fun LapRow(
                 text = stringResource(R.string.lap_short, lap.number),
                 style = MaterialTheme.typography.titleSmall,
                 color = if (isEditing) kart.warning else kart.textMuted,
-                modifier = Modifier.width(if (lap.source == LapSource.IMPORTED) 36.dp else 52.dp),
+                modifier = Modifier.width(if (lap.source == LapSource.IMPORTED || lap.source == LapSource.GPS) 36.dp else 52.dp),
                 maxLines = 1,
             )
+            if (lap.source == LapSource.GPS) {
+                Icon(
+                    imageVector = Icons.Default.GpsFixed,
+                    contentDescription = stringResource(R.string.lap_gps),
+                    tint = kart.textMuted,
+                    modifier = Modifier.width(16.dp),
+                )
+            }
             if (lap.source == LapSource.IMPORTED) {
                 Icon(
                     imageVector = Icons.Default.FileDownload,

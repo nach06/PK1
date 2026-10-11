@@ -44,6 +44,7 @@ class UiFlowTest {
         // Cerrar la actividad cancela los ViewModels y sus consultas Room antes de borrar la BD.
         runCatching { compose.waitForIdle() }
         compose.activityRule.scenario.close()
+        Thread.sleep(300) // deja terminar las consultas Room en vuelo antes de borrar la BD
         context.deleteDatabase(KartLogDatabase.NAME)
     }
 

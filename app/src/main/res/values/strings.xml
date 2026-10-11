@@ -231,6 +231,7 @@
     <string name="col_pos">Pos</string>
     <string name="col_driver">Piloto</string>
     <string name="col_gap">GAP</string>
+    <string name="lap_gps">Cronometrada por GPS</string>
     <string name="lap_imported">Importada</string>
     <string name="driver_unnamed">Piloto sin nombre</string>
     <string name="you">Tú</string>
@@ -267,4 +268,31 @@
     <string name="circuit_set_finish">Marcar meta</string>
     <string name="circuit_finish_set">Meta marcada</string>
     <string name="circuit_finish_missing">Sin meta</string>
+
+    <!-- Dashboard en pista -->
+    <string name="track_title">En pista</string>
+    <string name="track_summary_title">Tanda terminada</string>
+    <string name="track_start">Empezar</string>
+    <string name="track_needs_finish">Este circuito no tiene la meta marcada. Márcala una vez para poder cronometrar.</string>
+    <string name="track_no_circuits">Crea un circuito en la pestaña Circuitos (o al hacer una tanda) y marca su meta.</string>
+    <string name="track_lap_n">Vuelta %1$d</string>
+    <string name="track_waiting_start">Cruza la meta para empezar</string>
+    <string name="track_last">Última</string>
+    <string name="track_delta">Delta vs mejor</string>
+    <string name="track_signal_lost">SIN SEÑAL GPS</string>
+    <string name="track_poor_accuracy">precisión baja</string>
+    <string name="track_unreliable_lap">Alguna vuelta se midió con un hueco de señal GPS: su tiempo es menos fiable.</string>
+    <string name="track_hold_to_finish">Mantén pulsado para terminar</string>
+    <string name="track_summary_laps">Vueltas</string>
+    <string name="track_no_laps">No se cerró ninguna vuelta: no hay nada que guardar.</string>
+    <string name="track_save">Guardar tanda</string>
+    <string name="track_discard">Descartar</string>
+    <string name="tracking_channel">Cronometraje en pista</string>
+    <string name="tracking_title">KartLog · cronometrando</string>
+    <string name="tracking_waiting">Esperando el cruce de meta</string>
+    <string name="tracking_status">Vuelta %1$d · Mejor %2$s</string>
+    <string name="tracking_stop">Parar</string>
+    <string name="action_on_track">En pista</string>
+    <string name="settings_lap_feedback">Aviso al cruzar la meta</string>
+    <string name="settings_lap_feedback_hint">Vibración y pitido corto en el Dashboard en pista.</string>
 </resources>

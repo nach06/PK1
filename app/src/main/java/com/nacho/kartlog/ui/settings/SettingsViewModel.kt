@@ -73,6 +73,11 @@ class SettingsViewModel(
 
     fun setDriverName(name: String) = userSettings.setDriverName(name)
 
+    /** Vibración y pitido al cruzar la meta en el Dashboard en pista. */
+    val lapFeedback: StateFlow<Boolean> = userSettings.lapFeedback
+
+    fun setLapFeedback(enabled: Boolean) = userSettings.setLapFeedback(enabled)
+
     /** Borra clasificaciones, vueltas de rivales y textos originales importados; tus vueltas se conservan. */
     fun clearRivalData() {
         val repository = importRepository ?: return

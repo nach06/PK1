@@ -13,6 +13,8 @@ class ReplayLocationSource(
     private val fixes: List<GpsFix>,
     private val speedFactor: Double = 1.0,
 ) : LocationSource {
+    override val playbackSpeed: Double get() = if (speedFactor > 0.0) speedFactor else 1.0
+
     override fun fixes(): Flow<GpsFix> = flow {
         var previous: GpsFix? = null
         for (fix in fixes) {

@@ -8,4 +8,9 @@ interface UserSettings {
     val driverName: StateFlow<String>
 
     fun setDriverName(name: String)
+
+    /** Vibración y pitido corto al cruzar la meta en el Dashboard. Activado por defecto. */
+    val lapFeedback: StateFlow<Boolean>
+
+    fun setLapFeedback(enabled: Boolean)
 }

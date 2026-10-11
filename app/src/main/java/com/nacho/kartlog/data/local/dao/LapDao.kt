@@ -48,4 +48,9 @@ abstract class LapDao {
                 source = source,
             ),
         )
+
+    @Transaction
+    open suspend fun insertAll(sessionId: Long, timesMs: List<Long>, source: LapSource) {
+        timesMs.forEach { insertNext(sessionId, it, source) }
+    }
 }

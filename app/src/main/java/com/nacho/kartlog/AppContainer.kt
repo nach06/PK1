@@ -8,7 +8,15 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.nacho.kartlog.data.gps.FileTrackStore
 import com.nacho.kartlog.data.gps.FusedLocationSource
+import com.nacho.kartlog.data.tracking.ServiceTrackingController
+import com.nacho.kartlog.data.tracking.TrackingController
+import com.nacho.kartlog.domain.gps.GpsSessionSaver
 import com.nacho.kartlog.domain.gps.LocationSource
+import com.nacho.kartlog.domain.gps.TimingSession
+import com.nacho.kartlog.ui.dashboard.DashboardViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import com.nacho.kartlog.ui.calibration.CalibrationViewModel
 import com.nacho.kartlog.data.local.KartLogDatabase
 import com.nacho.kartlog.data.repository.CircuitRepositoryImpl
@@ -85,6 +93,25 @@ class AppContainer(context: Context) {
 
     /** Origen de posiciones. GPS interno por defecto; los tests o el simulador lo sustituyen. */
     var locationSource: LocationSource = FusedLocationSource(context)
+
+    /** Alcance de la app: el cronometraje sigue aunque se cierre la pantalla. */
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val timingSession = TimingSession(appScope)
+    val gpsSessionSaver = GpsSessionSaver(sessionRepository, lapRepository, trackStore)
+
+    /** Servicio en primer plano; los tests lo sustituyen por uno que no hace nada. */
+    var trackingController: TrackingController = ServiceTrackingController(context.applicationContext)
+
+    val dashboardViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
+        initializer {
+            DashboardViewModel(
+                circuitRepository, timingSession, gpsSessionSaver,
+                startTracking = { trackingController.start() },
+                stopTracking = { trackingController.stop() },
+                locationSource = { locationSource },
+            )
+        }
+    }
 
     fun calibrationViewModelFactory(circuitId: Long): ViewModelProvider.Factory = viewModelFactory {
         initializer { CalibrationViewModel(circuitId, circuitRepository, locationSource) }

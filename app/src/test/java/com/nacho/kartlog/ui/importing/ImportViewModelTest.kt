@@ -48,6 +48,12 @@ internal class FakeSettings(name: String) : UserSettings {
     override fun setDriverName(name: String) {
         state.value = name
     }
+
+    private val feedback = MutableStateFlow(true)
+    override val lapFeedback: StateFlow<Boolean> = feedback
+    override fun setLapFeedback(enabled: Boolean) {
+        feedback.value = enabled
+    }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)

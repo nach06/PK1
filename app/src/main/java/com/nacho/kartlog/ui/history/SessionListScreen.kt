@@ -52,6 +52,7 @@ fun SessionListScreen(
     viewModel: SessionListViewModel,
     onNewSession: () -> Unit,
     onImport: () -> Unit,
+    onTrack: () -> Unit,
     onOpenSession: (Long) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -70,6 +71,7 @@ fun SessionListScreen(
                     KartOverflowMenu(
                         actions = listOf(
                             MenuAction(label = stringResource(R.string.import_menu), onClick = onImport),
+                            MenuAction(label = stringResource(R.string.action_on_track), onClick = onTrack),
                             MenuAction(
                                 label = (if (state.filters.sort == SessionSort.DATE) checked else "") +
                                     stringResource(R.string.sort_by_date),
@@ -91,6 +93,7 @@ fun SessionListScreen(
                 actions = listOf(
                     FabAction(stringResource(R.string.action_new_session), onNewSession, tag = "fab_new"),
                     FabAction(stringResource(R.string.import_title), onImport, tag = "fab_import"),
+                    FabAction(stringResource(R.string.action_on_track), onTrack, tag = "fab_track"),
                 ),
             )
         },

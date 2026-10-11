@@ -11,4 +11,7 @@ import kotlinx.coroutines.flow.Flow
  */
 interface LocationSource {
     fun fixes(): Flow<GpsFix>
+
+    /** Velocidad de reproducción respecto al tiempo real (1.0 en un GPS real; > 1 en el simulador). */
+    val playbackSpeed: Double get() = 1.0
 }

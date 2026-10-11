@@ -17,7 +17,16 @@ class SharedPreferencesUserSettings(context: Context) : UserSettings {
         prefs.edit().putString(KEY_DRIVER_NAME, name).apply()
     }
 
+    private val _lapFeedback = MutableStateFlow(prefs.getBoolean(KEY_LAP_FEEDBACK, true))
+    override val lapFeedback: StateFlow<Boolean> = _lapFeedback.asStateFlow()
+
+    override fun setLapFeedback(enabled: Boolean) {
+        _lapFeedback.value = enabled
+        prefs.edit().putBoolean(KEY_LAP_FEEDBACK, enabled).apply()
+    }
+
     private companion object {
+        const val KEY_LAP_FEEDBACK = "lap_feedback"
         const val FILE = "kartlog_settings"
         const val KEY_DRIVER_NAME = "driver_name"
     }

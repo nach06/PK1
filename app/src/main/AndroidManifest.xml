@@ -39,6 +39,10 @@
                 <data android:mimeType="image/*" />
             </intent-filter>
         </activity>
+        <service
+            android:name=".data.tracking.TrackingService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
