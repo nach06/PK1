@@ -89,7 +89,25 @@ class SharedPreferencesUserSettings(context: Context) : UserSettings {
             .apply()
     }
 
+    private val _autoBackup = MutableStateFlow(prefs.getBoolean(KEY_AUTO_BACKUP, true))
+    override val autoBackup: StateFlow<Boolean> = _autoBackup.asStateFlow()
+
+    override fun setAutoBackup(enabled: Boolean) {
+        _autoBackup.value = enabled
+        prefs.edit().putBoolean(KEY_AUTO_BACKUP, enabled).apply()
+    }
+
+    private val _lastAutoBackup = MutableStateFlow(prefs.getLong(KEY_LAST_AUTO_BACKUP, 0L))
+    override val lastAutoBackupMs: StateFlow<Long> = _lastAutoBackup.asStateFlow()
+
+    override fun setLastAutoBackupMs(epochMs: Long) {
+        _lastAutoBackup.value = epochMs
+        prefs.edit().putLong(KEY_LAST_AUTO_BACKUP, epochMs).apply()
+    }
+
     private companion object {
+        const val KEY_AUTO_BACKUP = "auto_backup"
+        const val KEY_LAST_AUTO_BACKUP = "last_auto_backup"
         const val KEY_FILTER_CIRCUIT = "list_filter_circuit"
         const val KEY_FILTER_TYPE = "list_filter_type"
         const val KEY_FILTER_SORT = "list_filter_sort"

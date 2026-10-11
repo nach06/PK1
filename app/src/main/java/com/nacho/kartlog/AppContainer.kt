@@ -21,6 +21,7 @@ import com.nacho.kartlog.ui.dashboard.DashboardViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import com.nacho.kartlog.ui.calibration.CalibrationViewModel
 import com.nacho.kartlog.data.local.KartLogDatabase
@@ -156,6 +157,15 @@ class AppContainer(context: Context) {
         appVersion = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty(),
         checkpoint = { withContext(Dispatchers.IO) { database.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(FULL)").use { it.moveToFirst() } } },
         closeDatabase = { database.close() },
+    )
+
+    /** Copia automática semanal en `filesDir/backups/` (se lanza al abrir la app). */
+    val autoBackup = com.nacho.kartlog.data.backup.AutoBackup(
+        backup = backupService,
+        dir = File(context.filesDir, "backups"),
+        settings = userSettings,
+        hasData = { sessionRepository.observeSummaries().first().isNotEmpty() },
+        now = { wallClockMs() },
     )
 
     /** Tras restaurar una copia la app se reinicia para abrir la BD nueva; los tests lo sustituyen. */

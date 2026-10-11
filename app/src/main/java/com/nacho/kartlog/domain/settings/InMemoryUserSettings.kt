@@ -36,4 +36,12 @@ class InMemoryUserSettings(driverName: String = "") : UserSettings {
     private val filter = MutableStateFlow(SavedListFilter())
     override val listFilter: StateFlow<SavedListFilter> = filter
     override fun setListFilter(filter: SavedListFilter) { this.filter.value = filter }
+
+    private val auto = MutableStateFlow(true)
+    override val autoBackup: StateFlow<Boolean> = auto
+    override fun setAutoBackup(enabled: Boolean) { auto.value = enabled }
+
+    private val lastAuto = MutableStateFlow(0L)
+    override val lastAutoBackupMs: StateFlow<Long> = lastAuto
+    override fun setLastAutoBackupMs(epochMs: Long) { lastAuto.value = epochMs }
 }

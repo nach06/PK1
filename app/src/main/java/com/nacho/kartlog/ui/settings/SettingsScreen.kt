@@ -281,6 +281,15 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.kartColors.textMuted,
                     )
+                    val autoBackup by viewModel.autoBackup.collectAsStateWithLifecycle()
+                    val lastAuto by viewModel.lastAutoBackupMs.collectAsStateWithLifecycle()
+                    SettingSwitchRow(
+                        title = stringResource(R.string.settings_auto_backup),
+                        hint = if (lastAuto == 0L) stringResource(R.string.settings_auto_backup_never) else stringResource(R.string.settings_auto_backup_last, formatDateTime(lastAuto)),
+                        checked = autoBackup,
+                        onChange = viewModel::setAutoBackup,
+                        tag = "switch_auto_backup",
+                    )
                 }
             }
 

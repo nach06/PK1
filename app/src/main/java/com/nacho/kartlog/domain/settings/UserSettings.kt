@@ -49,4 +49,14 @@ interface UserSettings {
     val listFilter: StateFlow<SavedListFilter>
 
     fun setListFilter(filter: SavedListFilter)
+
+    /** Copia de seguridad automática semanal en la carpeta de la app. Activada por defecto. */
+    val autoBackup: StateFlow<Boolean>
+
+    fun setAutoBackup(enabled: Boolean)
+
+    /** Cuándo se hizo la última copia automática (epoch ms; 0 = nunca). */
+    val lastAutoBackupMs: StateFlow<Long>
+
+    fun setLastAutoBackupMs(epochMs: Long)
 }
