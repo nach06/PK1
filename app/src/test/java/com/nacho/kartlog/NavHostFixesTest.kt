@@ -8,6 +8,8 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -97,24 +99,48 @@ class NavHostFixesTest {
     }
 
     @Test
-    fun f8_lastCardClearsTheBottomBarAndFab_withTheLargeBottomPadding() {
+    fun f8_a1_theFabNeverCoversCardText_andTheLastCardClearsIt() {
         val container = AppContainer(context)
         runBlocking {
             val zuera = container.circuitRepository.add("Zuera", 1_100)
-            (0 until 8).forEach { i -> container.sessionRepository.create(session(zuera, 1_750_000_000_000 + i * 86_400_000L)) }
+            (0 until 8).forEach { i ->
+                val id = container.sessionRepository.create(session(zuera, 1_750_000_000_000 + i * 86_400_000L))
+                container.lapRepository.addManual(id, 58_000L + i * 100)
+                container.lapRepository.addManual(id, 59_000L + i * 100)
+            }
         }
         compose.setContent { KartLogTheme { KartNavHost(container) } }
         waitFor("Zuera")
         val list = compose.onNode(hasScrollAction() and SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
-        list.performScrollToIndex(8) // última posición (8 cards + cabeceras de mes)
-        compose.waitForIdle()
         val density = context.resources.displayMetrics.density
-        val listBounds = list.fetchSemanticsNode().boundsInRoot
-        val lastCard = compose.onAllNodesWithText("Zuera").fetchSemanticsNodes().maxBy { it.boundsInRoot.bottom }.boundsInRoot
-        // contentPadding inferior de 96 dp: la última card termina al menos 96 dp por encima del borde de la lista.
-        check(listBounds.bottom - lastCard.bottom >= 96f * density - 1f) {
-            "falta margen inferior: lista ${listBounds.bottom}, última card ${lastCard.bottom}, densidad $density"
+
+        fun assertNothingUnderTheFab(where: String) {
+            compose.waitForIdle()
+            val fab = compose.onNodeWithTag("fab_main").fetchSemanticsNode().boundsInRoot
+            val listBounds = list.fetchSemanticsNode().boundsInRoot
+            check(listBounds.bottom <= fab.top) { "$where: la lista ($listBounds) llega hasta la FAB ($fab)" }
+            // Ningún texto visible de las cards se solapa con la FAB.
+            val covered = compose.onAllNodes(hasText("", substring = true), useUnmergedTree = true).fetchSemanticsNodes()
+                .filter { it.boundsInRoot.overlaps(fab) && it.boundsInRoot.width > 0f }
+                .filter { n -> n.config.getOrNull(SemanticsProperties.Text)?.any { t -> t.text.isNotBlank() } == true }
+                .filter { n -> n.config.getOrNull(SemanticsProperties.TestTag) != "fab_main" }
+                .filter { n -> n.config.getOrNull(SemanticsProperties.Text)?.none { t -> t.text.contains("NUEVA TANDA") } == true }
+            check(covered.isEmpty()) { "$where: la FAB tapa texto: " + covered.map { it.config.getOrNull(SemanticsProperties.Text) } }
         }
+
+        assertNothingUnderTheFab("al abrir")
+        list.performScrollToIndex(8) // última posición (8 cards + cabeceras de mes)
+        assertNothingUnderTheFab("al final")
+        val fabTop = compose.onNodeWithTag("fab_main").fetchSemanticsNode().boundsInRoot.top
+        val lastCard = compose.onAllNodesWithText("Zuera").fetchSemanticsNodes().maxBy { it.boundsInRoot.bottom }.boundsInRoot
+        check(fabTop - lastCard.bottom >= 24f * density - 1f) { "la última card debe quedar ≥ 24 dp sobre la FAB: ${fabTop - lastCard.bottom}" }
+
+        // Desplegada, el fondo se oscurece (scrim) y tocar fuera la cierra.
+        compose.onNodeWithTag("fab_main").performClick()
+        compose.onNodeWithTag("fab_scrim").assertIsDisplayed()
+        compose.onNodeWithTag("fab_scrim").performClick()
+        compose.waitForIdle()
+        check(compose.onAllNodesWithTag("fab_scrim").fetchSemanticsNodes().isEmpty()) { "el scrim debe desaparecer al cerrar" }
     }
 
     @Test

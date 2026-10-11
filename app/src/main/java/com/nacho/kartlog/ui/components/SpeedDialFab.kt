@@ -7,10 +7,6 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -26,11 +22,16 @@ data class FabAction(val label: String, val onClick: () -> Unit, val tag: String
  * acciones apiladas y el botón pasa a «Cerrar». Elegir una acción cierra el menú.
  */
 @Composable
-fun SpeedDialFab(actions: List<FabAction>, closedLabel: String, modifier: Modifier = Modifier) {
+fun SpeedDialFab(
+    actions: List<FabAction>,
+    closedLabel: String,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     require(actions.isNotEmpty())
-    var expanded by rememberSaveable { mutableStateOf(false) }
     Column(
-        modifier = modifier.padding(bottom = 8.dp),
+        modifier = modifier,
         horizontalAlignment = Alignment.End,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -40,7 +41,7 @@ fun SpeedDialFab(actions: List<FabAction>, closedLabel: String, modifier: Modifi
                 val primary = index == actions.lastIndex
                 ExtendedFloatingActionButton(
                     onClick = {
-                        expanded = false
+                        onExpandedChange(false)
                         action.onClick()
                     },
                     containerColor = if (primary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
@@ -57,7 +58,7 @@ fun SpeedDialFab(actions: List<FabAction>, closedLabel: String, modifier: Modifi
             }
         }
         ExtendedFloatingActionButton(
-            onClick = { expanded = !expanded },
+            onClick = { onExpandedChange(!expanded) },
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
             shape = MaterialTheme.shapes.medium,

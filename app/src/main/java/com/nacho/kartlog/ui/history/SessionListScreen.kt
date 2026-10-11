@@ -3,6 +3,11 @@ package com.nacho.kartlog.ui.history
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -46,6 +51,8 @@ import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
 
+private val ACTION_STRIP_HEIGHT = 84.dp
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SessionListScreen(
@@ -57,6 +64,7 @@ fun SessionListScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showCircuitPicker by rememberSaveable { mutableStateOf(false) }
+    var fabExpanded by rememberSaveable { mutableStateOf(false) }
     // Estado de scroll explícito y fuera de las ramas de carga/vacío: se guarda con la entrada de la pila y
     // la lista vuelve a la misma posición al regresar del Detalle.
     val listState = rememberLazyListState()
@@ -87,64 +95,41 @@ fun SessionListScreen(
                 },
             )
         },
-        floatingActionButton = {
+    ) { padding ->
+        // La acción principal vive en una franja reservada al pie: la lista termina encima de ella, así que la
+        // FAB (cerrada) nunca tapa el texto de ninguna card. Al desplegarla se oscurece el fondo a propósito.
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            Column(Modifier.fillMaxSize().padding(bottom = ACTION_STRIP_HEIGHT)) {
+                SessionListBody(
+                    state = state,
+                    listState = listState,
+                    onNewSession = onNewSession,
+                    onImport = onImport,
+                    onOpenSession = onOpenSession,
+                    onCircuitClick = { showCircuitPicker = true },
+                    viewModel = viewModel,
+                )
+            }
+            if (fabExpanded) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.6f))
+                        .pointerInput(Unit) { detectTapGestures { fabExpanded = false } }
+                        .testTag("fab_scrim"),
+                )
+            }
             SpeedDialFab(
+                expanded = fabExpanded,
+                onExpandedChange = { fabExpanded = it },
                 closedLabel = stringResource(R.string.action_new_session),
                 actions = listOf(
                     FabAction(stringResource(R.string.action_new_session), onNewSession, tag = "fab_new"),
                     FabAction(stringResource(R.string.import_title), onImport, tag = "fab_import"),
                     FabAction(stringResource(R.string.action_on_track), onTrack, tag = "fab_track"),
                 ),
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 12.dp),
             )
-        },
-    ) { padding ->
-        when {
-            state.isLoading -> Unit
-            state.totalSessions == 0 -> EmptyState(
-                title = stringResource(R.string.history_empty_title),
-                message = stringResource(R.string.history_empty_message),
-                actionLabel = stringResource(R.string.action_new_session),
-                onAction = onNewSession,
-                secondaryLabel = stringResource(R.string.import_menu),
-                onSecondary = onImport,
-                modifier = Modifier.padding(padding),
-            )
-            else -> Column(Modifier.fillMaxSize().padding(padding)) {
-                FilterRow(
-                    state = state,
-                    onCircuitClick = { showCircuitPicker = true },
-                    onTypeClick = viewModel::toggleType,
-                )
-                if (state.items.isEmpty()) {
-                    EmptyState(
-                        title = stringResource(R.string.filter_empty_title),
-                        message = stringResource(R.string.filter_empty_message),
-                        actionLabel = stringResource(R.string.filter_clear),
-                        onAction = viewModel::clearFilters,
-                    )
-                } else {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        state.items.forEach { item ->
-                            when (item) {
-                                is SessionListItem.MonthHeader -> stickyHeader(key = item.key, contentType = "header") {
-                                    MonthHeader(item.month)
-                                }
-                                is SessionListItem.Entry -> item(key = item.key, contentType = "session") {
-                                    SessionCard(
-                                        stats = item.stats,
-                                        onClick = { onOpenSession(item.stats.summary.session.id) },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 
@@ -163,6 +148,67 @@ fun SessionListScreen(
                 showCircuitPicker = false
             },
         )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SessionListBody(
+    state: SessionListUiState,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    onNewSession: () -> Unit,
+    onImport: () -> Unit,
+    onOpenSession: (Long) -> Unit,
+    onCircuitClick: () -> Unit,
+    viewModel: SessionListViewModel,
+) {
+    when {
+        state.isLoading -> Unit
+        state.totalSessions == 0 -> EmptyState(
+            title = stringResource(R.string.history_empty_title),
+            message = stringResource(R.string.history_empty_message),
+            actionLabel = stringResource(R.string.action_new_session),
+            onAction = onNewSession,
+            secondaryLabel = stringResource(R.string.import_menu),
+            onSecondary = onImport,
+            
+        )
+        else -> Column(Modifier.fillMaxSize()) {
+            FilterRow(
+                state = state,
+                onCircuitClick = onCircuitClick,
+                onTypeClick = viewModel::toggleType,
+            )
+            if (state.items.isEmpty()) {
+                EmptyState(
+                    title = stringResource(R.string.filter_empty_title),
+                    message = stringResource(R.string.filter_empty_message),
+                    actionLabel = stringResource(R.string.filter_clear),
+                    onAction = viewModel::clearFilters,
+                )
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    state.items.forEach { item ->
+                        when (item) {
+                            is SessionListItem.MonthHeader -> stickyHeader(key = item.key, contentType = "header") {
+                                MonthHeader(item.month)
+                            }
+                            is SessionListItem.Entry -> item(key = item.key, contentType = "session") {
+                                SessionCard(
+                                    stats = item.stats,
+                                    onClick = { onOpenSession(item.stats.summary.session.id) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
