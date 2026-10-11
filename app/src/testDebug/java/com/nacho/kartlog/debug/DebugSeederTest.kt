@@ -31,11 +31,11 @@ class DebugSeederTest {
             val laps = LapRepositoryImpl(db.lapDao())
             val seeder = DebugSeeder(db, circuits, sessions, laps)
 
-            assertEquals(12, seeder.seed())
+            assertEquals(14, seeder.seed())
 
             assertEquals(3, circuits.observeAll().first().size)
             val summaries = sessions.observeSummaries().first()
-            assertEquals(12, summaries.size)
+            assertEquals(14, summaries.size)
             assertEquals(1, summaries.count { it.lapCount == 0 }) // una tanda sin vueltas
             assertTrue(summaries.any { it.session.trackCondition != TrackCondition.DRY })
             assertTrue(summaries.all { (it.session.kartNumber ?: 0) in 3..20 })
@@ -46,6 +46,10 @@ class DebugSeederTest {
                 assertTrue(times.first() > times.min() * 1.10)
             }
             assertTrue(summaries.map { it.session.dateTime }.let { it.max() - it.min() } > 60L * 24 * 3600 * 1000)
+
+            // Un circuito con 6+ tandas y una tanda de 25 vueltas (valida las etiquetas del eje X).
+            assertTrue(summaries.groupBy { it.circuit.id }.values.any { it.size >= 6 })
+            assertTrue(summaries.any { it.lapCount == 25 })
 
             seeder.wipeAll()
             assertTrue(sessions.observeSummaries().first().isEmpty())

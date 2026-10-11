@@ -16,8 +16,8 @@ import kotlin.random.Random
 
 /**
  * Datos de prueba realistas para validar visualmente listas y gráficas (solo builds debug).
- * 3 circuitos, 12 tandas repartidas en ~3 meses, tiempos entre 0:45 y 1:30, vueltas de salida de
- * boxes más lentas y alguna tanda sin vueltas. Determinista: mismo resultado cada vez.
+ * 3 circuitos, 14 tandas repartidas en ~3 meses (un circuito con 7 y una tanda de 25 vueltas), tiempos
+ * entre 0:45 y 1:30, vueltas de salida de boxes más lentas y alguna tanda sin vueltas. Determinista: mismo resultado cada vez.
  */
 class DebugSeeder(
     private val database: KartLogDatabase,
@@ -52,9 +52,11 @@ class DebugSeeder(
         Plan(2, 70, SessionType.FREE, 4, TrackCondition.DAMP, 10),
         Plan(0, 62, SessionType.QUALIFYING, 15, TrackCondition.DRY, 8),
         Plan(0, 55, SessionType.FREE, 7, TrackCondition.DRY, 14),
+        Plan(0, 45, SessionType.FREE, 11, TrackCondition.DRY, 25), // 25 vueltas: valida las etiquetas del eje X
         Plan(1, 47, SessionType.FREE, 3, TrackCondition.WET, 9),
         Plan(2, 38, SessionType.RACE, 18, TrackCondition.DRY, 16),
         Plan(0, 30, SessionType.QUALIFYING, 20, TrackCondition.DAMP, 11),
+        Plan(0, 18, SessionType.QUALIFYING, 3, TrackCondition.DRY, 9), // Zuera llega a 7 tandas
         Plan(1, 22, SessionType.FREE, 12, TrackCondition.DRY, 13),
         Plan(2, 14, SessionType.FREE, 9, TrackCondition.DRY, 0), // sin vueltas
         Plan(0, 7, SessionType.RACE, 7, TrackCondition.DRY, 18),
