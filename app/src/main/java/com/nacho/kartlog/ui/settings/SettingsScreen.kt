@@ -240,6 +240,14 @@ fun SettingsScreen(
                         color = MaterialTheme.kartColors.textMuted,
                         modifier = Modifier.padding(top = 8.dp),
                     )
+                    val savePhoto by viewModel.saveImportPhoto.collectAsStateWithLifecycle()
+                    SettingSwitchRow(
+                        title = stringResource(R.string.settings_save_photo),
+                        hint = stringResource(R.string.settings_save_photo_hint),
+                        checked = savePhoto,
+                        onChange = viewModel::setSaveImportPhoto,
+                        tag = "switch_save_photo",
+                    )
                 }
             }
 

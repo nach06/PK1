@@ -206,6 +206,8 @@
     <string name="settings_vibration_only_hint">Al cerrar vuelta vibra, sin pitido.</string>
     <string name="settings_max_brightness">Brillo máximo en pista</string>
     <string name="settings_max_brightness_hint">Sube el brillo al máximo mientras cronometras y lo devuelve al terminar.</string>
+    <string name="settings_save_photo">Guardar foto de la hoja</string>
+    <string name="settings_save_photo_hint">Conserva la foto original al importar; se borra con la tanda y con «Borrar datos de rivales».</string>
     <string name="settings_data_title">Datos</string>
     <string name="settings_export_all">Exportar todo a CSV</string>
     <string name="settings_export_hint">Una fila por vuelta de todas las tandas.</string>

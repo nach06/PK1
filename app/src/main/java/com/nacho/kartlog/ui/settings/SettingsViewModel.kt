@@ -104,6 +104,8 @@ class SettingsViewModel(
     fun setDashboardOrientation(value: DashboardOrientation) = userSettings.setDashboardOrientation(value)
     val vibrationOnly: StateFlow<Boolean> = userSettings.vibrationOnly
     fun setVibrationOnly(enabled: Boolean) = userSettings.setVibrationOnly(enabled)
+    val saveImportPhoto: StateFlow<Boolean> = userSettings.saveImportPhoto
+    fun setSaveImportPhoto(enabled: Boolean) = userSettings.setSaveImportPhoto(enabled)
     val maxBrightness: StateFlow<Boolean> = userSettings.maxBrightness
     fun setMaxBrightness(enabled: Boolean) = userSettings.setMaxBrightness(enabled)
 

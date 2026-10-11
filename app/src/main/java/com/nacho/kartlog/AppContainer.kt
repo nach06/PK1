@@ -34,7 +34,9 @@ import com.nacho.kartlog.debug.DebugTools
 import com.nacho.kartlog.debug.DebugToolsFactory
 import com.nacho.kartlog.data.settings.SharedPreferencesUserSettings
 import com.nacho.kartlog.domain.analytics.AnalyticsSource
+import com.nacho.kartlog.data.imports.FileImportPhotoStore
 import com.nacho.kartlog.domain.importing.ImageTextRecognizer
+import com.nacho.kartlog.domain.importing.ImportPhotoStore
 import com.nacho.kartlog.domain.importing.ImportInbox
 import com.nacho.kartlog.domain.settings.UserSettings
 import com.nacho.kartlog.ui.importing.ImportViewModel
@@ -60,11 +62,13 @@ class AppContainer(context: Context) {
     val circuitRepository: CircuitRepository = CircuitRepositoryImpl(database.circuitDao())
     /** Trazados GPS (`filesDir/tracks/{sessionId}.csv`); se borran junto con su tanda. */
     val trackStore: TrackStore = FileTrackStore(File(context.filesDir, "tracks"))
-    val sessionRepository: SessionRepository = SessionRepositoryImpl(database.sessionDao(), trackStore)
+    /** Fotos originales de las hojas importadas (`filesDir/imports/{sessionId}.jpg`); se borran con su tanda. */
+    val importPhotoStore: ImportPhotoStore = FileImportPhotoStore(context, File(context.filesDir, "imports"))
+    val sessionRepository: SessionRepository = SessionRepositoryImpl(database.sessionDao(), trackStore, importPhotoStore)
     val lapRepository: LapRepository = LapRepositoryImpl(database.lapDao())
     val participantRepository: ParticipantRepository = ParticipantRepositoryImpl(database.participantDao())
     val stintRepository: StintRepository = StintRepositoryImpl(database.stintDao())
-    val importRepository: ImportRepository = ImportRepositoryImpl(database.importDao())
+    val importRepository: ImportRepository = ImportRepositoryImpl(database.importDao(), importPhotoStore)
 
     val userSettings: UserSettings = SharedPreferencesUserSettings(context)
 

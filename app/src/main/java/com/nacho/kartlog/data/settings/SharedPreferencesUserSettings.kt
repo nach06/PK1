@@ -62,7 +62,16 @@ class SharedPreferencesUserSettings(context: Context) : UserSettings {
         prefs.edit().putBoolean(KEY_MAX_BRIGHTNESS, enabled).apply()
     }
 
+    private val _saveImportPhoto = MutableStateFlow(prefs.getBoolean(KEY_SAVE_IMPORT_PHOTO, true))
+    override val saveImportPhoto: StateFlow<Boolean> = _saveImportPhoto.asStateFlow()
+
+    override fun setSaveImportPhoto(enabled: Boolean) {
+        _saveImportPhoto.value = enabled
+        prefs.edit().putBoolean(KEY_SAVE_IMPORT_PHOTO, enabled).apply()
+    }
+
     private companion object {
+        const val KEY_SAVE_IMPORT_PHOTO = "save_import_photo"
         const val FILE = "kartlog_settings"
         const val KEY_DRIVER_NAME = "driver_name"
         const val KEY_LAP_FEEDBACK = "lap_feedback"

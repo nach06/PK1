@@ -11,6 +11,7 @@ import com.nacho.kartlog.data.local.entity.StintEntity
 import com.nacho.kartlog.data.mapper.toDomain
 import com.nacho.kartlog.data.mapper.toEntity
 import com.nacho.kartlog.domain.gps.TrackStore
+import com.nacho.kartlog.domain.importing.ImportPhotoStore
 import com.nacho.kartlog.domain.model.Circuit
 import com.nacho.kartlog.domain.model.FinishLine
 import com.nacho.kartlog.domain.model.ImportRequest
@@ -71,7 +72,11 @@ class CircuitRepositoryImpl(private val dao: CircuitDao) : CircuitRepository {
     }
 }
 
-class SessionRepositoryImpl(private val dao: SessionDao, private val tracks: TrackStore? = null) : SessionRepository {
+class SessionRepositoryImpl(
+    private val dao: SessionDao,
+    private val tracks: TrackStore? = null,
+    private val photos: ImportPhotoStore? = null,
+) : SessionRepository {
     override fun observeSummaries(): Flow<List<SessionSummary>> =
         dao.observeSummaries().map { rows -> rows.map { it.toDomain() } }
 
@@ -83,6 +88,7 @@ class SessionRepositoryImpl(private val dao: SessionDao, private val tracks: Tra
     override suspend fun delete(sessionId: Long) {
         dao.deleteById(sessionId)
         tracks?.delete(sessionId) // el trazado GPS vive en un fichero y se borra con la tanda
+        photos?.delete(sessionId) // y la foto de la hoja importada, también
     }
 }
 
@@ -116,8 +122,11 @@ class ParticipantRepositoryImpl(private val dao: ParticipantDao) : ParticipantRe
         dao.observeBySession(sessionId).map { list -> list.map { it.toDomain() } }
 }
 
-class ImportRepositoryImpl(private val dao: ImportDao) : ImportRepository {
+class ImportRepositoryImpl(private val dao: ImportDao, private val photos: ImportPhotoStore? = null) : ImportRepository {
     override suspend fun importSession(request: ImportRequest): Long = dao.importSession(request)
 
-    override suspend fun clearRivalData() = dao.clearRivalData()
+    override suspend fun clearRivalData() {
+        dao.clearRivalData()
+        photos?.deleteAll() // la foto de la hoja contiene los datos de los demás pilotos
+    }
 }

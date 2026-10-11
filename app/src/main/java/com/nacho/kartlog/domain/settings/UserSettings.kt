@@ -36,4 +36,9 @@ interface UserSettings {
     val maxBrightness: StateFlow<Boolean>
 
     fun setMaxBrightness(enabled: Boolean)
+
+    /** Conserva la foto original de la hoja al importar (en `imports/{id}.jpg`). Activado por defecto. */
+    val saveImportPhoto: StateFlow<Boolean>
+
+    fun setSaveImportPhoto(enabled: Boolean)
 }

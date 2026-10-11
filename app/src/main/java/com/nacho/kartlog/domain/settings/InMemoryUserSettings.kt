@@ -28,4 +28,8 @@ class InMemoryUserSettings(driverName: String = "") : UserSettings {
     private val brightness = MutableStateFlow(false)
     override val maxBrightness: StateFlow<Boolean> = brightness
     override fun setMaxBrightness(enabled: Boolean) { brightness.value = enabled }
+
+    private val photo = MutableStateFlow(true)
+    override val saveImportPhoto: StateFlow<Boolean> = photo
+    override fun setSaveImportPhoto(enabled: Boolean) { photo.value = enabled }
 }
