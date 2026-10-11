@@ -73,6 +73,8 @@
     <string name="action_cancel_edit">Cancelar edición</string>
     <string name="time_invalid">Los segundos deben ser menores de 60</string>
     <string name="keypad_backspace">Borrar dígito</string>
+    <string name="action_export_csv">Exportar CSV</string>
+    <string name="share_csv_title">Compartir vueltas</string>
     <string name="laps_title">Vueltas</string>
     <string name="laps_empty">Aún no hay vueltas. Teclea el tiempo y pulsa GUARDAR VUELTA.</string>
     <string name="lap_number">Vuelta %1$d</string>

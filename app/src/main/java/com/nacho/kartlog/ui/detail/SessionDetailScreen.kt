@@ -18,10 +18,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -41,6 +43,8 @@ import com.nacho.kartlog.ui.theme.KartTextStyles
 import com.nacho.kartlog.ui.theme.kartColors
 import com.nacho.kartlog.ui.util.formatDateTime
 import com.nacho.kartlog.ui.util.labelRes
+import com.nacho.kartlog.ui.util.shareLapsCsv
+import kotlinx.coroutines.launch
 
 @Composable
 fun SessionDetailScreen(
@@ -49,6 +53,8 @@ fun SessionDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val haptic = LocalHapticFeedback.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     // Sesión borrada (o inexistente): volver al histórico.
     LaunchedEffect(state.isLoading, state.detail == null) {
@@ -102,11 +108,31 @@ fun SessionDetailScreen(
                     )
                 }
                 item {
-                    Text(
-                        text = stringResource(R.string.laps_title).uppercase(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.kartColors.textMuted,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.laps_title).uppercase(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.kartColors.textMuted,
+                        )
+                        TextButton(
+                            enabled = state.laps.isNotEmpty(),
+                            modifier = Modifier.heightIn(min = 56.dp),
+                            onClick = {
+                                scope.launch {
+                                    shareLapsCsv(context, detail.circuit.name, detail.session.dateTime, state.laps)
+                                }
+                            },
+                        ) {
+                            Text(
+                                stringResource(R.string.action_export_csv).uppercase(),
+                                style = MaterialTheme.typography.titleSmall,
+                            )
+                        }
+                    }
                 }
                 if (state.laps.isEmpty()) {
                     item {

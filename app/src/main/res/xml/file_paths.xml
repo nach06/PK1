@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- CSV exportados: se escriben en cache/exports y se comparten por FileProvider. -->
+    <cache-path name="exports" path="exports/" />
+</paths>

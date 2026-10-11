@@ -84,9 +84,9 @@ class SessionFlowTest {
         times.forEach { ms ->
             val digits = com.nacho.kartlog.domain.util.LapTime.msToDigits(ms)
             digits.forEach { detailVm.onDigits(it.toString()) }
-            assertTrue("el tiempo $ms debe ser guardable", detailVm.uiState.value.canSave)
+            assertTrue("el tiempo $ms debe ser guardable", detailVm.uiState.first { it.digits == digits }.canSave)
             assertTrue(detailVm.saveLap())
-            assertEquals("", detailVm.uiState.value.digits) // el campo se limpia solo
+            detailVm.uiState.first { it.digits.isEmpty() } // el campo se limpia solo
         }
         val state = detailVm.uiState.first { it.laps.size == 15 }
         assertEquals((1..15).toList(), state.laps.map { it.number })
