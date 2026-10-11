@@ -72,14 +72,16 @@ object GenericMatrixProfile : LapTextProfile {
                 continue
             }
             val times = mutableListOf<TimeMatch?>()
+            val timeCells = mutableListOf<Int>()
             var j = i + 1
             while (j < cells.size) {
                 when (val k = text.kind(j)) {
-                    is CellKind.Time -> times += k.match
-                    is CellKind.OutOfRange -> times += null
+                    is CellKind.Time -> { times += k.match; timeCells += j }
+                    // Fuera de rango (5 s, 9 min…): se conserva como celda inválida (roja en la revisión), no se descarta en silencio.
+                    is CellKind.OutOfRange -> { times += k.match; timeCells += j }
                     CellKind.Empty ->
                         // Las celdas vacías solo cuentan dentro de una fila con tabuladores.
-                        if (cells[j].fromTabs && cells[j].line == cells[i].line) times += null else break
+                        if (cells[j].fromTabs && cells[j].line == cells[i].line) { times += null; timeCells += -1 } else break
                     else -> break
                 }
                 j++
@@ -89,6 +91,7 @@ object GenericMatrixProfile : LapTextProfile {
                     isAverage = isAvg,
                     number = (kind as? CellKind.LapLabel)?.number,
                     times = times.toList(),
+                    timeCells = timeCells.toList(),
                     firstCell = i,
                     lastCell = j - 1,
                 )

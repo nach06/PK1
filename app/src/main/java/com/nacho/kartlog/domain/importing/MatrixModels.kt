@@ -9,6 +9,8 @@ data class MatrixRow(
     val times: List<TimeMatch?>,
     val firstCell: Int,
     val lastCell: Int,
+    /** Índice (en las celdas del texto) de la celda de cada tiempo de [times]; `-1` en las celdas vacías. */
+    val timeCells: List<Int> = emptyList(),
 )
 
 /** Bloque de la matriz: cabecera de columnas + filas de vuelta + fila de medias opcional. */

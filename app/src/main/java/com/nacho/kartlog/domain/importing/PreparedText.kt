@@ -7,6 +7,8 @@ data class Cell(
     val line: Int,
     /** `true` si la celda venía de una línea con tabuladores (las celdas vacías son significativas). */
     val fromTabs: Boolean,
+    /** Posición de la celda dentro de su línea (0, 1, 2…): con tabuladores coincide con la pieza de la línea original. */
+    val col: Int = 0,
 )
 
 /** Qué es una celda, a efectos de detectar la matriz vuelta × piloto. */
@@ -50,20 +52,21 @@ class PreparedText(val lines: List<String>, val cells: List<Cell>) {
                 if (index in skipLines || raw.isBlank()) return@forEachIndexed
                 if (raw.contains('\t')) {
                     val pieces = raw.split('\t').map { it.trim() }.dropLastWhile { it.isEmpty() }
-                    pieces.forEach { cells += Cell(it, index, fromTabs = true) }
+                    pieces.forEachIndexed { col, piece -> cells += Cell(piece, index, fromTabs = true, col = col) }
                     return@forEachIndexed
                 }
                 val line = raw.trim()
                 val times = TimeTokens.find(line)
                 if (times.isEmpty()) {
                     line.split(Regex("\\s{2,}")).map { it.trim() }.filter { it.isNotEmpty() }
-                        .forEach { cells += Cell(it, index, fromTabs = false) }
+                        .forEachIndexed { col, piece -> cells += Cell(piece, index, fromTabs = false, col = col) }
                 } else {
+                    var col = 0
                     val prefix = line.substring(0, times.first().start).trim().trimEnd('-', '–', '|', ':').trim()
-                    if (prefix.isNotEmpty()) cells += Cell(prefix, index, fromTabs = false)
-                    times.forEach { cells += Cell(it.raw, index, fromTabs = false) }
+                    if (prefix.isNotEmpty()) cells += Cell(prefix, index, fromTabs = false, col = col++)
+                    times.forEach { cells += Cell(it.raw, index, fromTabs = false, col = col++) }
                     val suffix = line.substring(times.last().end).trim()
-                    if (suffix.isNotEmpty()) cells += Cell(suffix, index, fromTabs = false)
+                    if (suffix.isNotEmpty()) cells += Cell(suffix, index, fromTabs = false, col = col)
                 }
             }
             return PreparedText(lines, cells)

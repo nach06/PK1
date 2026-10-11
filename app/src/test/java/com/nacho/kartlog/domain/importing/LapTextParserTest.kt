@@ -72,7 +72,9 @@ class LapTextParserTest {
     fun muestraA_ambasFormasDanElMismoResultado() {
         val tabs = parser.parse(fixture("muestra_a_correo_tabs.txt")).drivers
         val lines = parser.parse(fixture("muestra_a_correo_lineas.txt")).drivers
-        assertEquals(tabs, lines)
+        // Mismos datos; solo cambian las coordenadas de origen de cada celda (línea/columna del texto).
+        fun strip(d: List<ParsedDriver>) = d.map { driver -> driver.copy(laps = driver.laps.map { it.copy(rawText = null, cellLine = -1, cellCol = -1) }, invalidCells = emptyList()) }
+        assertEquals(strip(tabs), strip(lines))
     }
 
     // ================= Muestra B (hoja de Asupark) =================
