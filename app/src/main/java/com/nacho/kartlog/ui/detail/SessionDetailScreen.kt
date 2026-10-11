@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nacho.kartlog.R
 import com.nacho.kartlog.domain.model.Lap
+import com.nacho.kartlog.domain.model.LapSource
 import com.nacho.kartlog.domain.model.SessionDetail
 import com.nacho.kartlog.domain.model.TrackCondition
 import com.nacho.kartlog.domain.util.LapTime
@@ -164,6 +165,17 @@ fun SessionDetailScreen(
                                     chartExpanded = false
                                 },
                                 onDelete = { viewModel.requestDeleteLap(lap) },
+                            )
+                        }
+                    }
+                    val gpsLaps = state.laps.filter { it.source == LapSource.GPS }.map { it.timeMs }
+                    val officialLaps = state.laps.filter { it.source == LapSource.IMPORTED }.map { it.timeMs }
+                    if (gpsLaps.isNotEmpty() && officialLaps.isNotEmpty()) {
+                        item(key = "gps_accuracy") {
+                            GpsAccuracyCard(
+                                gpsMs = gpsLaps,
+                                officialMs = officialLaps,
+                                modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
                             )
                         }
                     }

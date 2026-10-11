@@ -295,4 +295,13 @@
     <string name="action_on_track">En pista</string>
     <string name="settings_lap_feedback">Aviso al cruzar la meta</string>
     <string name="settings_lap_feedback_hint">Vibración y pitido corto en el Dashboard en pista.</string>
+
+    <!-- Precisión GPS vs oficial -->
+    <string name="gps_accuracy_title">Precisión del GPS vs oficial</string>
+    <string name="gps_accuracy_official">Oficial</string>
+    <string name="gps_accuracy_gps">GPS</string>
+    <string name="gps_accuracy_diff">Dif.</string>
+    <string name="gps_accuracy_mismatch">Hay %1$d vueltas GPS y %2$d oficiales: solo se comparan las que coinciden por número. Si el oficial cuenta una vuelta de más al principio, ajusta el desplazamiento.</string>
+    <string name="gps_accuracy_summary">Error medio %1$s s · máximo %2$s s · sesgo %3$s s (GPS − oficial)</string>
+    <string name="gps_accuracy_offset">Desplazamiento oficial: %1$+d</string>
 </resources>
