@@ -87,6 +87,7 @@
     <string name="action_delete_session">Borrar tanda</string>
     <string name="action_open_keyboard">Abrir teclado</string>
     <string name="action_close_keyboard">Plegar teclado</string>
+    <string name="recent_lap_item">V%1$d %2$s</string>
     <string name="lap_short">V%1$d</string>
     <string name="badge_best">Mejor</string>
     <string name="format_temp_ambient">Ambiente %1$d °C</string>

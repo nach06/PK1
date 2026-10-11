@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.lifecycle.viewModelScope
 import androidx.test.core.app.ApplicationProvider
 import com.nacho.kartlog.data.local.KartLogDatabase
 import com.nacho.kartlog.domain.model.NewSession
@@ -16,6 +17,7 @@ import com.nacho.kartlog.domain.model.TrackCondition
 import com.nacho.kartlog.ui.detail.SessionDetailScreen
 import com.nacho.kartlog.ui.detail.SessionDetailViewModel
 import com.nacho.kartlog.ui.theme.KartLogTheme
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
@@ -33,6 +35,7 @@ class DetailLayoutTest {
     val compose = createComposeRule()
 
     private lateinit var context: Context
+    private var viewModel: SessionDetailViewModel? = null
 
     @Before
     fun setUp() {
@@ -42,6 +45,8 @@ class DetailLayoutTest {
 
     @After
     fun tearDown() {
+        // El ViewModel se creó a mano: sin cancelar su scope seguiría consultando una BD ya cerrada.
+        viewModel?.viewModelScope?.cancel()
         context.deleteDatabase(KartLogDatabase.NAME)
     }
 
@@ -61,8 +66,9 @@ class DetailLayoutTest {
                 .forEach { container.lapRepository.addManual(id, it) }
             id
         }
-        val viewModel = SessionDetailViewModel(sessionId, container.sessionRepository, container.lapRepository)
-        compose.setContent { KartLogTheme { SessionDetailScreen(viewModel = viewModel, onBack = {}) } }
+        val vm = SessionDetailViewModel(sessionId, container.sessionRepository, container.lapRepository)
+        viewModel = vm
+        compose.setContent { KartLogTheme { SessionDetailScreen(viewModel = vm, onBack = {}) } }
 
         // Con vueltas guardadas la tanda abre con el teclado plegado.
         waitFor("ABRIR TECLADO")
@@ -78,6 +84,7 @@ class DetailLayoutTest {
         check(compose.onAllNodesWithText("GUARDAR VUELTA").fetchSemanticsNodes().isNotEmpty())
         check(compose.onAllNodesWithTag("lap_chart").fetchSemanticsNodes().isEmpty()) { "la gráfica debe plegarse" }
         compose.onNodeWithText("GUARDAR VUELTA").assertIsDisplayed()
+        compose.onNodeWithText("V10 1:12.858 · V9 1:12.980").assertIsDisplayed() // últimas 2 vueltas guardadas
         listOf("1", "5", "9", "00", "0", "⌫").forEach { compose.onNodeWithText(it).assertIsDisplayed() }
 
         // Abrir la gráfica de nuevo: pliega el teclado.

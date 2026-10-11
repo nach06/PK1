@@ -30,11 +30,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nacho.kartlog.R
+import com.nacho.kartlog.domain.model.Lap
+import com.nacho.kartlog.domain.model.LapSource
+import com.nacho.kartlog.domain.util.LapTime
 import com.nacho.kartlog.ui.components.AutoSizeText
 import com.nacho.kartlog.ui.components.PrimaryButton
 import com.nacho.kartlog.ui.components.TimeKeypad
 import com.nacho.kartlog.ui.theme.KartLogTheme
 import com.nacho.kartlog.ui.theme.KartTextStyles
+import com.nacho.kartlog.ui.theme.MonoFontFamily
 import com.nacho.kartlog.ui.theme.kartColors
 
 /**
@@ -51,6 +55,8 @@ fun LapEntryPanel(
     /** Etiqueta superior: «VUELTA 6» o «EDITANDO V3». */
     label: String,
     isEditing: Boolean,
+    /** Últimas vueltas guardadas, la más reciente primero (se muestran las 2 primeras con el teclado abierto). */
+    recentLaps: List<Lap>,
     onToggle: () -> Unit,
     onDigits: (String) -> Unit,
     onBackspace: () -> Unit,
@@ -76,6 +82,7 @@ fun LapEntryPanel(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            if (expanded) RecentLapsStrip(recentLaps.take(2))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -133,7 +140,7 @@ fun LapEntryPanel(
                     onDigits = onDigits,
                     onBackspace = onBackspace,
                     onClear = onClear,
-                    keyHeight = 56.dp,
+                    keyHeight = 52.dp,
                     // Cede altura si el panel no cabe: GUARDAR VUELTA nunca se recorta.
                     modifier = Modifier
                         .fillMaxWidth()
@@ -169,7 +176,7 @@ private fun LapEntryPanelCollapsedPreview() {
     KartLogTheme {
         LapEntryPanel(
             expanded = false, timeText = "0:00.000", hasDigits = false, invalid = false, canSave = false,
-            label = "Vuelta 6", isEditing = false, onToggle = {}, onDigits = {}, onBackspace = {},
+            label = "Vuelta 6", isEditing = false, recentLaps = emptyList(), onToggle = {}, onDigits = {}, onBackspace = {},
             onClear = {}, onSave = {}, onCancelEdit = {},
         )
     }
@@ -181,8 +188,26 @@ private fun LapEntryPanelExpandedPreview() {
     KartLogTheme {
         LapEntryPanel(
             expanded = true, timeText = "1:17.263", hasDigits = true, invalid = false, canSave = true,
-            label = "Vuelta 6", isEditing = false, onToggle = {}, onDigits = {}, onBackspace = {},
+            label = "Vuelta 11", isEditing = false,
+            recentLaps = listOf(Lap(10, 1, 10, 72_858, LapSource.MANUAL), Lap(9, 1, 9, 72_951, LapSource.MANUAL)),
+            onToggle = {}, onDigits = {}, onBackspace = {},
             onClear = {}, onSave = {}, onCancelEdit = {},
         )
     }
+}
+
+/** Franja con las últimas vueltas guardadas: `V10 1:12.858 · V9 1:12.951`. */
+@Composable
+private fun RecentLapsStrip(laps: List<Lap>) {
+    if (laps.isEmpty()) return
+    val text = laps.map { stringResource(R.string.recent_lap_item, it.number, LapTime.format(it.timeMs)) }
+        .joinToString(" · ")
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = MonoFontFamily),
+        color = MaterialTheme.kartColors.textMuted,
+        maxLines = 1,
+        softWrap = false,
+        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+    )
 }

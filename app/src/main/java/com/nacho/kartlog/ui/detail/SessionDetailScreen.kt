@@ -177,6 +177,7 @@ fun SessionDetailScreen(
                         stringResource(R.string.lap_entry_title, state.nextLapNumber)
                     },
                     isEditing = editing != null,
+                    recentLaps = state.laps.takeLast(2).asReversed(),
                     onToggle = {
                         keypadExpanded = !keypadExpanded
                         if (keypadExpanded) chartExpanded = false
