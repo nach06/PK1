@@ -110,6 +110,11 @@ class DashboardLandscapeTest {
         return out.first()
     }
 
+    /** Etiquetas de los únicos elementos pulsables del Dashboard en marcha (la pulsación larga no es un «clic»). */
+    private fun clickableTags(): List<String> =
+        compose.onAllNodes(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(SemanticsActions.OnClick), useUnmergedTree = true)
+            .fetchSemanticsNodes().mapNotNull { it.config.getOrNull(SemanticsProperties.TestTag) }
+
     private fun until(condition: () -> Boolean) {
         val deadline = System.currentTimeMillis() + 10_000
         while (!condition() && System.currentTimeMillis() < deadline) { Thread.sleep(30); compose.waitForIdle() }
@@ -187,6 +192,8 @@ class DashboardLandscapeTest {
         val hold = compose.onNodeWithTag("finish_hold").fetchSemanticsNode().boundsInRoot
         assertTrue("pulsación larga ≥ 56 dp: ${hold.height / density}", hold.height / density >= 56f)
         assertTrue("sin aparecer botones extra: solo la pulsación larga (no es Resistencia)", compose.onAllNodesWithTag("pit_button").fetchSemanticsNodes().isEmpty())
+        // B4: en marcha no hay ningún elemento pulsable (terminar es una pulsación larga, no un clic).
+        assertEquals("elementos pulsables en marcha: ${clickableTags()}", emptyList<String>(), clickableTags())
 
         // B3: vuelta 1 (58,400) — mejor de la tanda pero no récord: sin delta, tiempo y color «bueno».
         runBlocking { sim.fixes.filter { it.elapsedNs <= sim.crossingNs[1] + 1_000_000_000L }.forEach { source.flow.emit(it) } }
@@ -233,6 +240,8 @@ class DashboardLandscapeTest {
         assertTrue("PIT ≥ 56 dp de alto: ${pit.height / density}", pit.height / density >= 56f)
         assertTrue("PIT ancho: ${pit.width / density}", pit.width / density >= 120f)
         assertTrue(textOf("stint_label").startsWith("Stint 1"))
+        // B4: en Resistencia el único elemento pulsable es PIT / CAMBIO.
+        assertEquals(listOf("pit_button"), clickableTags())
         assertNothingClipped("stint_label", "stint_time", "pit_button")
         compose.onNodeWithTag("pit_button").performClick()
         waitForTag("pit_confirm")
