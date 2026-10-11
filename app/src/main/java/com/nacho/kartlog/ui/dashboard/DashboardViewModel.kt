@@ -19,6 +19,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import com.nacho.kartlog.domain.analytics.AnalyticsSource
+import com.nacho.kartlog.domain.settings.DashboardOrientation
+import com.nacho.kartlog.domain.settings.InMemoryUserSettings
+import com.nacho.kartlog.domain.settings.UserSettings
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -39,6 +45,15 @@ data class DashboardSummary(
     val hasUnreliableLap: Boolean get() = laps.any { !it.reliable }
 }
 
+/** Ajustes que afectan al Dashboard en pista. */
+data class DashboardPrefs(
+    val orientation: DashboardOrientation = DashboardOrientation.LANDSCAPE,
+    val dayMode: Boolean = false,
+    val vibrationOnly: Boolean = false,
+    val maxBrightness: Boolean = false,
+    val feedback: Boolean = true,
+)
+
 data class DashboardUiState(
     val circuits: List<Circuit> = emptyList(),
     val circuitId: Long? = null,
@@ -54,6 +69,9 @@ data class DashboardUiState(
     val saving: Boolean = false,
     /** Se intentó guardar sin vueltas cerradas: se descartó la tanda. */
     val nothingToSave: Boolean = false,
+    val prefs: DashboardPrefs = DashboardPrefs(),
+    /** Récord histórico del circuito (sin contar la tanda en curso), para avisar de un nuevo récord. */
+    val circuitRecordMs: Long? = null,
 ) {
     val selectedCircuit: Circuit? get() = circuits.firstOrNull { it.id == circuitId }
 
@@ -71,6 +89,8 @@ class DashboardViewModel(
     private val startTracking: () -> Unit,
     private val stopTracking: () -> Unit,
     private val locationSource: () -> LocationSource,
+    private val userSettings: UserSettings = InMemoryUserSettings(),
+    private val analytics: AnalyticsSource? = null,
     private val now: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
 
@@ -92,9 +112,19 @@ class DashboardViewModel(
 
     private val form = MutableStateFlow(Form())
 
+    private val prefsFlow = combine(
+        userSettings.dashboardOrientation, userSettings.dashboardDayMode, userSettings.vibrationOnly,
+        userSettings.maxBrightness, userSettings.lapFeedback,
+    ) { orientation, day, vibration, brightness, feedback ->
+        DashboardPrefs(orientation, day, vibration, brightness, feedback)
+    }
+
+    private val recordsFlow = analytics?.observe()?.map { snapshot -> snapshot.circuits.mapValues { it.value.recordMs } }
+        ?: flowOf(emptyMap())
+
     val uiState: StateFlow<DashboardUiState> = combine(
-        circuitRepository.observeAll(), form, timingSession.state,
-    ) { circuits, f, timing ->
+        circuitRepository.observeAll(), form, timingSession.state, prefsFlow, recordsFlow,
+    ) { circuits, f, timing, prefs, records ->
         // Si hay una tanda en marcha o parada, el circuito mostrado es el suyo.
         val activeCircuit = timing.setup?.circuitId
         DashboardUiState(
@@ -104,7 +134,8 @@ class DashboardViewModel(
             condition = f.condition, type = f.type, showCircuitPicker = f.showCircuitPicker, timing = timing,
             summary = if (timing.phase == TimingPhase.STOPPED) summaryOf(timing, f.discardedLaps) else null,
             saving = f.saving, nothingToSave = f.nothingToSave,
-        )
+            prefs = prefs,
+        ).let { it.copy(circuitRecordMs = it.circuitId?.let(records::get)) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardUiState())
 
     private val savedChannel = Channel<Long>(Channel.BUFFERED)
@@ -125,6 +156,7 @@ class DashboardViewModel(
     fun clearTrackTemp() = form.update { it.copy(trackTempC = null) }
     fun selectCondition(value: TrackCondition) = form.update { it.copy(condition = value) }
     fun selectType(value: SessionType) = form.update { it.copy(type = value) }
+    fun setDayMode(enabled: Boolean) = userSettings.setDashboardDayMode(enabled)
 
     /** EMPEZAR: arranca el cronómetro y el servicio en primer plano. */
     fun start() {

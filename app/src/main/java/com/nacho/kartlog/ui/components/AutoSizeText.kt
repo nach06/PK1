@@ -32,7 +32,8 @@ fun AutoSizeText(
     val measurer = rememberTextMeasurer()
     BoxWithConstraints(modifier) {
         val maxWidthPx = constraints.maxWidth
-        val size = if (constraints.hasBoundedWidth) fittingSize(measurer, text, style, minSize, maxWidthPx) else style.fontSize
+        val maxHeightPx = if (constraints.hasBoundedHeight) constraints.maxHeight else Int.MAX_VALUE
+        val size = if (constraints.hasBoundedWidth) fittingSize(measurer, text, style, minSize, maxWidthPx, maxHeightPx) else style.fontSize
         Text(
             text = text,
             style = style.copy(fontSize = size),
@@ -43,18 +44,20 @@ fun AutoSizeText(
     }
 }
 
-private fun fittingSize(measurer: TextMeasurer, text: String, style: TextStyle, minSize: TextUnit, maxWidthPx: Int): TextUnit {
+private fun fittingSize(measurer: TextMeasurer, text: String, style: TextStyle, minSize: TextUnit, maxWidthPx: Int, maxHeightPx: Int): TextUnit {
     val max = style.fontSize
     val floor = if (minSize.value < max.value) minSize else max
-    fun widthAt(size: TextUnit) = measurer.measure(text, style.copy(fontSize = size), softWrap = false, maxLines = 1, constraints = Constraints()).size.width
-    var width = widthAt(max)
-    if (width <= maxWidthPx) return max
-    // El ancho es casi proporcional al cuerpo: un salto proporcional y unos ajustes finos.
-    var size = (max.value * maxWidthPx / width.toFloat()).coerceAtLeast(floor.value)
-    repeat(4) {
-        width = widthAt(size.sp)
-        if (width <= maxWidthPx || size <= floor.value) return size.sp
-        size = (size * maxWidthPx / width.toFloat() - 0.5f).coerceAtLeast(floor.value)
+    fun fits(size: TextUnit): Pair<Boolean, Float> {
+        val box = measurer.measure(text, style.copy(fontSize = size), softWrap = false, maxLines = 1, constraints = Constraints()).size
+        val scale = minOf(maxWidthPx / box.width.toFloat(), maxHeightPx / box.height.toFloat())
+        return (box.width <= maxWidthPx && box.height <= maxHeightPx) to scale
+    }
+    var size = max.value
+    // El ancho y el alto son casi proporcionales al cuerpo: un salto proporcional y unos ajustes finos.
+    repeat(5) {
+        val (ok, scale) = fits(size.sp)
+        if (ok || size <= floor.value) return size.sp.let { if (it.value < floor.value) floor else it }
+        size = (size * scale - 0.5f).coerceAtLeast(floor.value)
     }
     return size.sp
 }

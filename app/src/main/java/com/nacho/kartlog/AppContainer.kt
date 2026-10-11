@@ -125,6 +125,8 @@ class AppContainer(context: Context) {
                 startTracking = { trackingController.start() },
                 stopTracking = { trackingController.stop() },
                 locationSource = { locationSource },
+                userSettings = userSettings,
+                analytics = analyticsSource,
                 now = { wallClockMs() },
             )
         }

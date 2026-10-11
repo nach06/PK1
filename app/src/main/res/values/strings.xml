@@ -180,6 +180,15 @@
         <item quantity="other">%1$s tiene %2$d tandas. Borra sus tandas antes de eliminar el circuito.</item>
     </plurals>
 
+    <string name="settings_dashboard_title">Dashboard en pista</string>
+    <string name="settings_orientation">Orientación del Dashboard</string>
+    <string name="orientation_landscape">Apaisado</string>
+    <string name="orientation_auto">Automático</string>
+    <string name="orientation_portrait">Vertical</string>
+    <string name="settings_vibration_only">Solo vibración</string>
+    <string name="settings_vibration_only_hint">Al cerrar vuelta vibra, sin pitido.</string>
+    <string name="settings_max_brightness">Brillo máximo en pista</string>
+    <string name="settings_max_brightness_hint">Sube el brillo al máximo mientras cronometras y lo devuelve al terminar.</string>
     <string name="settings_data_title">Datos</string>
     <string name="settings_export_all">Exportar todo a CSV</string>
     <string name="settings_export_hint">Una fila por vuelta de todas las tandas.</string>
@@ -303,6 +312,14 @@
     <string name="track_leave_message">Si sales, la tanda sigue cronometrándose en segundo plano y verás un aviso en la parte inferior para volver. Para terminarla, mantén pulsado el botón de terminar.</string>
     <string name="track_leave_stay">Seguir en pista</string>
     <string name="track_leave_exit">Salir sin terminar</string>
+    <string name="track_delta_short">Delta</string>
+    <string name="track_unreliable_short">⚠ vuelta con hueco de GPS</string>
+    <string name="track_battery_low">Batería %1$d %% · conecta el cargador</string>
+    <string name="track_day_mode">Modo día (sol)</string>
+    <string name="track_day_mode_hint">Fondo claro y contraste máximo para ver el panel a pleno sol.</string>
+    <string name="alert_best">Mejor</string>
+    <string name="alert_record_hint">Récord del circuito</string>
+    <string name="stint_in_pit_short">Pit · cruza la meta al salir</string>
     <string name="track_hold_to_finish">Mantén pulsado para terminar</string>
     <string name="track_summary_laps">Vueltas</string>
     <string name="track_no_laps">No se cerró ninguna vuelta: no hay nada que guardar.</string>

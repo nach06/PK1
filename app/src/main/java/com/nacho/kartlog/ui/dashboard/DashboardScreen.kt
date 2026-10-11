@@ -32,6 +32,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -86,8 +87,6 @@ val LocalLiveClock = compositionLocalOf { true }
 /** Reloj monótono (ns) que lee el cronómetro en vivo; los tests lo sustituyen por uno manual. */
 val LocalNanoClock = compositionLocalOf<() -> Long> { System::nanoTime }
 
-private const val FINISH_HOLD_MS = 1_500
-private const val SIGNAL_LOST_MS = 3_000L
 
 @Composable
 fun DashboardScreen(
@@ -101,19 +100,49 @@ fun DashboardScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val feedback = remember { LapFeedback(context) }
+    var alert by remember { mutableStateOf<LapAlert?>(null) }
+    val currentState by rememberUpdatedState(state)
 
     LaunchedEffect(viewModel) { viewModel.saved.collect { onSaved(it) } }
     LaunchedEffect(timingEvents, feedbackEnabled) {
-        timingEvents.collect { if (feedbackEnabled && it is TimingEvent.LapClosed) feedback.lapClosed() }
+        timingEvents.collect { event ->
+            if (event is TimingEvent.LapClosed) {
+                if (feedbackEnabled) feedback.lapClosed(vibrationOnly = currentState.prefs.vibrationOnly)
+                val laps = viewModel.uiState.value.timing.laps
+                alert = LapAlert.of(
+                    lapNumber = event.number,
+                    lapMs = event.lapTimeMs,
+                    previousBestMs = laps.take(event.number - 1).minOrNull(),
+                    isBest = event.isBest,
+                    circuitRecordMs = currentState.circuitRecordMs,
+                )
+            }
+        }
+    }
+    // El aviso a pantalla completa dura 2 s; una vuelta nueva lo sustituye y reinicia la cuenta.
+    LaunchedEffect(alert) {
+        if (alert != null) {
+            delay(LapAlert.DURATION_MS)
+            alert = null
+        }
     }
 
     when (state.timing.phase) {
         TimingPhase.RUNNING -> {
-            KeepScreenOn()
+            DashboardWindowEffects(state.prefs)
+            val battery = rememberBatteryStatus()
             var confirmLeave by remember { mutableStateOf(false) }
             androidx.activity.compose.BackHandler { confirmLeave = true }
             if (confirmLeave) LeaveDialog(onStay = { confirmLeave = false }, onExit = { confirmLeave = false; onBack() })
-            RunningDashboard(timing = state.timing, onFinish = viewModel::finish, onPit = viewModel::requestPit, modifier = Modifier.fillMaxSize())
+            RunningDashboard(
+                timing = state.timing,
+                onFinish = viewModel::finish,
+                onPit = viewModel::requestPit,
+                prefs = state.prefs,
+                alert = alert,
+                battery = battery,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
         TimingPhase.STOPPED -> Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
@@ -175,16 +204,6 @@ private fun LeaveDialog(onStay: () -> Unit, onExit: () -> Unit) {
             }
         },
     )
-}
-
-/** Mantiene la pantalla encendida mientras se cronometra. */
-@Composable
-private fun KeepScreenOn() {
-    val view = LocalView.current
-    DisposableEffect(view) {
-        view.keepScreenOn = true
-        onDispose { view.keepScreenOn = false }
-    }
 }
 
 // ---------------------------------------------------------------- Preparación
@@ -273,6 +292,17 @@ private fun PrepContent(
                 onSelect = viewModel::selectCondition,
                 label = { stringResource(it.labelRes()) },
             )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.track_day_mode), style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.track_day_mode_hint), style = MaterialTheme.typography.bodyMedium, color = kart.textMuted)
+                }
+                androidx.compose.material3.Switch(
+                    checked = state.prefs.dayMode,
+                    onCheckedChange = viewModel::setDayMode,
+                    modifier = Modifier.testTag("switch_day_mode"),
+                )
+            }
         }
         Column(Modifier.padding(16.dp)) {
             PrimaryButton(
@@ -281,266 +311,6 @@ private fun PrepContent(
                 enabled = state.canStart,
             )
         }
-    }
-}
-
-// ---------------------------------------------------------------- En marcha
-
-/** Pantalla completa de cronometraje; el reloj en vivo se anima entre posiciones del GPS. */
-@Composable
-fun RunningDashboard(timing: TimingState, onFinish: () -> Unit, modifier: Modifier = Modifier, onPit: (String?) -> Unit = {}) {
-    val kart = MaterialTheme.kartColors
-    val live = LocalLiveClock.current
-    val clock = LocalNanoClock.current
-    var nowNs by remember { mutableLongStateOf(timing.lastFixArrivalNs ?: clock()) }
-    if (live) {
-        LaunchedEffect(Unit) {
-            while (true) {
-                nowNs = clock()
-                delay(50)
-            }
-        }
-    } else {
-        nowNs = timing.lastFixArrivalNs ?: nowNs
-    }
-    val currentMs = timing.currentLapMs(nowNs)
-    val signalLost = timing.lastFixArrivalNs?.let { (nowNs - it) / 1_000_000L > SIGNAL_LOST_MS } ?: false
-    val delta = timing.deltaMs
-    val deltaColor = when {
-        delta == null -> kart.textMuted
-        delta <= 0 -> kart.telemetry
-        else -> MaterialTheme.colorScheme.primary
-    }
-
-    BoxWithConstraints(modifier.background(Color.Black).padding(16.dp)) {
-        val landscape = maxWidth > maxHeight
-        val bigStyle = MaterialTheme.typography.displayLarge.copy(
-            fontFamily = MonoFontFamily, fontWeight = FontWeight.Bold, fontSize = if (landscape) 110.sp else 92.sp,
-        )
-        val current: @Composable (Modifier) -> Unit = { m ->
-            Column(m, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                Text(
-                    text = if (timing.started) stringResource(R.string.track_lap_n, timing.currentLapNumber).uppercase() else stringResource(R.string.track_waiting_start).uppercase(),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = kart.textMuted,
-                    modifier = Modifier.testTag("dash_lap_number"),
-                )
-                AutoSizeText(
-                    text = currentMs?.let(LapTime::format) ?: "–:––.–––",
-                    style = bigStyle,
-                    color = Color.White,
-                    minSize = 40.sp,
-                    modifier = Modifier.fillMaxWidth().testTag("dash_current"),
-                )
-            }
-        }
-        val details: @Composable (Modifier) -> Unit = { m ->
-            Column(m, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    DashValue(stringResource(R.string.track_last), timing.lastLapMs?.let(LapTime::format) ?: stringResource(R.string.value_unset), Color.White, Modifier.weight(1f).testTag("dash_last"))
-                    DashValue(stringResource(R.string.badge_best), timing.bestLapMs?.let(LapTime::format) ?: stringResource(R.string.value_unset), kart.telemetry, Modifier.weight(1f).testTag("dash_best"))
-                }
-                DashValue(
-                    stringResource(R.string.track_delta),
-                    delta?.let(LapTime::formatDelta) ?: stringResource(R.string.value_unset),
-                    deltaColor,
-                    Modifier.fillMaxWidth().testTag("dash_delta"),
-                )
-                GpsIndicator(timing, signalLost)
-                if (timing.setup?.type == SessionType.ENDURANCE) StintBar(timing, onPit)
-                if (timing.hasUnreliableLap) {
-                    Text(stringResource(R.string.track_unreliable_lap), style = MaterialTheme.typography.bodyMedium, color = kart.warning)
-                }
-            }
-        }
-        if (landscape) {
-            Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                current(Modifier.weight(1.3f).fillMaxHeight())
-                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
-                    details(Modifier.fillMaxWidth())
-                    FinishHoldButton(onFinish)
-                }
-            }
-        } else {
-            Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
-                current(Modifier.fillMaxWidth().weight(1f))
-                details(Modifier.fillMaxWidth())
-                Spacer16()
-                FinishHoldButton(onFinish)
-            }
-        }
-    }
-}
-
-@Composable
-private fun Spacer16() = Box(Modifier.height(16.dp))
-
-/** Resistencia: stint en curso, botón «Pit / cambio de piloto» y aviso mientras se está en boxes. */
-@Composable
-private fun StintBar(timing: TimingState, onPit: (String?) -> Unit) {
-    val kart = MaterialTheme.kartColors
-    var showDialog by remember { mutableStateOf(false) }
-    val driver = timing.stints.last().driverName
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = stringResource(R.string.stint_current, timing.currentStintNumber) + (driver?.let { " · $it" } ?: ""),
-            style = MaterialTheme.typography.titleSmall,
-            color = Color.White,
-            modifier = Modifier.weight(1f).testTag("stint_label"),
-        )
-        SecondaryButton(
-            text = stringResource(R.string.stint_pit).uppercase(),
-            onClick = { showDialog = true },
-            enabled = timing.started && !timing.pitPending,
-            modifier = Modifier.testTag("pit_button"),
-        )
-    }
-    if (timing.pitPending) {
-        Text(stringResource(R.string.stint_in_pit), style = MaterialTheme.typography.bodyLarge, color = kart.warning, modifier = Modifier.testTag("pit_pending"))
-    }
-    if (showDialog) {
-        var name by remember { mutableStateOf("") }
-        var typing by remember { mutableStateOf(false) }
-        val suggestions = timing.stints.mapNotNull { it.driverName }.distinct()
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showDialog = false },
-            containerColor = kart.card,
-            title = { Text(stringResource(R.string.stint_pit_title), style = MaterialTheme.typography.titleLarge) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(stringResource(R.string.stint_pit_message), style = MaterialTheme.typography.bodyLarge)
-                    // El campo de texto solo aparece si se pide: así el diálogo es de dos toques en pista (con guantes) y,
-                    // con un piloto ya conocido, basta tocar su nombre.
-                    if (typing) {
-                        androidx.compose.material3.OutlinedTextField(
-                            value = name,
-                            onValueChange = { name = it },
-                            label = { Text(stringResource(R.string.stint_next_driver)) },
-                            singleLine = true,
-                        )
-                    } else {
-                        if (name.isNotBlank()) Text(name, style = MaterialTheme.typography.titleMedium, color = kart.telemetry)
-                        suggestions.forEach { suggestion ->
-                            TextButton(onClick = { name = suggestion }, modifier = Modifier.heightIn(min = 48.dp).testTag("pit_suggestion_$suggestion")) { Text(suggestion) }
-                        }
-                        TextButton(onClick = { typing = true }, modifier = Modifier.heightIn(min = 48.dp).testTag("pit_new_driver")) {
-                            Text(stringResource(R.string.stint_new_driver))
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDialog = false
-                        onPit(name.ifBlank { null })
-                    },
-                    modifier = Modifier.heightIn(min = 56.dp).testTag("pit_confirm"),
-                ) { Text(stringResource(R.string.stint_pit_confirm).uppercase(), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDialog = false }, modifier = Modifier.heightIn(min = 56.dp)) {
-                    Text(stringResource(R.string.action_cancel).uppercase(), style = MaterialTheme.typography.titleSmall)
-                }
-            },
-        )
-    }
-}
-
-@Composable
-private fun DashValue(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
-    Column(modifier) {
-        Text(label.uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.kartColors.textMuted)
-        AutoSizeText(
-            text = value,
-            style = MaterialTheme.typography.displayLarge.copy(fontFamily = MonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 44.sp),
-            color = color,
-            minSize = 24.sp,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
-
-@Composable
-private fun GpsIndicator(timing: TimingState, signalLost: Boolean) {
-    val kart = MaterialTheme.kartColors
-    val health = GpsHealth.of(timing.accuracyM, signalLost)
-    val color = when (health) {
-        GpsHealth.GOOD -> kart.telemetry
-        GpsHealth.FAIR -> kart.warning
-        GpsHealth.POOR -> MaterialTheme.colorScheme.primary
-        null -> kart.textMuted
-    }
-    val label = when (health) {
-        GpsHealth.GOOD -> stringResource(R.string.gps_health_good)
-        GpsHealth.FAIR -> stringResource(R.string.gps_health_fair)
-        GpsHealth.POOR -> stringResource(R.string.gps_health_poor)
-        null -> stringResource(R.string.gps_waiting)
-    }
-    val detail = if (signalLost) {
-        stringResource(R.string.track_signal_lost)
-    } else {
-        timing.accuracyM?.let {
-            stringResource(R.string.gps_status, String.format(Locale.ROOT, "%.0f", it), timing.rateHz?.let { hz -> String.format(Locale.ROOT, "%.1f", hz) } ?: "—")
-        }
-    }
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.testTag("dash_gps")) {
-        Box(Modifier.size(14.dp).clip(CircleShape).background(color).testTag("dash_gps_dot"))
-        Text(
-            text = "  $label" + (detail?.let { "  ·  $it" } ?: ""),
-            style = MaterialTheme.typography.titleSmall,
-            color = color,
-            modifier = Modifier.testTag("dash_gps_text"),
-        )
-    }
-}
-
-/**
- * Para terminar hay que mantener pulsado 1,5 s (con barra de progreso): sin menús ni botones que se puedan tocar
- * sin querer con los guantes puestos. Soltar antes deja la barra a cero y no hace nada.
- */
-@Composable
-internal fun FinishHoldButton(onConfirmed: () -> Unit, modifier: Modifier = Modifier) {
-    val progress = remember { Animatable(0f) }
-    val scope = rememberCoroutineScope()
-    val kart = MaterialTheme.kartColors
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(72.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(kart.card)
-            .testTag("finish_hold")
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onPress = {
-                        val hold = scope.launch {
-                            progress.animateTo(1f, tween(FINISH_HOLD_MS, easing = LinearEasing))
-                            onConfirmed()
-                        }
-                        tryAwaitRelease()
-                        if (progress.value < 1f) {
-                            hold.cancel()
-                            scope.launch { progress.snapTo(0f) }
-                        }
-                    },
-                )
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            Modifier
-                .align(Alignment.CenterStart)
-                .fillMaxHeight()
-                .fillMaxWidth(progress.value)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)),
-        )
-        Text(
-            stringResource(R.string.track_hold_to_finish).uppercase(),
-            style = MaterialTheme.typography.titleMedium,
-            color = Color.White,
-            textAlign = TextAlign.Center,
-        )
     }
 }
 
@@ -604,36 +374,3 @@ private fun SummaryRow(label: String, value: String, modifier: Modifier = Modifi
     }
 }
 
-// ---------------------------------------------------------------- Previews
-
-private fun sampleTiming() = TimingState(
-    phase = TimingPhase.RUNNING,
-    setup = null,
-    laps = listOf(73_412, 72_986, 72_540, 73_105),
-    currentLapStartNs = 100_000_000_000L,
-    lastFixElapsedNs = 143_700_000_000L,
-    lastFixArrivalNs = 5_000_000_000L,
-    accuracyM = 3f,
-    rateHz = 1.0,
-    speedMps = 16f,
-)
-
-@Preview(showBackground = true, backgroundColor = 0xFF000000, widthDp = 360, heightDp = 780)
-@Composable
-private fun RunningDashboardPortraitPreview() {
-    KartLogTheme {
-        CompositionLocalProvider(LocalLiveClock provides false) {
-            RunningDashboard(timing = sampleTiming(), onFinish = {}, modifier = Modifier.fillMaxSize())
-        }
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF000000, widthDp = 780, heightDp = 360)
-@Composable
-private fun RunningDashboardLandscapePreview() {
-    KartLogTheme {
-        CompositionLocalProvider(LocalLiveClock provides false) {
-            RunningDashboard(timing = sampleTiming().copy(accuracyM = 12f), onFinish = {}, modifier = Modifier.fillMaxSize())
-        }
-    }
-}

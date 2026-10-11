@@ -42,19 +42,7 @@ import org.robolectric.annotation.Config
 import java.time.LocalDateTime
 import java.time.ZoneId
 
-internal class FakeSettings(name: String) : UserSettings {
-    private val state = MutableStateFlow(name)
-    override val driverName: StateFlow<String> = state
-    override fun setDriverName(name: String) {
-        state.value = name
-    }
-
-    private val feedback = MutableStateFlow(true)
-    override val lapFeedback: StateFlow<Boolean> = feedback
-    override fun setLapFeedback(enabled: Boolean) {
-        feedback.value = enabled
-    }
-}
+internal class FakeSettings(name: String) : UserSettings by com.nacho.kartlog.domain.settings.InMemoryUserSettings(name)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)

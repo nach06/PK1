@@ -6,6 +6,7 @@ import com.nacho.kartlog.domain.gps.LocationSource
 import com.nacho.kartlog.domain.importing.ImportInbox
 import com.nacho.kartlog.domain.importing.SharedContent
 import com.nacho.kartlog.domain.repository.ImportRepository
+import com.nacho.kartlog.domain.settings.DashboardOrientation
 import com.nacho.kartlog.domain.settings.UserSettings
 import com.nacho.kartlog.domain.util.SessionsCsvExporter
 import kotlinx.coroutines.channels.Channel
@@ -97,6 +98,14 @@ class SettingsViewModel(
     val lapFeedback: StateFlow<Boolean> = userSettings.lapFeedback
 
     fun setLapFeedback(enabled: Boolean) = userSettings.setLapFeedback(enabled)
+
+    /** Ajustes del Dashboard en pista (Sprint 6, B1/B3/B5). */
+    val dashboardOrientation: StateFlow<DashboardOrientation> = userSettings.dashboardOrientation
+    fun setDashboardOrientation(value: DashboardOrientation) = userSettings.setDashboardOrientation(value)
+    val vibrationOnly: StateFlow<Boolean> = userSettings.vibrationOnly
+    fun setVibrationOnly(enabled: Boolean) = userSettings.setVibrationOnly(enabled)
+    val maxBrightness: StateFlow<Boolean> = userSettings.maxBrightness
+    fun setMaxBrightness(enabled: Boolean) = userSettings.setMaxBrightness(enabled)
 
     /** Borra clasificaciones, vueltas de rivales y textos originales importados; tus vueltas se conservan. */
     fun clearRivalData() {

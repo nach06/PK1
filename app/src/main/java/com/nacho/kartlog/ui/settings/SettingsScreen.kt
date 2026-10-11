@@ -42,6 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nacho.kartlog.BuildConfig
 import com.nacho.kartlog.debug.TextSample
 import com.nacho.kartlog.R
+import com.nacho.kartlog.domain.settings.DashboardOrientation
 import com.nacho.kartlog.ui.components.KartCard
 import com.nacho.kartlog.ui.components.KartTopBar
 import com.nacho.kartlog.ui.components.SecondaryButton
@@ -268,6 +269,52 @@ fun SettingsScreen(
                 }
             }
 
+            KartCard(Modifier.fillMaxWidth().testTag("dashboard_settings")) {
+                Text(
+                    text = stringResource(R.string.settings_dashboard_title).uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.kartColors.textMuted,
+                )
+                val orientation by viewModel.dashboardOrientation.collectAsStateWithLifecycle()
+                Text(
+                    stringResource(R.string.settings_orientation),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(top = 12.dp, bottom = 8.dp),
+                )
+                androidx.compose.foundation.layout.Box(Modifier.testTag("orientation_selector")) {
+                    com.nacho.kartlog.ui.components.ChipSelector(
+                        options = DashboardOrientation.entries,
+                        selected = orientation,
+                        onSelect = viewModel::setDashboardOrientation,
+                        label = {
+                            stringResource(
+                                when (it) {
+                                    DashboardOrientation.LANDSCAPE -> R.string.orientation_landscape
+                                    DashboardOrientation.AUTO -> R.string.orientation_auto
+                                    DashboardOrientation.PORTRAIT -> R.string.orientation_portrait
+                                },
+                            )
+                        },
+                    )
+                }
+                val vibrationOnly by viewModel.vibrationOnly.collectAsStateWithLifecycle()
+                SettingSwitchRow(
+                    title = stringResource(R.string.settings_vibration_only),
+                    hint = stringResource(R.string.settings_vibration_only_hint),
+                    checked = vibrationOnly,
+                    onChange = viewModel::setVibrationOnly,
+                    tag = "switch_vibration_only",
+                )
+                val maxBrightness by viewModel.maxBrightness.collectAsStateWithLifecycle()
+                SettingSwitchRow(
+                    title = stringResource(R.string.settings_max_brightness),
+                    hint = stringResource(R.string.settings_max_brightness_hint),
+                    checked = maxBrightness,
+                    onChange = viewModel::setMaxBrightness,
+                    tag = "switch_max_brightness",
+                )
+            }
+
             Text(
                 text = stringResource(
                     R.string.settings_version,
@@ -398,5 +445,20 @@ fun SettingsScreen(
                 }
             },
         )
+    }
+}
+
+
+@Composable
+private fun SettingSwitchRow(title: String, hint: String, checked: Boolean, onChange: (Boolean) -> Unit, tag: String) {
+    androidx.compose.foundation.layout.Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(hint, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.kartColors.textMuted)
+        }
+        androidx.compose.material3.Switch(checked = checked, onCheckedChange = onChange, modifier = Modifier.testTag(tag))
     }
 }

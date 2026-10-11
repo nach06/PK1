@@ -1,0 +1,31 @@
+package com.nacho.kartlog.domain.settings
+
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+
+/** Ajustes en memoria (valores por defecto): para tests y vistas previas. */
+class InMemoryUserSettings(driverName: String = "") : UserSettings {
+    private val driver = MutableStateFlow(driverName)
+    override val driverName: StateFlow<String> = driver
+    override fun setDriverName(name: String) { driver.value = name }
+
+    private val feedback = MutableStateFlow(true)
+    override val lapFeedback: StateFlow<Boolean> = feedback
+    override fun setLapFeedback(enabled: Boolean) { feedback.value = enabled }
+
+    private val orientation = MutableStateFlow(DashboardOrientation.LANDSCAPE)
+    override val dashboardOrientation: StateFlow<DashboardOrientation> = orientation
+    override fun setDashboardOrientation(value: DashboardOrientation) { orientation.value = value }
+
+    private val day = MutableStateFlow(false)
+    override val dashboardDayMode: StateFlow<Boolean> = day
+    override fun setDashboardDayMode(enabled: Boolean) { day.value = enabled }
+
+    private val vibration = MutableStateFlow(false)
+    override val vibrationOnly: StateFlow<Boolean> = vibration
+    override fun setVibrationOnly(enabled: Boolean) { vibration.value = enabled }
+
+    private val brightness = MutableStateFlow(false)
+    override val maxBrightness: StateFlow<Boolean> = brightness
+    override fun setMaxBrightness(enabled: Boolean) { brightness.value = enabled }
+}
