@@ -42,6 +42,9 @@ enum class TimingPhase {
     STOPPED,
 }
 
+/** Un stint de resistencia: quién conduce (opcional) y cuánto duró la parada en boxes que lo cierra. */
+data class StintInfo(val driverName: String? = null, val pitAfterMs: Long? = null)
+
 data class TimingState(
     val phase: TimingPhase = TimingPhase.IDLE,
     val setup: GpsSessionSetup? = null,
@@ -60,6 +63,13 @@ data class TimingState(
     val lapReliable: List<Boolean> = emptyList(),
     /** Fiabilidad del último cruce de meta (inicio de la vuelta en curso). */
     val lastCrossingReliable: Boolean = true,
+    /** Stints de la tanda; siempre hay al menos uno (el actual es el último). */
+    val stints: List<StintInfo> = listOf(StintInfo()),
+    /** Índice en [stints] del stint de cada vuelta cerrada (misma posición que [laps]). */
+    val lapStint: List<Int> = emptyList(),
+    /** Se pidió parada en boxes: la vuelta en curso se descarta y el próximo cruce cierra el tiempo en boxes. */
+    val pitPending: Boolean = false,
+    val pendingDriver: String? = null,
     val error: String? = null,
     /** Hora (epoch ms) a la que se paró la tanda; `null` mientras sigue en marcha. */
     val stoppedAtMs: Long? = null,
@@ -71,6 +81,9 @@ data class TimingState(
     val started: Boolean get() = currentLapStartNs != null
     val lastLapMs: Long? get() = laps.lastOrNull()
     val bestLapMs: Long? get() = laps.minOrNull()
+
+    /** Nº del stint en curso (1 = el primero). */
+    val currentStintNumber: Int get() = stints.size
 
     /** Vuelta en curso (1 = la primera tras salir). */
     val currentLapNumber: Int get() = laps.size + 1
@@ -94,7 +107,13 @@ sealed interface TimingEvent {
     data object Started : TimingEvent
 
     data class LapClosed(val number: Int, val lapTimeMs: Long, val isBest: Boolean, val reliable: Boolean) : TimingEvent
+
+    /** Fin de una parada en boxes (resistencia): [pitMs] va del último cruce antes de parar al primero después. */
+    data class PitCompleted(val pitMs: Long, val newStintNumber: Int) : TimingEvent
 }
+
+/** Petición de parada en boxes, con el instante (reloj de los fixes) en que se pidió: se guarda en el borrador. */
+data class PitRequest(val atElapsedNs: Long, val driverName: String?)
 
 /** Lo que queda de una tanda parada: vueltas y trazado completo. */
 class GpsRecording(
@@ -103,6 +122,9 @@ class GpsRecording(
     val fixes: List<GpsFix>,
     /** Hora (epoch ms) a la que se paró; con [GpsSessionSetup.startedAtMs] da la duración de la tanda. */
     val stoppedAtMs: Long = setup.startedAtMs,
+    val stints: List<StintInfo> = listOf(StintInfo()),
+    /** Stint de cada vuelta de [laps] (índice en [stints]); vacío = todas en el primero. */
+    val lapStint: List<Int> = emptyList(),
 )
 
 /**
@@ -186,7 +208,14 @@ class TimingSession(
         detector = GateDetector(draft.setup.finish)
         _state.value = TimingState(phase = TimingPhase.RUNNING, setup = draft.setup)
         restoring = true
-        draft.fixes.forEach(::onFix)
+        val pits = draft.pits.sortedBy { it.atElapsedNs }.toMutableList()
+        draft.fixes.forEach { fix ->
+            // Cada parada pedida se aplica en el momento (reloj de fixes) en que se pidió.
+            while (pits.isNotEmpty() && pits.first().atElapsedNs <= fix.elapsedNs && _state.value.started) {
+                applyPitRequest(pits.removeAt(0).driverName)
+            }
+            onFix(fix)
+        }
         restoring = false
         job = null
         _state.update { it.copy(phase = TimingPhase.STOPPED, stoppedAtMs = draft.savedAtMs) }
@@ -209,6 +238,7 @@ class TimingSession(
         val rate = if (recentArrivals.size >= 2 && span > 0) (recentArrivals.size - 1) / span else null
 
         val event = detector?.feed(fix)
+        var pitCompleted: TimingEvent.PitCompleted? = null
         _state.update { s ->
             var next = s.copy(
                 lastFixElapsedNs = fix.elapsedNs,
@@ -219,9 +249,20 @@ class TimingSession(
             )
             if (event != null) {
                 next = next.copy(currentLapStartNs = event.crossing.elapsedNs, lastCrossingReliable = event.crossing.reliable)
-                if (event.lapTimeMs != null) {
+                if (event.lapTimeMs != null && s.pitPending) {
+                    // Parada en boxes: este «giro» no es una vuelta sino el tiempo en boxes; el stint siguiente empieza aquí.
+                    val pitMs = event.lapTimeMs
+                    val closed = s.stints.dropLast(1) + s.stints.last().copy(pitAfterMs = pitMs)
+                    next = next.copy(
+                        stints = closed + StintInfo(driverName = s.pendingDriver),
+                        pitPending = false,
+                        pendingDriver = null,
+                    )
+                    pitCompleted = TimingEvent.PitCompleted(pitMs, next.stints.size)
+                } else if (event.lapTimeMs != null) {
                     next = next.copy(
                         laps = s.laps + event.lapTimeMs,
+                        lapStint = s.lapStint + s.stints.lastIndex,
                         // Una vuelta es fiable si lo son sus dos cruces (el que la abre y el que la cierra).
                         lapReliable = s.lapReliable + (s.lastCrossingReliable && event.crossing.reliable),
                     )
@@ -232,11 +273,13 @@ class TimingSession(
         if (event != null) {
             if (event.lapTimeMs == null) {
                 _events.tryEmit(TimingEvent.Started)
+            } else if (pitCompleted != null) {
+                _events.tryEmit(pitCompleted)
             } else {
                 val laps = _state.value.laps
                 _events.tryEmit(
                     TimingEvent.LapClosed(
-                        number = event.lapNumber!!,
+                        number = laps.size, // nº entre las vueltas guardadas (la parada en boxes no cuenta)
                         lapTimeMs = event.lapTimeMs,
                         isBest = event.lapTimeMs == laps.min(),
                         reliable = event.crossing.reliable,
@@ -244,6 +287,22 @@ class TimingSession(
                 )
             }
         }
+    }
+
+    /**
+     * Resistencia: «Pit / cambio de piloto». La vuelta en curso se descarta (entrada + parada + salida) y el próximo cruce de
+     * meta cierra el tiempo en boxes y abre un stint nuevo. Solo tiene sentido con la tanda arrancada.
+     */
+    fun requestPit(nextDriver: String? = null): Boolean {
+        val s = _state.value
+        if (s.phase != TimingPhase.RUNNING || !s.started || s.pitPending) return false
+        applyPitRequest(nextDriver)
+        draftOps?.let { ops -> draftStore?.let { store -> ops.trySend { store.appendPit(PitRequest(s.lastFixElapsedNs ?: 0L, nextDriver)) } } }
+        return true
+    }
+
+    private fun applyPitRequest(nextDriver: String?) {
+        _state.update { it.copy(pitPending = true, pendingDriver = nextDriver?.trim()?.ifEmpty { null }) }
     }
 
     /** Para el cronómetro conservando las vueltas hasta que se guarden ([takeRecording]) o se descarten ([discard]). */
@@ -260,7 +319,7 @@ class TimingSession(
         val s = _state.value
         val setup = s.setup ?: return null
         if (s.phase != TimingPhase.STOPPED) return null
-        return GpsRecording(setup, s.laps, fixes.toList(), s.stoppedAtMs ?: setup.startedAtMs)
+        return GpsRecording(setup, s.laps, fixes.toList(), s.stoppedAtMs ?: setup.startedAtMs, s.stints, s.lapStint)
     }
 
     /** Descarta todo (tras guardar o al cancelar) y vuelve a IDLE. */

@@ -59,3 +59,24 @@ val MIGRATION_2_3: Migration = object : Migration(2, 3) {
         db.execSQL("ALTER TABLE `circuits` ADD COLUMN `gateWidthM` INTEGER NOT NULL DEFAULT 20")
     }
 }
+
+/**
+ * v3 → v4 (Sprint 5, resistencia): tabla `stints` (con borrado en cascada desde la sesión) y `laps.stintId` nulable.
+ * Las vueltas existentes quedan sin stint.
+ */
+val MIGRATION_3_4: Migration = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `laps` ADD COLUMN `stintId` INTEGER")
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `stints` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`sessionId` INTEGER NOT NULL, " +
+                "`startLap` INTEGER NOT NULL, " +
+                "`endLap` INTEGER NOT NULL, " +
+                "`driverName` TEXT, " +
+                "`pitMs` INTEGER, " +
+                "FOREIGN KEY(`sessionId`) REFERENCES `sessions`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_stints_sessionId` ON `stints` (`sessionId`)")
+    }
+}

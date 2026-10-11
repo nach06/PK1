@@ -6,7 +6,9 @@ import com.nacho.kartlog.data.local.entity.ParticipantEntity
 import com.nacho.kartlog.data.local.entity.SessionEntity
 import com.nacho.kartlog.data.local.entity.SessionSummaryRow
 import com.nacho.kartlog.data.local.entity.SessionWithCircuit
+import com.nacho.kartlog.data.local.entity.StintEntity
 import com.nacho.kartlog.domain.model.Circuit
+import com.nacho.kartlog.domain.model.Stint
 import com.nacho.kartlog.domain.model.FinishLine
 import com.nacho.kartlog.domain.model.Lap
 import com.nacho.kartlog.domain.model.NewSession
@@ -62,6 +64,16 @@ fun LapEntity.toDomain() = Lap(
     number = number,
     timeMs = timeMs,
     source = source,
+    stintId = stintId,
+)
+
+fun StintEntity.toDomain() = Stint(
+    id = id,
+    sessionId = sessionId,
+    startLap = startLap,
+    endLap = endLap,
+    driverName = driverName,
+    pitMs = pitMs,
 )
 
 fun SessionWithCircuit.toDomain() = SessionDetail(

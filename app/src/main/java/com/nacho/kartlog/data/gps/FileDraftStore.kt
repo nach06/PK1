@@ -3,6 +3,7 @@ package com.nacho.kartlog.data.gps
 import com.nacho.kartlog.domain.gps.DraftStore
 import com.nacho.kartlog.domain.gps.GpsFix
 import com.nacho.kartlog.domain.gps.GpsSessionSetup
+import com.nacho.kartlog.domain.gps.PitRequest
 import com.nacho.kartlog.domain.gps.SessionDraft
 import com.nacho.kartlog.domain.gps.TrackFormats
 import com.nacho.kartlog.domain.model.FinishLine
@@ -21,10 +22,12 @@ import java.util.Locale
 class FileDraftStore(private val dir: File) : DraftStore {
     private val json get() = File(dir, "draft.partial.json")
     private val csv get() = File(dir, "draft.partial.csv")
+    private val pits get() = File(dir, "draft.partial.pits")
 
     override suspend fun begin(setup: GpsSessionSetup) = withContext(Dispatchers.IO) {
         dir.mkdirs()
         csv.writeText(TrackFormats.CSV_HEADER + "\n")
+        pits.delete()
         json.writeText(setup.toJson().toString())
     }
 
@@ -37,20 +40,34 @@ class FileDraftStore(private val dir: File) : DraftStore {
         )
     }
 
+    override suspend fun appendPit(request: PitRequest) = withContext(Dispatchers.IO) {
+        if (!json.exists()) return@withContext
+        // `elapsedNs;nombre` (el nombre sin saltos de línea ni «;»).
+        pits.appendText("${request.atElapsedNs};${request.driverName.orEmpty().replace(';', ',').replace('\n', ' ')}\n")
+    }
+
     override suspend fun load(): SessionDraft? = withContext(Dispatchers.IO) {
         runCatching {
             if (!json.exists() || !csv.exists()) return@runCatching null
             val setup = setupFromJson(JSONObject(json.readText()))
             // Una última línea cortada (muerte a mitad de escritura) no tiene 5 campos y se descarta sola.
             val fixes = TrackFormats.parseCsv(csv.readText())
-            if (fixes.isEmpty()) null else SessionDraft(setup, fixes, csv.lastModified())
+            if (fixes.isEmpty()) null else SessionDraft(setup, fixes, csv.lastModified(), readPits())
         }.getOrNull()
     }
+
+    private fun readPits(): List<PitRequest> =
+        if (!pits.exists()) emptyList() else pits.readLines().mapNotNull { line ->
+            val at = line.substringBefore(';').toLongOrNull() ?: return@mapNotNull null
+            if (!line.contains(';')) return@mapNotNull null
+            PitRequest(at, line.substringAfter(';').ifBlank { null })
+        }
 
     override suspend fun clear() {
         withContext(Dispatchers.IO) {
             json.delete()
             csv.delete()
+            pits.delete()
         }
     }
 

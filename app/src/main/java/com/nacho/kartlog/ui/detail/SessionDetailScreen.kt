@@ -168,6 +168,15 @@ fun SessionDetailScreen(
                             )
                         }
                     }
+                    if (state.stints.isNotEmpty()) {
+                        item(key = "stints") {
+                            StintsCard(
+                                stints = state.stints,
+                                laps = state.laps,
+                                modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
+                            )
+                        }
+                    }
                     val gpsLaps = state.laps.filter { it.source == LapSource.GPS }.map { it.timeMs }
                     val officialLaps = state.laps.filter { it.source == LapSource.IMPORTED }.map { it.timeMs }
                     if (gpsLaps.isNotEmpty() && officialLaps.isNotEmpty()) {

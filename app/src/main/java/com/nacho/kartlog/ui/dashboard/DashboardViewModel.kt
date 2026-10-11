@@ -168,6 +168,8 @@ class DashboardViewModel(
             laps = full.laps.filterIndexed { i, _ -> (i + 1) !in discarded },
             fixes = full.fixes,
             stoppedAtMs = full.stoppedAtMs,
+            stints = full.stints,
+            lapStint = full.lapStint.filterIndexed { i, _ -> (i + 1) !in discarded },
         )
         if (form.value.saving) return
         form.update { it.copy(saving = true) }
@@ -182,6 +184,11 @@ class DashboardViewModel(
                 savedChannel.send(id)
             }
         }
+    }
+
+    /** Resistencia: «Pit / cambio de piloto». Descarta la vuelta en curso y el próximo cruce cierra el tiempo en boxes. */
+    fun requestPit(nextDriver: String?) {
+        timingSession.requestPit(nextDriver)
     }
 
     fun discard() {

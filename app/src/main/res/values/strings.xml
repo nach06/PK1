@@ -338,4 +338,19 @@
     <string name="draft_message">La app se cerró durante una tanda GPS (%1$s, %2$d posiciones). ¿Quieres recuperarla? Las vueltas se recalculan con las posiciones guardadas.</string>
     <string name="draft_recover">Recuperar tanda interrumpida</string>
     <string name="draft_discard">Descartar</string>
+
+    <!-- Resistencia: stints -->
+    <string name="stint_current">Stint %1$d</string>
+    <string name="stint_pit">Pit / cambio</string>
+    <string name="stint_in_pit">EN BOXES: cruza la meta al salir para volver a contar. La vuelta en curso no se guarda.</string>
+    <string name="stint_pit_title">Pit / cambio de piloto</string>
+    <string name="stint_pit_message">Se cierra el stint actual. La vuelta en curso (entrada, parada y salida) no cuenta como vuelta: su duración será el tiempo en boxes.</string>
+    <string name="stint_next_driver">Piloto que sale (opcional)</string>
+    <string name="stint_pit_confirm">Entrar a boxes</string>
+    <string name="stints_title">Stints · %1$d</string>
+    <string name="stints_pit_total">Tiempo total en boxes %1$s</string>
+    <string name="stint_row_title">Stint %1$d</string>
+    <string name="stint_row_detail">V%1$d–V%2$d · %3$d vueltas</string>
+    <string name="stint_row_stats">Mejor %1$s · media limpia %2$s</string>
+    <string name="stint_row_pit">Parada %1$s</string>
 </resources>

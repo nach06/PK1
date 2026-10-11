@@ -5,7 +5,9 @@ import com.nacho.kartlog.data.local.dao.ImportDao
 import com.nacho.kartlog.data.local.dao.LapDao
 import com.nacho.kartlog.data.local.dao.ParticipantDao
 import com.nacho.kartlog.data.local.dao.SessionDao
+import com.nacho.kartlog.data.local.dao.StintDao
 import com.nacho.kartlog.data.local.entity.CircuitEntity
+import com.nacho.kartlog.data.local.entity.StintEntity
 import com.nacho.kartlog.data.mapper.toDomain
 import com.nacho.kartlog.data.mapper.toEntity
 import com.nacho.kartlog.domain.gps.TrackStore
@@ -22,6 +24,8 @@ import com.nacho.kartlog.domain.repository.CircuitRepository
 import com.nacho.kartlog.domain.repository.ImportRepository
 import com.nacho.kartlog.domain.repository.LapRepository
 import com.nacho.kartlog.domain.repository.ParticipantRepository
+import com.nacho.kartlog.domain.repository.StintRepository
+import com.nacho.kartlog.domain.model.Stint
 import com.nacho.kartlog.domain.repository.SessionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -91,12 +95,20 @@ class LapRepositoryImpl(private val dao: LapDao) : LapRepository {
     override suspend fun addManual(sessionId: Long, timeMs: Long): Long =
         dao.insertNext(sessionId, timeMs, LapSource.MANUAL)
 
-    override suspend fun addAll(sessionId: Long, timesMs: List<Long>, source: LapSource) =
-        dao.insertAll(sessionId, timesMs, source)
+    override suspend fun addAll(sessionId: Long, timesMs: List<Long>, source: LapSource, stintIds: List<Long?>?) =
+        dao.insertAll(sessionId, timesMs, source, stintIds)
 
     override suspend fun updateTime(lapId: Long, timeMs: Long) = dao.updateTime(lapId, timeMs)
 
     override suspend fun delete(lapId: Long) = dao.deleteAndRenumber(lapId)
+}
+
+class StintRepositoryImpl(private val dao: StintDao) : StintRepository {
+    override fun observeBySession(sessionId: Long): Flow<List<Stint>> =
+        dao.observeBySession(sessionId).map { list -> list.map { it.toDomain() } }
+
+    override suspend fun add(sessionId: Long, startLap: Int, endLap: Int, driverName: String?, pitMs: Long?): Long =
+        dao.insert(StintEntity(sessionId = sessionId, startLap = startLap, endLap = endLap, driverName = driverName, pitMs = pitMs))
 }
 
 class ParticipantRepositoryImpl(private val dao: ParticipantDao) : ParticipantRepository {

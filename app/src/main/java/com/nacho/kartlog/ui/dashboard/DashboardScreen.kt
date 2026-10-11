@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -104,7 +107,7 @@ fun DashboardScreen(
     when (state.timing.phase) {
         TimingPhase.RUNNING -> {
             KeepScreenOn()
-            RunningDashboard(timing = state.timing, onFinish = viewModel::finish, modifier = Modifier.fillMaxSize())
+            RunningDashboard(timing = state.timing, onFinish = viewModel::finish, onPit = viewModel::requestPit, modifier = Modifier.fillMaxSize())
         }
         TimingPhase.STOPPED -> Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
@@ -258,7 +261,7 @@ private fun PrepContent(
 
 /** Pantalla completa de cronometraje; el reloj en vivo se anima entre posiciones del GPS. */
 @Composable
-fun RunningDashboard(timing: TimingState, onFinish: () -> Unit, modifier: Modifier = Modifier) {
+fun RunningDashboard(timing: TimingState, onFinish: () -> Unit, modifier: Modifier = Modifier, onPit: (String?) -> Unit = {}) {
     val kart = MaterialTheme.kartColors
     val live = LocalLiveClock.current
     var nowNs by remember { mutableLongStateOf(timing.lastFixArrivalNs ?: System.nanoTime()) }
@@ -316,6 +319,7 @@ fun RunningDashboard(timing: TimingState, onFinish: () -> Unit, modifier: Modifi
                     Modifier.fillMaxWidth().testTag("dash_delta"),
                 )
                 GpsIndicator(timing, signalLost)
+                if (timing.setup?.type == SessionType.ENDURANCE) StintBar(timing, onPit)
                 if (timing.hasUnreliableLap) {
                     Text(stringResource(R.string.track_unreliable_lap), style = MaterialTheme.typography.bodyMedium, color = kart.warning)
                 }
@@ -342,6 +346,68 @@ fun RunningDashboard(timing: TimingState, onFinish: () -> Unit, modifier: Modifi
 
 @Composable
 private fun Spacer16() = Box(Modifier.height(16.dp))
+
+/** Resistencia: stint en curso, botón «Pit / cambio de piloto» y aviso mientras se está en boxes. */
+@Composable
+private fun StintBar(timing: TimingState, onPit: (String?) -> Unit) {
+    val kart = MaterialTheme.kartColors
+    var showDialog by remember { mutableStateOf(false) }
+    val driver = timing.stints.last().driverName
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = stringResource(R.string.stint_current, timing.currentStintNumber) + (driver?.let { " · $it" } ?: ""),
+            style = MaterialTheme.typography.titleSmall,
+            color = Color.White,
+            modifier = Modifier.weight(1f).testTag("stint_label"),
+        )
+        SecondaryButton(
+            text = stringResource(R.string.stint_pit).uppercase(),
+            onClick = { showDialog = true },
+            enabled = timing.started && !timing.pitPending,
+            modifier = Modifier.testTag("pit_button"),
+        )
+    }
+    if (timing.pitPending) {
+        Text(stringResource(R.string.stint_in_pit), style = MaterialTheme.typography.bodyLarge, color = kart.warning, modifier = Modifier.testTag("pit_pending"))
+    }
+    if (showDialog) {
+        var name by remember { mutableStateOf("") }
+        val suggestions = timing.stints.mapNotNull { it.driverName }.distinct()
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDialog = false },
+            containerColor = kart.card,
+            title = { Text(stringResource(R.string.stint_pit_title), style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(stringResource(R.string.stint_pit_message), style = MaterialTheme.typography.bodyLarge)
+                    androidx.compose.material3.OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text(stringResource(R.string.stint_next_driver)) },
+                        singleLine = true,
+                    )
+                    suggestions.forEach { suggestion ->
+                        TextButton(onClick = { name = suggestion }, modifier = Modifier.testTag("pit_suggestion_$suggestion")) { Text(suggestion) }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDialog = false
+                        onPit(name.ifBlank { null })
+                    },
+                    modifier = Modifier.heightIn(min = 56.dp).testTag("pit_confirm"),
+                ) { Text(stringResource(R.string.stint_pit_confirm).uppercase(), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }, modifier = Modifier.heightIn(min = 56.dp)) {
+                    Text(stringResource(R.string.action_cancel).uppercase(), style = MaterialTheme.typography.titleSmall)
+                }
+            },
+        )
+    }
+}
 
 @Composable
 private fun DashValue(label: String, value: String, color: Color, modifier: Modifier = Modifier) {

@@ -70,6 +70,18 @@ data class Lap(
     /** Tiempo siempre en milisegundos; se formatea solo en la UI. */
     val timeMs: Long,
     val source: LapSource,
+    /** Stint de resistencia al que pertenece; `null` fuera de las tandas con stints. */
+    val stintId: Long? = null,
+)
+
+/** Tramo de una resistencia entre paradas; [pitMs] es la parada que lo cierra (`null` en el último). */
+data class Stint(
+    val id: Long,
+    val sessionId: Long,
+    val startLap: Int,
+    val endLap: Int,
+    val driverName: String?,
+    val pitMs: Long?,
 )
 
 data class SessionDetail(

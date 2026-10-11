@@ -31,6 +31,8 @@ data class SessionDraft(
     val fixes: List<GpsFix>,
     /** Hora (epoch ms) del último volcado a disco. */
     val savedAtMs: Long,
+    /** Paradas en boxes pedidas durante la tanda (resistencia). */
+    val pits: List<PitRequest> = emptyList(),
 )
 
 /**
@@ -42,6 +44,9 @@ interface DraftStore {
     suspend fun begin(setup: GpsSessionSetup)
 
     suspend fun append(fixes: List<GpsFix>)
+
+    /** Anota una parada en boxes pedida (resistencia) para poder rehacer los stints al recuperar. */
+    suspend fun appendPit(request: PitRequest)
 
     /** El borrador pendiente, o `null` si no hay ninguno o está corrupto/vacío. */
     suspend fun load(): SessionDraft?

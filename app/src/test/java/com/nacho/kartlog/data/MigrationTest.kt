@@ -5,6 +5,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.nacho.kartlog.data.local.KartLogDatabase
 import com.nacho.kartlog.data.local.MIGRATION_1_2
 import com.nacho.kartlog.data.local.MIGRATION_2_3
+import com.nacho.kartlog.data.local.MIGRATION_3_4
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -120,6 +121,50 @@ class MigrationTest {
             assertTrue(c.moveToFirst())
             assertEquals(1, c.getInt(0))
             assertEquals(20, c.getInt(1))
+        }
+    }
+
+    @Test
+    fun migrate3To4_addsStintsAndLapStintId_keepingLaps() {
+        helper.createDatabase(dbName, 3).apply {
+            execSQL("INSERT INTO circuits (id, name, lengthMeters, finishLat, finishLon, finishBearingDeg, gateWidthM) VALUES (1, 'Zuera', 1100, 41.86, -0.79, 87.0, 25)")
+            execSQL("INSERT INTO sessions (id, circuitId, dateTime, type, trackCondition, notes) VALUES (10, 1, 1760000000000, 'RACE', 'DRY', '')")
+            execSQL("INSERT INTO laps (sessionId, number, timeMs, source) VALUES (10, 1, 58400, 'GPS')")
+            execSQL("INSERT INTO laps (sessionId, number, timeMs, source) VALUES (10, 2, 57900, 'GPS')")
+            close()
+        }
+        val db = helper.runMigrationsAndValidate(dbName, 4, true, MIGRATION_3_4)
+        db.query("SELECT COUNT(*), SUM(stintId IS NULL), MIN(timeMs) FROM laps").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals(2, c.getInt(0))
+            assertEquals("las vueltas anteriores quedan sin stint", 2, c.getInt(1))
+            assertEquals(57_900L, c.getLong(2))
+        }
+        db.query("SELECT gateWidthM FROM circuits WHERE id = 1").use { assertTrue(it.moveToFirst()); assertEquals(25, it.getInt(0)) }
+
+        // La tabla nueva funciona y se borra en cascada con la sesión.
+        db.execSQL("PRAGMA foreign_keys = ON")
+        db.execSQL("INSERT INTO stints (id, sessionId, startLap, endLap, driverName, pitMs) VALUES (1, 10, 1, 2, 'Nacho', 95000)")
+        db.execSQL("UPDATE laps SET stintId = 1 WHERE sessionId = 10")
+        db.query("SELECT COUNT(*) FROM laps WHERE stintId = 1").use { assertTrue(it.moveToFirst()); assertEquals(2, it.getInt(0)) }
+        db.execSQL("DELETE FROM sessions WHERE id = 10")
+        db.query("SELECT (SELECT COUNT(*) FROM stints) + (SELECT COUNT(*) FROM laps)").use { assertTrue(it.moveToFirst()); assertEquals(0, it.getInt(0)) }
+    }
+
+    @Test
+    fun migrate1To4_fullChainKeepsData() {
+        helper.createDatabase(dbName, 1).apply {
+            execSQL("INSERT INTO circuits (id, name, lengthMeters) VALUES (1, 'Zuera', 1100)")
+            execSQL("INSERT INTO sessions (id, circuitId, dateTime, type, trackCondition, notes) VALUES (10, 1, 1760000000000, 'FREE', 'DRY', '')")
+            execSQL("INSERT INTO laps (sessionId, number, timeMs, source) VALUES (10, 1, 58400, 'MANUAL')")
+            close()
+        }
+        val db = helper.runMigrationsAndValidate(dbName, 4, true, MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        db.query("SELECT (SELECT COUNT(*) FROM laps), (SELECT gateWidthM FROM circuits), (SELECT COUNT(*) FROM stints)").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals(1, c.getInt(0))
+            assertEquals(20, c.getInt(1))
+            assertEquals(0, c.getInt(2))
         }
     }
 }

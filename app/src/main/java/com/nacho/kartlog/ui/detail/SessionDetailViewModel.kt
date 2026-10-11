@@ -5,8 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.nacho.kartlog.domain.analytics.Analytics
 import com.nacho.kartlog.domain.model.Lap
 import com.nacho.kartlog.domain.model.Participant
+import com.nacho.kartlog.domain.model.Stint
 import com.nacho.kartlog.domain.model.SessionDetail
 import com.nacho.kartlog.domain.repository.ParticipantRepository
+import com.nacho.kartlog.domain.repository.StintRepository
 import com.nacho.kartlog.domain.repository.LapRepository
 import com.nacho.kartlog.domain.repository.SessionRepository
 import com.nacho.kartlog.domain.util.LapTime
@@ -27,6 +29,8 @@ data class SessionDetailUiState(
     val laps: List<Lap> = emptyList(),
     /** Clasificación importada de la sesión (vacía si la tanda no viene de una importación). */
     val participants: List<Participant> = emptyList(),
+    /** Stints de una resistencia (vacío en el resto de tandas). */
+    val stints: List<Stint> = emptyList(),
     val bestLapMs: Long? = null,
     /** Media limpia (vueltas <= 107 % de la mejor). */
     val cleanAverageMs: Long? = null,
@@ -55,6 +59,7 @@ class SessionDetailViewModel(
     private val sessionRepository: SessionRepository,
     private val lapRepository: LapRepository,
     participantRepository: ParticipantRepository? = null,
+    stintRepository: StintRepository? = null,
 ) : ViewModel() {
 
     private val local = MutableStateFlow(Local())
@@ -63,13 +68,15 @@ class SessionDetailViewModel(
         sessionRepository.observeDetail(sessionId),
         lapRepository.observeBySession(sessionId),
         participantRepository?.observeBySession(sessionId) ?: flowOf(emptyList()),
+        stintRepository?.observeBySession(sessionId) ?: flowOf(emptyList()),
         local,
-    ) { detail, laps, participants, l ->
+    ) { detail, laps, participants, stints, l ->
         SessionDetailUiState(
             isLoading = false,
             detail = detail,
             laps = laps,
             participants = participants,
+            stints = stints,
             bestLapMs = LapTime.bestLapMs(laps),
             cleanAverageMs = Analytics.cleanAverageMs(laps.map { it.timeMs }),
             consistencyMs = laps.map { it.timeMs }.takeIf(Analytics::hasMeaningfulConsistency)?.let(Analytics::consistencyMs),

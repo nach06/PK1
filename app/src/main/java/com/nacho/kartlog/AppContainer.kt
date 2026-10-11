@@ -25,6 +25,7 @@ import com.nacho.kartlog.data.repository.CircuitRepositoryImpl
 import com.nacho.kartlog.data.repository.ImportRepositoryImpl
 import com.nacho.kartlog.data.repository.LapRepositoryImpl
 import com.nacho.kartlog.data.repository.ParticipantRepositoryImpl
+import com.nacho.kartlog.data.repository.StintRepositoryImpl
 import com.nacho.kartlog.data.repository.SessionRepositoryImpl
 import com.nacho.kartlog.debug.DebugTools
 import com.nacho.kartlog.debug.DebugToolsFactory
@@ -39,6 +40,7 @@ import com.nacho.kartlog.domain.util.SessionsCsvExporter
 import com.nacho.kartlog.domain.repository.ImportRepository
 import com.nacho.kartlog.domain.repository.LapRepository
 import com.nacho.kartlog.domain.repository.ParticipantRepository
+import com.nacho.kartlog.domain.repository.StintRepository
 import com.nacho.kartlog.domain.repository.SessionRepository
 import com.nacho.kartlog.ui.analysis.AnalysisSelection
 import com.nacho.kartlog.ui.analysis.AnalysisViewModel
@@ -58,6 +60,7 @@ class AppContainer(context: Context) {
     val sessionRepository: SessionRepository = SessionRepositoryImpl(database.sessionDao(), trackStore)
     val lapRepository: LapRepository = LapRepositoryImpl(database.lapDao())
     val participantRepository: ParticipantRepository = ParticipantRepositoryImpl(database.participantDao())
+    val stintRepository: StintRepository = StintRepositoryImpl(database.stintDao())
     val importRepository: ImportRepository = ImportRepositoryImpl(database.importDao())
 
     val userSettings: UserSettings = SharedPreferencesUserSettings(context)
@@ -101,7 +104,7 @@ class AppContainer(context: Context) {
     /** Borrador de la tanda en curso (para recuperarla si el sistema mata la app). */
     val draftStore: DraftStore = FileDraftStore(File(context.filesDir, "tracks"))
     val timingSession = TimingSession(appScope, wallClockMs = { wallClockMs() }, draftStore = draftStore)
-    val gpsSessionSaver = GpsSessionSaver(sessionRepository, lapRepository, trackStore)
+    val gpsSessionSaver = GpsSessionSaver(sessionRepository, lapRepository, trackStore, stintRepository)
 
     /** Reloj de pared (epoch ms); los tests lo sustituyen para fijar la fecha de las tandas GPS. */
     var wallClockMs: () -> Long = System::currentTimeMillis
@@ -138,6 +141,6 @@ class AppContainer(context: Context) {
     }
 
     fun sessionDetailViewModelFactory(sessionId: Long): ViewModelProvider.Factory = viewModelFactory {
-        initializer { SessionDetailViewModel(sessionId, sessionRepository, lapRepository, participantRepository) }
+        initializer { SessionDetailViewModel(sessionId, sessionRepository, lapRepository, participantRepository, stintRepository) }
     }
 }

@@ -75,6 +75,8 @@ data class LapEntity(
     val number: Int,
     val timeMs: Long,
     val source: LapSource,
+    /** Stint (resistencia) al que pertenece la vuelta; `null` en tandas sin stints. */
+    val stintId: Long? = null,
 )
 
 /** Piloto de una sesión importada; `isMe` marca al propio usuario (sus vueltas están en `laps`). */
@@ -135,4 +137,28 @@ data class SessionSummaryRow(
     @Embedded(prefix = "circuit_") val circuit: CircuitEntity,
     val lapCount: Int,
     val bestLapMs: Long?,
+)
+
+/** Tramo de una carrera de resistencia entre dos paradas en boxes (o cambio de piloto). */
+@Entity(
+    tableName = "stints",
+    foreignKeys = [
+        ForeignKey(
+            entity = SessionEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["sessionId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("sessionId")],
+)
+data class StintEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val sessionId: Long,
+    /** Primera y última vuelta (nº de vuelta de la tanda) del stint; se recalculan al borrar vueltas. */
+    val startLap: Int,
+    val endLap: Int,
+    val driverName: String? = null,
+    /** Tiempo en boxes de la parada que **cierra** este stint (entre el último cruce antes y el primero después); `null` en el último. */
+    val pitMs: Long? = null,
 )

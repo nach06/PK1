@@ -5,6 +5,7 @@ import com.nacho.kartlog.domain.model.FinishLine
 import com.nacho.kartlog.domain.model.ImportRequest
 import com.nacho.kartlog.domain.model.Lap
 import com.nacho.kartlog.domain.model.LapSource
+import com.nacho.kartlog.domain.model.Stint
 import com.nacho.kartlog.domain.model.NewSession
 import com.nacho.kartlog.domain.model.Participant
 import com.nacho.kartlog.domain.model.SessionDetail
@@ -52,11 +53,19 @@ interface LapRepository {
     suspend fun addManual(sessionId: Long, timeMs: Long): Long
 
     /** Añade varias vueltas seguidas con el mismo origen (p. ej. `GPS`), numeradas a continuación de las que haya. */
-    suspend fun addAll(sessionId: Long, timesMs: List<Long>, source: LapSource)
+    suspend fun addAll(sessionId: Long, timesMs: List<Long>, source: LapSource, stintIds: List<Long?>? = null)
 
     suspend fun updateTime(lapId: Long, timeMs: Long)
 
     suspend fun delete(lapId: Long)
+}
+
+interface StintRepository {
+    /** Stints de la tanda por orden. */
+    fun observeBySession(sessionId: Long): Flow<List<Stint>>
+
+    /** Crea un stint y devuelve su id. */
+    suspend fun add(sessionId: Long, startLap: Int, endLap: Int, driverName: String?, pitMs: Long?): Long
 }
 
 interface ParticipantRepository {

@@ -50,8 +50,10 @@ abstract class LapDao {
         )
 
     @Transaction
-    open suspend fun insertAll(sessionId: Long, timesMs: List<Long>, source: LapSource) {
-        timesMs.forEach { insertNext(sessionId, it, source) }
+    open suspend fun insertAll(sessionId: Long, timesMs: List<Long>, source: LapSource, stintIds: List<Long?>? = null) {
+        timesMs.forEachIndexed { i, ms ->
+            insert(LapEntity(sessionId = sessionId, number = nextNumber(sessionId), timeMs = ms, source = source, stintId = stintIds?.getOrNull(i)))
+        }
     }
 
     @Query("SELECT sessionId FROM laps WHERE id = :id")
@@ -62,6 +64,18 @@ abstract class LapDao {
 
     @Query("UPDATE laps SET number = -number WHERE sessionId = :sessionId")
     protected abstract suspend fun negateNumbers(sessionId: Long)
+
+    @Query("SELECT id FROM stints WHERE sessionId = :sessionId")
+    protected abstract suspend fun stintIdsOf(sessionId: Long): List<Long>
+
+    @Query("SELECT MIN(number) FROM laps WHERE stintId = :stintId")
+    protected abstract suspend fun firstLapOf(stintId: Long): Int?
+
+    @Query("SELECT MAX(number) FROM laps WHERE stintId = :stintId")
+    protected abstract suspend fun lastLapOf(stintId: Long): Int?
+
+    @Query("UPDATE stints SET startLap = :start, endLap = :end WHERE id = :id")
+    protected abstract suspend fun setStintRange(id: Long, start: Int, end: Int)
 
     @Query("UPDATE laps SET number = :number WHERE id = :id")
     protected abstract suspend fun setNumber(id: Long, number: Int)
@@ -82,5 +96,11 @@ abstract class LapDao {
         val ids = idsInOrder(sessionId)
         negateNumbers(sessionId)
         ids.forEachIndexed { index, id -> setNumber(id, index + 1) }
+        // Tras renumerar, los rangos de los stints se recalculan con las vueltas que les quedan.
+        stintIdsOf(sessionId).forEach { stint ->
+            val first = firstLapOf(stint)
+            val last = lastLapOf(stint)
+            if (first != null && last != null) setStintRange(stint, first, last)
+        }
     }
 }
