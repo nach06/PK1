@@ -71,6 +71,8 @@ android {
         getByName("androidTest").assets.srcDir("$projectDir/schemas")
         // Solo debug: Robolectric lee los esquemas exportados de los assets de la app para probar migraciones en JVM.
         getByName("debug").assets.srcDir("$projectDir/schemas")
+        // Solo debug: los textos de las muestras de los tests (una única copia) para «Importar muestra de texto».
+        getByName("debug").assets.srcDir("$projectDir/src/test/resources/muestras")
     }
 }
 

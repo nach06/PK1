@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nacho.kartlog.BuildConfig
+import com.nacho.kartlog.debug.TextSample
 import com.nacho.kartlog.R
 import com.nacho.kartlog.ui.components.KartCard
 import com.nacho.kartlog.ui.components.KartTopBar
@@ -183,6 +184,16 @@ fun SettingsScreen(
                         SecondaryButton(
                             text = stringResource(R.string.settings_simulate_track),
                             onClick = viewModel::simulateTrackSession,
+                            enabled = !state.isBusy,
+                        )
+                        SecondaryButton(
+                            text = stringResource(R.string.settings_import_sample_a),
+                            onClick = { viewModel.importTextSample(TextSample.A) },
+                            enabled = !state.isBusy,
+                        )
+                        SecondaryButton(
+                            text = stringResource(R.string.settings_import_sample_b),
+                            onClick = { viewModel.importTextSample(TextSample.B) },
                             enabled = !state.isBusy,
                         )
                         SecondaryButton(

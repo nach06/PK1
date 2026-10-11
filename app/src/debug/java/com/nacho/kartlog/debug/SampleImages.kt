@@ -16,6 +16,11 @@ class SampleImages(private val context: Context) {
             .filter(::isSampleImage)
             .sorted()
 
+    /** Contenido de un fichero de texto de los assets (las muestras de texto de los tests). */
+    suspend fun readText(assetName: String): String? = withContext(Dispatchers.IO) {
+        runCatching { context.assets.open(assetName).bufferedReader().use { it.readText() } }.getOrNull()
+    }
+
     suspend fun prepare(name: String): String? = withContext(Dispatchers.IO) {
         runCatching {
             val target = File(context.cacheDir, "photos").apply { mkdirs() }.resolve(name)

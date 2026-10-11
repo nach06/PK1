@@ -118,6 +118,8 @@ class DebugSeeder(
         withContext(Dispatchers.IO) { database.clearAllTables() }
     }
 
+    override suspend fun loadTextSample(sample: TextSample): String? = samples.readText(sample.assetName)
+
     override fun sampleNames(): List<String> = samples.names()
 
     override suspend fun prepareSample(name: String): String? = samples.prepare(name)

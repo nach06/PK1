@@ -58,6 +58,7 @@ class SettingsViewModelTest {
         override suspend fun seed() = 0
         override suspend fun wipeAll() = Unit
         override fun sampleNames() = samples
+        override suspend fun loadTextSample(sample: com.nacho.kartlog.debug.TextSample): String? = "TEXTO ${sample.name}"
         override suspend fun prepareSimulation(): com.nacho.kartlog.domain.gps.LocationSource =
             com.nacho.kartlog.domain.gps.ReplayLocationSource(emptyList())
         override suspend fun prepareSample(name: String) = "file:///cache/photos/$name"
@@ -66,6 +67,14 @@ class SettingsViewModelTest {
     private fun viewModelWithSamples(samples: List<String>, inbox: com.nacho.kartlog.domain.importing.ImportInbox): SettingsViewModel {
         val exporter = SessionsCsvExporter(SessionRepositoryImpl(db.sessionDao()), LapRepositoryImpl(db.lapDao()))
         return SettingsViewModel(FakeDebugTools(samples), exporter, com.nacho.kartlog.ui.importing.FakeSettings(""), inbox)
+    }
+
+    @Test
+    fun importTextSample_sendsTheTextToTheRealImportFlow() = run {
+        val inbox = com.nacho.kartlog.domain.importing.ImportInbox()
+        val vm = viewModelWithSamples(emptyList(), inbox)
+        vm.importTextSample(com.nacho.kartlog.debug.TextSample.B)
+        assertEquals(com.nacho.kartlog.domain.importing.SharedContent.Text("TEXTO B"), inbox.content.first { it != null })
     }
 
     @Test

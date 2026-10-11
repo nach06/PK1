@@ -14,6 +14,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import com.nacho.kartlog.debug.DebugTools
+import com.nacho.kartlog.debug.TextSample
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -138,6 +139,15 @@ class SettingsViewModel(
     }
 
     fun dashboardOpened() = _uiState.update { it.copy(openDashboard = false) }
+
+    /** Solo debug: carga una muestra de texto de los fixtures en el flujo real de «Importar tiempos» (sin teclear ni portapapeles). */
+    fun importTextSample(sample: TextSample) {
+        val tools = debugTools ?: return
+        viewModelScope.launch {
+            val text = runCatching { tools.loadTextSample(sample) }.getOrNull()
+            if (text == null) _uiState.update { it.copy(message = SettingsMessage.FAILED) } else importInbox?.put(SharedContent.Text(text))
+        }
+    }
 
     fun dismissSampleChoices() = _uiState.update { it.copy(sampleChoices = emptyList()) }
 

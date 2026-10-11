@@ -95,4 +95,17 @@ class DebugSeederTest {
             assertTrue("$it debe ignorarse", !SampleImages.isSampleImage(it))
         }
     }
+
+    @Test
+    fun textSamplesAreTheTestFixtures_andParseIntoTheExpectedDrivers() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val samples = SampleImages(context)
+        val parser = com.nacho.kartlog.domain.importing.LapTextParser(knownCircuits = listOf("Asupark"))
+        val a = parser.parse(requireNotNull(samples.readText(TextSample.A.assetName)))
+        assertEquals(14, a.drivers.size)
+        assertEquals("Nacho", a.drivers.first { it.kartNumber == 28 }.name)
+        val b = parser.parse(requireNotNull(samples.readText(TextSample.B.assetName)))
+        assertEquals(listOf(26, 28, 50, 54), b.drivers.map { it.kartNumber })
+        assertEquals("Asupark", b.circuitName)
+    }
 }
