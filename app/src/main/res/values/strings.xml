@@ -132,4 +132,23 @@
     <string name="filter_empty_title">Sin resultados</string>
     <string name="filter_empty_message">Ninguna tanda coincide con los filtros.</string>
     <string name="filter_clear">Quitar filtros</string>
+
+    <!-- Análisis -->
+    <string name="analysis_no_sessions">Aún no hay tandas. Crea una para ver el análisis.</string>
+    <string name="analysis_not_enough">Necesitas al menos 2 tandas con vueltas en este circuito para ver gráficas y comparativas.</string>
+    <string name="analysis_evolution">Evolución de la mejor vuelta</string>
+    <string name="analysis_kart_ranking">Ranking de karts</string>
+    <string name="analysis_no_karts">Ninguna tanda de este circuito tiene kart anotado.</string>
+    <string name="analysis_conditions">Efecto de las condiciones</string>
+    <string name="stat_record">Récord</string>
+    <string name="stat_historic_clean_average">Media limpia</string>
+    <string name="stat_session_count">Tandas</string>
+    <string name="col_kart">Kart</string>
+    <string name="col_best">Mejor</string>
+    <string name="col_clean_average">Media limp.</string>
+    <string name="col_sessions">Tand.</string>
+    <plurals name="format_session_count">
+        <item quantity="one">%1$d tanda</item>
+        <item quantity="other">%1$d tandas</item>
+    </plurals>
 </resources>

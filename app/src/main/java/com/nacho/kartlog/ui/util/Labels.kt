@@ -38,3 +38,8 @@ fun formatDate(epochMs: Long): String =
 
 fun formatTime(epochMs: Long): String =
     timeOnlyFormatter.format(Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()))
+
+private val shortDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM", Locale("es", "ES"))
+
+fun formatShortDate(epochMs: Long): String =
+    shortDateFormatter.format(Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()))
