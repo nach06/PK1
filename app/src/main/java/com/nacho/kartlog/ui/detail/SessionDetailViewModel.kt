@@ -3,7 +3,17 @@ package com.nacho.kartlog.ui.detail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nacho.kartlog.domain.analytics.Analytics
+import com.nacho.kartlog.domain.gps.GpsFix
+import com.nacho.kartlog.domain.gps.MatchedLap
+import com.nacho.kartlog.domain.gps.TrackAnalysis
+import com.nacho.kartlog.domain.gps.TrackGeometry
+import com.nacho.kartlog.domain.gps.TrackStore
 import com.nacho.kartlog.domain.model.Lap
+import com.nacho.kartlog.domain.model.LapSource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.withContext
 import com.nacho.kartlog.domain.model.Participant
 import com.nacho.kartlog.domain.model.Stint
 import com.nacho.kartlog.domain.model.SessionDetail
@@ -20,6 +30,22 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+/** Trazado GPS de la tanda en el Detalle. */
+sealed interface TrackUiState {
+    /** La tanda no tiene trazado guardado: no se muestra la tarjeta. */
+    data object None : TrackUiState
+
+    data object Loading : TrackUiState
+
+    /**
+     * [matched] = vueltas guardadas emparejadas con el trazado (selector de vuelta); `null` si no se pueden emparejar,
+     * con el motivo en [note]: entonces solo se muestra el trazado completo.
+     */
+    data class Ready(val geometry: TrackGeometry, val matched: List<MatchedLap>?, val note: TrackNote?) : TrackUiState
+}
+
+enum class TrackNote { NO_FINISH, MISMATCH }
 
 data class SessionDetailUiState(
     val isLoading: Boolean = true,
@@ -60,6 +86,7 @@ class SessionDetailViewModel(
     private val lapRepository: LapRepository,
     participantRepository: ParticipantRepository? = null,
     stintRepository: StintRepository? = null,
+    private val trackStore: TrackStore? = null,
 ) : ViewModel() {
 
     private val local = MutableStateFlow(Local())
@@ -86,6 +113,34 @@ class SessionDetailViewModel(
             confirmDeleteSession = l.confirmDeleteSession,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionDetailUiState())
+
+    private var cachedFixes: List<GpsFix>? = null
+
+    /** Trazado de la tanda: se carga una vez y se recalcula (en segundo plano) cuando cambian las vueltas o la meta. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val track: StateFlow<TrackUiState> = combine(
+        sessionRepository.observeDetail(sessionId),
+        lapRepository.observeBySession(sessionId),
+    ) { detail, laps -> detail to laps }
+        .mapLatest { (detail, laps) ->
+            val store = trackStore
+            if (store == null || detail == null) return@mapLatest TrackUiState.None
+            val fixes = cachedFixes ?: store.load(sessionId).also { cachedFixes = it }
+            if (fixes.size < 2) return@mapLatest TrackUiState.None
+            withContext(Dispatchers.Default) {
+                val finish = detail.circuit.finishLine
+                val geometry = TrackAnalysis.build(fixes, finish)
+                val stored = laps.filter { it.source == LapSource.GPS }.map { it.number to it.timeMs }
+                val matched = if (finish == null) null else TrackAnalysis.matchStoredLaps(geometry, stored)
+                val note = when {
+                    finish == null -> TrackNote.NO_FINISH
+                    matched == null -> TrackNote.MISMATCH
+                    else -> null
+                }
+                TrackUiState.Ready(geometry, matched, note)
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TrackUiState.Loading)
 
     fun onDigits(input: String) = local.update { it.copy(digits = LapTime.appendDigits(it.digits, input)) }
 

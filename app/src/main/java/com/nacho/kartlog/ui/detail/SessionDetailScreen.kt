@@ -65,6 +65,14 @@ fun SessionDetailScreen(
     onBack: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val trackState by viewModel.track.collectAsStateWithLifecycle()
+    val lapListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // El trazado llega de forma asíncrona y se inserta ARRIBA de la lista: la lista conserva la posición de lo que ya se
+    // veía (las vueltas) y la tarjeta quedaría fuera de pantalla. Al aparecer se vuelve al principio.
+    val hasTrackCard = trackState is TrackUiState.Ready
+    androidx.compose.runtime.LaunchedEffect(hasTrackCard) {
+        if (hasTrackCard && lapListState.firstVisibleItemIndex == 1 && lapListState.firstVisibleItemScrollOffset == 0) lapListState.scrollToItem(0)
+    }
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -140,9 +148,15 @@ fun SessionDetailScreen(
                 },
                 list = {
                 LazyColumn(
+                    state = lapListState,
                     modifier = Modifier.fillMaxSize().testTag("lap_list"),
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                 ) {
+                    (trackState as? TrackUiState.Ready)?.let { ready ->
+                        item(key = "track") {
+                            TrackCard(ready, Modifier.padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 8.dp))
+                        }
+                    }
                     if (state.laps.isEmpty()) {
                         item {
                             Text(

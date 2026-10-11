@@ -163,6 +163,6 @@ class AppContainer(context: Context) {
     }
 
     fun sessionDetailViewModelFactory(sessionId: Long): ViewModelProvider.Factory = viewModelFactory {
-        initializer { SessionDetailViewModel(sessionId, sessionRepository, lapRepository, participantRepository, stintRepository) }
+        initializer { SessionDetailViewModel(sessionId, sessionRepository, lapRepository, participantRepository, stintRepository, trackStore) }
     }
 }

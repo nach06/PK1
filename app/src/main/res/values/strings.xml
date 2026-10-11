@@ -162,6 +162,23 @@
         <item quantity="one">%1$d stint</item>
         <item quantity="other">%1$d stints</item>
     </plurals>
+    <string name="track_card_title">Trazado</string>
+    <string name="track_note_no_finish">Este circuito no tiene la meta marcada: se muestra el trazado completo, sin selector de vuelta.</string>
+    <string name="track_note_mismatch">Las vueltas guardadas ya no coinciden con el trazado (se editaron o borraron): se muestra el trazado completo, sin selector de vuelta.</string>
+    <string name="track_sel_all">Todas</string>
+    <string name="track_sel_best">Mejor</string>
+    <string name="track_sel_last">Última</string>
+    <string name="track_mode_lap">Vuelta</string>
+    <string name="track_mode_speed">Velocidad</string>
+    <string name="track_mode_pace">Ritmo</string>
+    <string name="track_compare">Comparar con la mejor</string>
+    <string name="track_pick_full">%1$s km/h · %2$s desde el inicio</string>
+    <string name="track_pick_lap">V%1$d · %2$s km/h · %3$s desde la meta</string>
+    <string name="track_info_full">Trazado completo · %1$d posiciones</string>
+    <string name="track_info_all">Todas las vueltas (%1$d)</string>
+    <string name="track_legend_compare">● %1$s (mejor) · ● %2$s</string>
+    <string name="track_legend_speed">Lento %1$s km/h → rápido %2$s km/h</string>
+    <string name="track_legend_pace">Verde: ganas tiempo · rojo: lo pierdes (±1 s frente a la mejor)</string>
     <plurals name="format_session_count">
         <item quantity="one">%1$d tanda</item>
         <item quantity="other">%1$d tandas</item>
