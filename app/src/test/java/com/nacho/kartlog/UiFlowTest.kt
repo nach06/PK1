@@ -4,7 +4,8 @@ import android.content.Context
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
@@ -28,7 +29,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35], qualifiers = "w411dp-h891dp-xxhdpi")
 class UiFlowTest {
     @get:Rule
-    val compose = createComposeRule()
+    val compose = createAndroidComposeRule<ComponentActivity>()
 
     private lateinit var context: Context
 
@@ -40,6 +41,8 @@ class UiFlowTest {
 
     @After
     fun tearDown() {
+        // Cerrar la actividad cancela los ViewModels y sus consultas Room antes de borrar la BD.
+        compose.activityRule.scenario.close()
         context.deleteDatabase(KartLogDatabase.NAME)
     }
 

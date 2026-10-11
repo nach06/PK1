@@ -3,7 +3,8 @@ package com.nacho.kartlog
 import android.content.Context
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -36,7 +37,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35], qualifiers = "w360dp-h640dp-xxhdpi")
 class ConnectedFlowTest {
     @get:Rule
-    val compose = createComposeRule()
+    val compose = createAndroidComposeRule<ComponentActivity>()
 
     private lateinit var context: Context
 
@@ -48,6 +49,8 @@ class ConnectedFlowTest {
 
     @After
     fun tearDown() {
+        // Cerrar la actividad cancela los ViewModels y sus consultas Room antes de borrar la BD.
+        compose.activityRule.scenario.close()
         context.deleteDatabase(KartLogDatabase.NAME)
     }
 
@@ -86,6 +89,7 @@ class ConnectedFlowTest {
         compose.onNodeWithText("GRÁFICA DE VUELTAS").performClick()
         compose.onNodeWithTag("lap_chart").assertIsDisplayed()
         compose.onNodeWithText("Media limpia 1:13.082").assertIsDisplayed()
+        compose.onNodeWithText("±0,", substring = true).assertExists() // consistencia junto a MEDIA LIMPIA
         compose.onNodeWithText("Mejor").assertIsDisplayed()
         compose.onNodeWithText("Fuera de escala").assertIsDisplayed()
 
@@ -107,6 +111,7 @@ class ConnectedFlowTest {
         compose.onNodeWithText("RÉCORD").assertIsDisplayed()
         compose.onNodeWithText("MEDIA LIMPIA").assertIsDisplayed()
         compose.onNodeWithText("TANDAS").assertIsDisplayed()
+        compose.onNodeWithText("CONSISTENCIA").assertIsDisplayed() // cuarta cifra
 
         // F7: la elección se recuerda al cambiar de pestaña.
         compose.onNodeWithText("Beta").performClick() // abre el selector

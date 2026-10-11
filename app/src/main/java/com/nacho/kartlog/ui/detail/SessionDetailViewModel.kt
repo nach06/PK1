@@ -25,6 +25,8 @@ data class SessionDetailUiState(
     val bestLapMs: Long? = null,
     /** Media limpia (vueltas <= 107 % de la mejor). */
     val cleanAverageMs: Long? = null,
+    /** Desviación típica de las vueltas limpias; `null` con menos de 2 vueltas limpias. */
+    val consistencyMs: Double? = null,
     val digits: String = "",
     val editingLap: Lap? = null,
     val pendingDeleteLap: Lap? = null,
@@ -62,6 +64,7 @@ class SessionDetailViewModel(
             laps = laps,
             bestLapMs = LapTime.bestLapMs(laps),
             cleanAverageMs = Analytics.cleanAverageMs(laps.map { it.timeMs }),
+            consistencyMs = laps.map { it.timeMs }.takeIf(Analytics::hasMeaningfulConsistency)?.let(Analytics::consistencyMs),
             digits = l.digits,
             editingLap = l.editingLap,
             pendingDeleteLap = l.pendingDeleteLap,

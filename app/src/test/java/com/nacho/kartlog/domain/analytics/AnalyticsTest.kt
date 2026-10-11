@@ -178,4 +178,16 @@ class AnalyticsTest {
         val evolution = Analytics.compute(summaries, all).circuits.getValue(zuera.id).evolution
         assertEquals(listOf(2L, 3L, 1L), evolution.map { it.sessionId })
     }
+
+    @Test
+    fun historicConsistency_isMeanOfSessionConsistencies_ignoringSessionsWithLessThanTwoCleanLaps() {
+        // s1 limpias 50.000/52.000 -> ±1.000; s2 limpias 60.000/64.000 -> ±2.000; s3 una sola vuelta -> no cuenta.
+        val summaries = listOf(summary(1), summary(2), summary(3))
+        val all = laps(1, 50_000, 52_000) + laps(2, 60_000, 64_000) + laps(3, 48_000)
+        val c = Analytics.compute(summaries, all).circuits.getValue(zuera.id)
+        assertEquals(1_500.0, c.historicConsistencyMs!!, 1e-9)
+        assertFalse(Analytics.hasMeaningfulConsistency(listOf(48_000)))
+        assertTrue(Analytics.hasMeaningfulConsistency(listOf(50_000, 52_000)))
+        assertNull(Analytics.compute(listOf(summary(1)), laps(1, 48_000)).circuits.getValue(zuera.id).historicConsistencyMs)
+    }
 }

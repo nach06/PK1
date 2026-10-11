@@ -35,6 +35,12 @@ object LapTime {
         }
     }
 
+    /** Consistencia (desviación típica en ms) como `±0,214` (segundos con coma). */
+    fun formatConsistency(stdDevMs: Double): String {
+        val ms = Math.round(stdDevMs)
+        return String.format(Locale.ROOT, "±%d,%03d", ms / 1_000, ms % 1_000)
+    }
+
     /** Muestra los dígitos tecleados rellenando de derecha a izquierda: `48532` -> `0:48.532`. */
     fun formatDigits(digits: String): String {
         val padded = digits.padStart(MAX_DIGITS, '0')

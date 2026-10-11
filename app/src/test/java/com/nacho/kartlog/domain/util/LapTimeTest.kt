@@ -68,4 +68,11 @@ class LapTimeTest {
         assertEquals("-0,350", LapTime.formatDelta(-350))
         assertEquals("+1:02,345", LapTime.formatDelta(62_345))
     }
+
+    @Test
+    fun formatConsistency_secondsWithCommaAndSign() {
+        assertEquals("±0,214", LapTime.formatConsistency(214.0))
+        assertEquals("±0,000", LapTime.formatConsistency(0.0))
+        assertEquals("±1,050", LapTime.formatConsistency(1_049.6))
+    }
 }

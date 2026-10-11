@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.nacho.kartlog.ui.theme.KartTextStyles
+import com.nacho.kartlog.ui.theme.MonoFontFamily
 import com.nacho.kartlog.ui.theme.kartColors
 
 /** Etiqueta pequeña + valor grande, p. ej. "MEJOR 0:48.532". */
@@ -30,6 +31,8 @@ fun StatBadge(
     minValueSize: TextUnit = 28.sp,
     /** Si no es nulo, reserva este alto para el valor (alinea varias cifras de tamaños distintos). */
     valueAreaHeight: Dp? = null,
+    /** Texto pequeño bajo el valor (p. ej. la consistencia `±0,214`). */
+    caption: String? = null,
 ) {
     Column(modifier = modifier) {
         Text(
@@ -41,6 +44,14 @@ fun StatBadge(
         // 4 dp de margen interior a la derecha: el último dígito nunca roza el borde.
         Box(modifier = area.padding(end = 4.dp), contentAlignment = Alignment.CenterStart) {
             AutoSizeText(text = value, style = valueStyle, color = valueColor, minSize = minValueSize)
+        }
+        if (caption != null) {
+            Text(
+                text = caption,
+                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = MonoFontFamily),
+                color = MaterialTheme.kartColors.textMuted,
+                maxLines = 1,
+            )
         }
     }
 }

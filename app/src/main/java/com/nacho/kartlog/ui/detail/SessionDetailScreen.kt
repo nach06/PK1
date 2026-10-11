@@ -269,6 +269,7 @@ private fun HeaderCard(
         StatsRow(
             bestLapMs = state.bestLapMs,
             cleanAverageMs = state.cleanAverageMs,
+            consistencyMs = state.consistencyMs,
             modifier = Modifier.padding(top = 8.dp),
         )
         // Gráfica de vueltas: plegable para no quitar sitio a la lista (necesita al menos 2 vueltas).
@@ -342,7 +343,12 @@ private fun ConfirmDialog(
 
 /** MEJOR y MEDIA LIMPIA en una fila; ambos valores encogen para caber en una sola línea. */
 @Composable
-internal fun StatsRow(bestLapMs: Long?, cleanAverageMs: Long?, modifier: Modifier = Modifier) {
+internal fun StatsRow(
+    bestLapMs: Long?,
+    cleanAverageMs: Long?,
+    modifier: Modifier = Modifier,
+    consistencyMs: Double? = null,
+) {
     val kart = MaterialTheme.kartColors
     val unset = stringResource(R.string.value_unset)
     Row(
@@ -365,6 +371,7 @@ internal fun StatsRow(bestLapMs: Long?, cleanAverageMs: Long?, modifier: Modifie
             // Puede bajar hasta 18 sp: nunca se recorta por el borde derecho.
             minValueSize = 18.sp,
             valueAreaHeight = 52.dp,
+            caption = consistencyMs?.let(LapTime::formatConsistency),
             modifier = Modifier.weight(0.9f),
         )
     }
@@ -375,7 +382,7 @@ internal fun StatsRow(bestLapMs: Long?, cleanAverageMs: Long?, modifier: Modifie
 private fun StatsRowPreview() {
     KartLogTheme {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            StatsRow(bestLapMs = 72_263, cleanAverageMs = 72_981) // 1:12.263 · 1:12.981
+            StatsRow(bestLapMs = 72_263, cleanAverageMs = 72_981, consistencyMs = 214.0) // 1:12.263 · 1:12.981 ±0,214
             StatsRow(bestLapMs = 47_388, cleanAverageMs = 47_901) // 0:47.388 · 0:47.901
         }
     }

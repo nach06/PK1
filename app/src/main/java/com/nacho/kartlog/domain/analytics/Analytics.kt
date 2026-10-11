@@ -11,7 +11,8 @@ import kotlin.math.sqrt
  *
  * - **Vuelta limpia:** `timeMs <= 1,07 × mejor vuelta de su tanda` (descarta salidas de boxes y errores).
  * - **Media limpia:** media de las vueltas limpias de una tanda; `null` si no hay vueltas.
- * - **Consistencia:** desviación típica *poblacional* de las vueltas limpias (ms).
+ * - **Consistencia:** desviación típica *poblacional* de las vueltas limpias (ms). En el histórico del
+ *   circuito es la media de la consistencia de cada tanda con >= 2 vueltas limpias.
  * - **Récord de circuito:** mejor vuelta de todas las tandas del circuito.
  * - **Delta de tanda:** mejor vuelta de la tanda − récord del circuito (0 = `RÉCORD`).
  * - Las tandas sin vueltas no entran en medias ni rankings.
@@ -34,6 +35,9 @@ object Analytics {
 
     /** Desviación típica de las vueltas limpias en ms (0,0 con una sola vuelta; `null` sin vueltas). */
     fun consistencyMs(timesMs: List<Long>): Double? = standardDeviation(cleanLaps(timesMs))
+
+    /** La consistencia solo es significativa con al menos 2 vueltas limpias. */
+    fun hasMeaningfulConsistency(timesMs: List<Long>): Boolean = cleanLaps(timesMs).size >= 2
 
     internal fun standardDeviation(values: List<Long>): Double? {
         if (values.isEmpty()) return null
@@ -117,6 +121,10 @@ object Analytics {
             circuit = circuit,
             recordMs = withLaps.mapNotNull { it.bestMs }.minOrNull(),
             historicCleanAverageMs = pooledAverage(pooledClean),
+            historicConsistencyMs = withLaps.filter { hasMeaningfulConsistency(it.lapTimes) }
+                .mapNotNull { it.consistencyMs }
+                .takeIf { it.isNotEmpty() }
+                ?.average(),
             totalSessions = sessions.size,
             sessionsWithLaps = withLaps.size,
             evolution = evolution,
@@ -162,6 +170,8 @@ data class CircuitStats(
     val recordMs: Long?,
     /** Media de todas las vueltas limpias de todas las tandas (agrupadas, no media de medias). */
     val historicCleanAverageMs: Long?,
+    /** Media de la consistencia de cada tanda con al menos 2 vueltas limpias (no mezcla karts distintos). */
+    val historicConsistencyMs: Double?,
     /** Todas las tandas (también las vacías): es la cifra que bloquea el borrado del circuito. */
     val totalSessions: Int,
     val sessionsWithLaps: Int,

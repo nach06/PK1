@@ -137,6 +137,7 @@
     <string name="analysis_conditions">Efecto de las condiciones</string>
     <string name="stat_record">Récord</string>
     <string name="stat_historic_clean_average">Media limpia</string>
+    <string name="stat_consistency">Consistencia</string>
     <string name="stat_session_count">Tandas</string>
     <string name="col_kart">Kart</string>
     <string name="col_best">Mejor</string>

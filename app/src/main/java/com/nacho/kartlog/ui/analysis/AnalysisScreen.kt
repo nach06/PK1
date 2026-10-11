@@ -96,12 +96,9 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
                     Text("▾", style = MaterialTheme.typography.titleMedium)
                 }
 
-                // 2. Récord, media limpia histórica y nº de tandas: misma altura de valor y alineación superior.
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    val unset = stringResource(R.string.value_unset)
+                // 2. Cuatro cifras en dos filas de dos, con 12 dp de separación y valor de alto fijo.
+                val unset = stringResource(R.string.value_unset)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
                     StatBadge(
                         label = stringResource(R.string.stat_record),
                         value = stats.recordMs?.let(LapTime::format) ?: unset,
@@ -109,7 +106,7 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
                         valueStyle = KartTextStyles.lapTime,
                         minValueSize = 18.sp,
                         valueAreaHeight = 40.dp,
-                        modifier = Modifier.weight(1.2f),
+                        modifier = Modifier.weight(1f),
                     )
                     StatBadge(
                         label = stringResource(R.string.stat_historic_clean_average),
@@ -117,7 +114,17 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
                         valueStyle = KartTextStyles.lapTime,
                         minValueSize = 18.sp,
                         valueAreaHeight = 40.dp,
-                        modifier = Modifier.weight(1.2f),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+                    StatBadge(
+                        label = stringResource(R.string.stat_consistency),
+                        value = stats.historicConsistencyMs?.let(LapTime::formatConsistency) ?: unset,
+                        valueStyle = KartTextStyles.lapTime,
+                        minValueSize = 18.sp,
+                        valueAreaHeight = 40.dp,
+                        modifier = Modifier.weight(1f),
                     )
                     StatBadge(
                         label = stringResource(R.string.stat_session_count),
@@ -125,7 +132,7 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
                         valueStyle = KartTextStyles.lapTime,
                         minValueSize = 18.sp,
                         valueAreaHeight = 40.dp,
-                        modifier = Modifier.weight(0.6f),
+                        modifier = Modifier.weight(1f),
                     )
                 }
 
