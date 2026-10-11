@@ -40,6 +40,7 @@ import com.nacho.kartlog.ui.theme.kartColors
 fun CircuitsScreen(
     viewModel: CircuitsViewModel,
     onOpenAnalysis: () -> Unit,
+    onMarkFinish: (Long) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -73,6 +74,7 @@ fun CircuitsScreen(
                             viewModel.selectForAnalysis(stats.circuit.id)
                             onOpenAnalysis()
                         },
+                        onMarkFinish = { onMarkFinish(stats.circuit.id) },
                         onEdit = { viewModel.startEdit(stats.circuit) },
                         onDelete = { viewModel.requestDelete(stats) },
                     )
@@ -151,6 +153,7 @@ fun CircuitsScreen(
 private fun CircuitCard(
     stats: CircuitStats,
     onClick: () -> Unit,
+    onMarkFinish: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -171,9 +174,15 @@ private fun CircuitCard(
                     style = MaterialTheme.typography.bodyMedium,
                     color = kart.textMuted,
                 )
+                Text(
+                    text = stringResource(if (stats.circuit.finishLine != null) R.string.circuit_finish_set else R.string.circuit_finish_missing),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (stats.circuit.finishLine != null) kart.telemetry else kart.textMuted,
+                )
             }
             KartOverflowMenu(
                 actions = listOf(
+                    MenuAction(label = stringResource(R.string.circuit_set_finish), onClick = onMarkFinish),
                     MenuAction(label = stringResource(R.string.action_edit), onClick = onEdit),
                     MenuAction(label = stringResource(R.string.action_delete), onClick = onDelete, destructive = true),
                 ),

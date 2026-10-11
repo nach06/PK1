@@ -7,6 +7,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.nacho.kartlog.data.gps.FileTrackStore
+import com.nacho.kartlog.data.gps.FusedLocationSource
+import com.nacho.kartlog.domain.gps.LocationSource
+import com.nacho.kartlog.ui.calibration.CalibrationViewModel
 import com.nacho.kartlog.data.local.KartLogDatabase
 import com.nacho.kartlog.data.repository.CircuitRepositoryImpl
 import com.nacho.kartlog.data.repository.ImportRepositoryImpl
@@ -79,6 +82,13 @@ class AppContainer(context: Context) {
     /** Herramientas de depuración: `null` en release. */
     val debugTools: DebugTools? =
         DebugToolsFactory.create(context, database, circuitRepository, sessionRepository, lapRepository)
+
+    /** Origen de posiciones. GPS interno por defecto; los tests o el simulador lo sustituyen. */
+    var locationSource: LocationSource = FusedLocationSource(context)
+
+    fun calibrationViewModelFactory(circuitId: Long): ViewModelProvider.Factory = viewModelFactory {
+        initializer { CalibrationViewModel(circuitId, circuitRepository, locationSource) }
+    }
 
     val settingsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
         initializer { SettingsViewModel(debugTools, SessionsCsvExporter(sessionRepository, lapRepository), userSettings, importInbox, importRepository) }

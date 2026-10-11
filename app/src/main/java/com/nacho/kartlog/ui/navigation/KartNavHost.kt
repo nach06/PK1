@@ -36,6 +36,7 @@ import androidx.navigation.navArgument
 import com.nacho.kartlog.AppContainer
 import com.nacho.kartlog.R
 import com.nacho.kartlog.ui.analysis.AnalysisScreen
+import com.nacho.kartlog.ui.calibration.CalibrationScreen
 import com.nacho.kartlog.ui.circuits.CircuitsScreen
 import com.nacho.kartlog.ui.detail.SessionDetailScreen
 import com.nacho.kartlog.ui.history.SessionListScreen
@@ -51,6 +52,10 @@ object Routes {
     const val SETTINGS = "settings"
     const val NEW = "sessions/new"
     const val IMPORT = "sessions/import"
+    const val CIRCUIT_ID = "circuitId"
+    const val FINISH = "circuits/{$CIRCUIT_ID}/finish"
+
+    fun finish(circuitId: Long) = "circuits/$circuitId/finish"
     const val SESSION_ID = "sessionId"
     const val DETAIL = "sessions/{$SESSION_ID}"
 
@@ -131,6 +136,7 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
                 CircuitsScreen(
                     viewModel = viewModel(factory = container.circuitsViewModelFactory),
                     onOpenAnalysis = { navController.navigateTopLevel(Routes.ANALYSIS) },
+                    onMarkFinish = { navController.navigate(Routes.finish(it)) },
                 )
             }
             composable(Routes.SETTINGS) {
@@ -145,6 +151,17 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
                             popUpTo(Routes.NEW) { inclusive = true }
                         }
                     },
+                )
+            }
+            composable(
+                route = Routes.FINISH,
+                arguments = listOf(navArgument(Routes.CIRCUIT_ID) { type = NavType.LongType }),
+            ) { entry ->
+                val circuitId = requireNotNull(entry.arguments?.getLong(Routes.CIRCUIT_ID))
+                CalibrationScreen(
+                    viewModel = viewModel(key = "finish-$circuitId", factory = container.calibrationViewModelFactory(circuitId)),
+                    onBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
                 )
             }
             composable(Routes.IMPORT) {

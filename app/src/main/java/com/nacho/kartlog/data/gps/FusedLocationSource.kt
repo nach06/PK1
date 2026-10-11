@@ -24,7 +24,7 @@ class FusedLocationSource(
     context: Context,
     private val intervalMs: Long = 100L,
 ) : LocationSource {
-    private val client = LocationServices.getFusedLocationProviderClient(context.applicationContext)
+    private val client by lazy { LocationServices.getFusedLocationProviderClient(context.applicationContext) }
 
     @SuppressLint("MissingPermission")
     override fun fixes(): Flow<GpsFix> = callbackFlow {

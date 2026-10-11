@@ -239,4 +239,32 @@
     <string name="settings_driver_title">Mi perfil</string>
     <string name="settings_driver_name">Mi nombre de piloto</string>
     <string name="settings_driver_name_hint">Se usa para elegir tu columna al importar tiempos</string>
+
+    <!-- GPS / Marcar meta -->
+    <string name="permission_gps_title">Necesito tu ubicación</string>
+    <string name="permission_gps_message">KartLog usa el GPS del móvil para detectar cuándo cruzas la línea de meta y cronometrar tus vueltas. La posición solo se usa en el móvil: no se envía a ningún sitio.</string>
+    <string name="permission_grant">Conceder permiso</string>
+    <string name="permission_denied">Sin el permiso de ubicación no se puede cronometrar por GPS.</string>
+    <string name="permission_open_settings">Abrir ajustes de la app</string>
+    <string name="gps_waiting">Esperando señal GPS…</string>
+    <string name="gps_status">GPS ±%1$s m · %2$s Hz</string>
+    <string name="calibration_title">Marcar meta</string>
+    <string name="calibration_instructions">Pasa por la línea de meta a velocidad normal y pulsa MARCAR.</string>
+    <string name="calibration_mark">Marcar</string>
+    <string name="calibration_retry">Repetir</string>
+    <string name="calibration_save">Guardar</string>
+    <string name="calibration_lat">Latitud</string>
+    <string name="calibration_lon">Longitud</string>
+    <string name="calibration_bearing">Rumbo de paso</string>
+    <string name="calibration_gate">Ancho de la puerta</string>
+    <string name="calibration_accuracy">Precisión</string>
+    <string name="calibration_current_saved">Este circuito ya tiene meta; si marcas otra, la sustituirá.</string>
+    <string name="calibration_location_error">No se pudo leer el GPS. Comprueba que la ubicación está activada.</string>
+    <string name="calibration_fail_no_fixes">Todavía no hay posiciones GPS.</string>
+    <string name="calibration_fail_accuracy">La señal es poco precisa (más de 15 m). Espera a tener mejor señal y repite.</string>
+    <string name="calibration_fail_slow">Hace falta avanzar más rápido (al menos 8 m en 4 s) al pulsar MARCAR.</string>
+    <string name="calibration_fail_curve">Marca la meta en una recta: en una curva el rumbo no es fiable.</string>
+    <string name="circuit_set_finish">Marcar meta</string>
+    <string name="circuit_finish_set">Meta marcada</string>
+    <string name="circuit_finish_missing">Sin meta</string>
 </resources>
