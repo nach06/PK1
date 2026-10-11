@@ -31,6 +31,12 @@ interface DebugTools {
      */
     suspend fun prepareSimulation(): LocationSource
 
+    /**
+     * Crea una tanda GPS de ejemplo (8 vueltas de un óvalo sintético con su trazado en `tracks/`) para ver la tarjeta «Trazado» y las cards
+     * de Tandas con icono GPS sin salir a pista. Devuelve el id de la tanda.
+     */
+    suspend fun seedGpsSession(): Long
+
     /** Texto de una muestra de los fixtures de test, o `null` si no está en los assets. */
     suspend fun loadTextSample(sample: TextSample): String?
 }

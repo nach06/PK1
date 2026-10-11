@@ -105,6 +105,8 @@
     <string name="nav_settings">Ajustes</string>
     <string name="action_continue">Continuar</string>
     <string name="settings_debug_title">Depuración (solo debug)</string>
+    <string name="settings_seed_gps">Crear tanda GPS de ejemplo (con trazado)</string>
+    <string name="settings_gps_seeded">Tanda GPS de ejemplo creada: ábrela en Tandas para ver el trazado.</string>
     <string name="settings_seed">Cargar datos de prueba</string>
     <string name="settings_clear_rivals">Borrar datos de rivales</string>
     <string name="settings_clear_rivals_hint">Elimina las clasificaciones, las vueltas de otros pilotos y el texto original de las importaciones. Tus vueltas no se tocan. La exportación a CSV nunca incluye datos de rivales.</string>

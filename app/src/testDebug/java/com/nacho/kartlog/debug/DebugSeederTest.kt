@@ -132,4 +132,33 @@ class DebugSeederTest {
             Unit
         }
     }
+
+    @Test
+    fun seedGpsSessionCreatesAGpsSessionWithItsTrack_whoseLapsMatchTheRecomputedOnes() = runBlocking {
+        withTimeout(30_000) {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            context.deleteDatabase(KartLogDatabase.NAME)
+            val db = KartLogDatabase.create(context)
+            val circuits = CircuitRepositoryImpl(db.circuitDao())
+            val sessions = SessionRepositoryImpl(db.sessionDao())
+            val laps = LapRepositoryImpl(db.lapDao())
+            val tracks = com.nacho.kartlog.data.gps.FileTrackStore(java.io.File(context.cacheDir, "tracks-seeder-gps"))
+            val seeder = DebugSeeder(db, circuits, sessions, laps, SampleImages(context), tracks)
+
+            val id = seeder.seedGpsSession()
+            val gpsLaps = laps.observeBySession(id).first()
+            assertEquals(8, gpsLaps.size)
+            assertTrue(gpsLaps.all { it.source == com.nacho.kartlog.domain.model.LapSource.GPS })
+            val fixes = tracks.load(id)
+            assertTrue(fixes.size > 100)
+            // El selector de vuelta del Detalle las empareja con el trazado.
+            val finish = circuits.observeAll().first().single().finishLine!!
+            val geometry = com.nacho.kartlog.domain.gps.TrackAnalysis.build(fixes, finish)
+            val matched = com.nacho.kartlog.domain.gps.TrackAnalysis.matchStoredLaps(geometry, gpsLaps.map { it.number to it.timeMs })
+            org.junit.Assert.assertNotNull(matched)
+            assertEquals(8, matched!!.size)
+            tracks.deleteAll()
+            db.close()
+        }
+    }
 }

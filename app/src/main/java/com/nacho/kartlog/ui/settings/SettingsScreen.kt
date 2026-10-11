@@ -63,6 +63,7 @@ fun SettingsScreen(
 
     val messageText = when (state.message) {
         SettingsMessage.SEEDED -> stringResource(R.string.settings_seeded)
+        SettingsMessage.GPS_SEEDED -> stringResource(R.string.settings_gps_seeded)
         SettingsMessage.WIPED -> stringResource(R.string.settings_wiped)
         SettingsMessage.FAILED -> stringResource(R.string.settings_failed)
         SettingsMessage.NOTHING_TO_EXPORT -> stringResource(R.string.settings_nothing_to_export)
@@ -156,6 +157,12 @@ fun SettingsScreen(
                                 text = stringResource(R.string.settings_import_sample_b),
                                 onClick = { viewModel.importTextSample(TextSample.B) },
                                 enabled = !state.isBusy,
+                            )
+                            SecondaryButton(
+                                text = stringResource(R.string.settings_seed_gps),
+                                onClick = viewModel::seedGpsSession,
+                                enabled = !state.isBusy,
+                                modifier = Modifier.testTag("debug_seed_gps"),
                             )
                             SecondaryButton(
                                 text = stringResource(R.string.settings_seed),

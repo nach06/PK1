@@ -26,7 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class SettingsMessage { SEEDED, WIPED, FAILED, NOTHING_TO_EXPORT, SAMPLES_MISSING, RIVALS_CLEARED, BACKUP_FAILED, RESTORE_INVALID, RESTORE_NEWER, RESTORE_IO }
+enum class SettingsMessage { SEEDED, GPS_SEEDED, WIPED, FAILED, NOTHING_TO_EXPORT, SAMPLES_MISSING, RIVALS_CLEARED, BACKUP_FAILED, RESTORE_INVALID, RESTORE_NEWER, RESTORE_IO }
 
 /** Fichero CSV listo para compartir. */
 data class ShareFile(val fileName: String, val content: String)
@@ -173,6 +173,9 @@ class SettingsViewModel(
     }
 
     fun seedDebugData() = runDebug(SettingsMessage.SEEDED) { it.seed() }
+
+    /** Solo debug: crea una tanda GPS de ejemplo con su trazado. */
+    fun seedGpsSession() = runDebug(SettingsMessage.GPS_SEEDED) { it.seedGpsSession() }
 
     fun wipeAllData() = runDebug(SettingsMessage.WIPED) { it.wipeAll() }
 

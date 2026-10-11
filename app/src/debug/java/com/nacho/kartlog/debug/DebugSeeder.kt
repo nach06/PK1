@@ -2,10 +2,12 @@ package com.nacho.kartlog.debug
 
 import com.nacho.kartlog.data.local.KartLogDatabase
 import com.nacho.kartlog.domain.gps.LocationSource
+import com.nacho.kartlog.domain.gps.TrackAnalysis
 import com.nacho.kartlog.domain.gps.TrackStore
 import com.nacho.kartlog.domain.gps.OvalTrack
 import com.nacho.kartlog.domain.gps.ReplayLocationSource
 import com.nacho.kartlog.domain.gps.TrackSimulator
+import com.nacho.kartlog.domain.model.LapSource
 import com.nacho.kartlog.domain.model.NewSession
 import com.nacho.kartlog.domain.model.SessionType
 import com.nacho.kartlog.domain.model.TrackCondition
@@ -13,6 +15,7 @@ import com.nacho.kartlog.domain.repository.CircuitRepository
 import com.nacho.kartlog.domain.repository.LapRepository
 import com.nacho.kartlog.domain.repository.SessionRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.LocalTime
@@ -119,6 +122,24 @@ class DebugSeeder(
     override suspend fun wipeAll() {
         withContext(Dispatchers.IO) { database.clearAllTables() }
         trackStore.deleteAll() // los trazados GPS viven en ficheros: sin esto quedarían huérfanos
+    }
+
+    override suspend fun seedGpsSession(): Long {
+        val oval = OvalTrack()
+        val existing = circuits.observeAll().first().firstOrNull { it.name == SIMULATED_CIRCUIT }
+        val circuitId = existing?.id ?: circuits.add(SIMULATED_CIRCUIT, oval.perimeterM.toInt())
+        circuits.setFinishLine(circuitId, oval.finishLine)
+        val random = Random(11)
+        val lapTimes = List(8) { i -> 58_000L + random.nextInt(-1_200, 1_200) + (if (i == 0) 2_500L else 0L) }
+        val sim = TrackSimulator.simulate(oval, lapTimes, hz = 2.0, lateralNoiseM = 1.5, alongNoiseM = 0.8)
+        // Las vueltas guardadas son las que recalcula el detector sobre el mismo trazado (así el selector de vuelta las empareja).
+        val geometry = TrackAnalysis.build(sim.fixes, oval.finishLine)
+        val sessionId = sessions.create(
+            NewSession(circuitId, System.currentTimeMillis() - 3_600_000L, SessionType.FREE, 7, null, 21f, 28f, TrackCondition.DRY, "Tanda GPS de ejemplo"),
+        )
+        laps.addAll(sessionId, geometry.laps.map { it.timeMs }, LapSource.GPS)
+        trackStore.save(sessionId, sim.fixes)
+        return sessionId
     }
 
     override suspend fun loadTextSample(sample: TextSample): String? = samples.readText(sample.assetName)
