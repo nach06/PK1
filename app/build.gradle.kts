@@ -103,6 +103,9 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.android)
 
+    // OCR en el dispositivo (modelo latino incluido en el APK: funciona sin conexión).
+    implementation(libs.mlkit.text.recognition)
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(platform(libs.androidx.compose.bom))

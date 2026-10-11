@@ -47,7 +47,7 @@ class AppContainer(context: Context) {
     /** Buzón del contenido recibido con «Compartir → KartLog». */
     val importInbox = ImportInbox()
 
-    /** OCR del dispositivo (se conecta en S3-5); mientras sea `null` «Escanear» no está disponible. */
+    /** OCR del dispositivo (ML Kit, lo conecta KartLogApp); mientras sea `null` «Escanear» no está disponible. */
     var imageTextRecognizer: ImageTextRecognizer? = null
 
     val importViewModelFactory: ViewModelProvider.Factory = viewModelFactory {

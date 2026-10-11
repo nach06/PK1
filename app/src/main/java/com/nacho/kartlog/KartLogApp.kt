@@ -1,6 +1,7 @@
 package com.nacho.kartlog
 
 import android.app.Application
+import com.nacho.kartlog.data.ocr.MlKitImageTextRecognizer
 
 class KartLogApp : Application() {
     lateinit var container: AppContainer
@@ -8,6 +9,6 @@ class KartLogApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        container = AppContainer(this)
+        container = AppContainer(this).also { it.imageTextRecognizer = MlKitImageTextRecognizer(this) }
     }
 }
