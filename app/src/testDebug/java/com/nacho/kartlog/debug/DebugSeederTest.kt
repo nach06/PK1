@@ -85,4 +85,14 @@ class DebugSeederTest {
             db.close()
         }
     }
+
+    @Test
+    fun sampleImages_acceptPngJpgJpegAndWebp_caseInsensitive_andIgnoreTheReadme() {
+        listOf("muestra_a.png", "muestra_b.jpeg", "foto.JPG", "otra.Jpeg", "x.webp").forEach {
+            assertTrue("$it debe aceptarse", SampleImages.isSampleImage(it))
+        }
+        listOf("LEEME.txt", "notas", "muestra.png.bak", "datos.csv").forEach {
+            assertTrue("$it debe ignorarse", !SampleImages.isSampleImage(it))
+        }
+    }
 }

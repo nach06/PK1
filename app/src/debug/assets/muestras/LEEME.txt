@@ -1,4 +1,4 @@
 Coloca aquí las imágenes de muestra para «Ajustes → Depuración → Probar OCR con muestra»:
-  muestra_a.png   captura del correo «Resumen de tu carrera»
-  muestra_b.jpg   foto (torcida) de la hoja impresa de tiempos
-Se admiten png, jpg, jpeg y webp. Este fichero se ignora.
+  muestra_a.png    captura del correo «Resumen de tu carrera»
+  muestra_b.jpeg   foto (torcida) de la hoja impresa de tiempos
+Se admiten png, jpg, jpeg y webp (da igual el nombre, pero conviene empezar por «muestra_»). Este fichero se ignora.

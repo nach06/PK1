@@ -43,7 +43,7 @@
 | # | Entrega | Para qué |
 |---|---|---|
 | P0.1 | Pasar la **lista visual del Sprint 4** en el móvil real y anotar fallos | H8, H15; todo lo «no comprobado en dispositivo» |
-| P0.2 | Copiar `muestra_a.png` y `muestra_b.jpg` a `app/src/debug/assets/muestras/` y enviar el **Logcat `KartLogOcr`** | calibrar `ROW_TOLERANCE`/anclaje de columnas (C0) |
+| P0.2 | Copiar `muestra_a.png` y `muestra_b.jpeg` a `app/src/debug/assets/muestras/` y enviar el **Logcat `KartLogOcr`** | calibrar `ROW_TOLERANCE`/anclaje de columnas (C0) |
 | P0.3 | **Una tanda real en pista** con el Dashboard + los tiempos oficiales, y el trazado exportado (tras C1) | medir el error GPS vs oficial: decide el ESP32 |
 | P0.4 | Respuesta a las **decisiones del §5** | A5, B1, D7 |
 

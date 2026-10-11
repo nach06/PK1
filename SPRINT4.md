@@ -17,7 +17,7 @@ Tests nuevos: pilotos y vueltas exactas de A (14 pilotos, 2 bloques, nombres com
   (V1, V2, V3) con un solo dígito distinto; aritméticamente no se puede saber cuál es la errónea. Preferí no proponer una celda al azar; la V8 queda entre las celdas marcadas en ámbar.
 
 ### A2. Probar OCR sin cámara (solo debug)
-Ajustes → Depuración → **«Probar OCR con muestra»**. Lee `app/src/debug/assets/muestras/*.png|jpg|jpeg|webp` (hoy solo hay un `LEEME.txt`: el responsable debe copiar allí `muestra_a.png` y `muestra_b.jpg`).
+Ajustes → Depuración → **«Probar OCR con muestra»**. Lee `app/src/debug/assets/muestras/*.png, jpg, jpeg o webp` (hoy solo hay un `LEEME.txt`: el responsable debe copiar allí `muestra_a.png` y `muestra_b.jpeg`).
 Sin muestras: «Añade muestras en app/src/debug/assets/muestras/». Con una, la usa; con varias, pregunta cuál. La imagen se copia a la caché y se entrega al **mismo buzón** que «Compartir» (`ImportInbox`),
 así que recorre el flujo real: ML Kit → `OcrLayout` → parser → vista previa. En debug, `MlKitImageTextRecognizer` escribe en Logcat (etiqueta **`KartLogOcr`**) cada caja
 (`texto, x, y, ángulo`), el valor de `ROW_TOLERANCE` y el texto reconstruido con `⇥` por tabulador. Filtro sugerido: `adb logcat -s KartLogOcr`.
