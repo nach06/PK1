@@ -53,4 +53,34 @@ abstract class LapDao {
     open suspend fun insertAll(sessionId: Long, timesMs: List<Long>, source: LapSource) {
         timesMs.forEach { insertNext(sessionId, it, source) }
     }
+
+    @Query("SELECT sessionId FROM laps WHERE id = :id")
+    abstract suspend fun sessionIdOf(id: Long): Long?
+
+    @Query("SELECT id FROM laps WHERE sessionId = :sessionId ORDER BY number ASC")
+    protected abstract suspend fun idsInOrder(sessionId: Long): List<Long>
+
+    @Query("UPDATE laps SET number = -number WHERE sessionId = :sessionId")
+    protected abstract suspend fun negateNumbers(sessionId: Long)
+
+    @Query("UPDATE laps SET number = :number WHERE id = :id")
+    protected abstract suspend fun setNumber(id: Long, number: Int)
+
+    /**
+     * Borra la vuelta y deja la numeración de la tanda consecutiva (V1…Vn, por orden). El índice único
+     * `(sessionId, number)` impide renumerar «al vuelo», así que primero se pasan a negativo y luego se numeran.
+     */
+    @Transaction
+    open suspend fun deleteAndRenumber(lapId: Long) {
+        val sessionId = sessionIdOf(lapId)
+        deleteById(lapId)
+        if (sessionId != null) renumber(sessionId)
+    }
+
+    @Transaction
+    open suspend fun renumber(sessionId: Long) {
+        val ids = idsInOrder(sessionId)
+        negateNumbers(sessionId)
+        ids.forEachIndexed { index, id -> setNumber(id, index + 1) }
+    }
 }

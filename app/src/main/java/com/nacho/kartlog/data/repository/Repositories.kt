@@ -96,7 +96,7 @@ class LapRepositoryImpl(private val dao: LapDao) : LapRepository {
 
     override suspend fun updateTime(lapId: Long, timeMs: Long) = dao.updateTime(lapId, timeMs)
 
-    override suspend fun delete(lapId: Long) = dao.deleteById(lapId)
+    override suspend fun delete(lapId: Long) = dao.deleteAndRenumber(lapId)
 }
 
 class ParticipantRepositoryImpl(private val dao: ParticipantDao) : ParticipantRepository {
