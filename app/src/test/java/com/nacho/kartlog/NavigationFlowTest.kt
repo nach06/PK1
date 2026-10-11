@@ -45,6 +45,7 @@ class NavigationFlowTest {
     @After
     fun tearDown() {
         // Cerrar la actividad cancela los ViewModels y sus consultas Room antes de borrar la BD.
+        runCatching { compose.waitForIdle() }
         compose.activityRule.scenario.close()
         context.deleteDatabase(KartLogDatabase.NAME)
     }

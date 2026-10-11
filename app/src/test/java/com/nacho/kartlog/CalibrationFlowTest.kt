@@ -46,6 +46,7 @@ class CalibrationFlowTest {
 
     @After
     fun tearDown() {
+        runCatching { compose.waitForIdle() }
         compose.activityRule.scenario.close()
         context.deleteDatabase(KartLogDatabase.NAME)
     }
