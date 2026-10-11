@@ -19,8 +19,8 @@ object LapTime {
     }
 
     /**
-     * Diferencia con otro tiempo, con signo y coma decimal: 2927 -> `+2,927`, -350 -> `-0,350`,
-     * 62345 -> `+1:02,345`.
+     * Diferencia con otro tiempo, con signo y punto decimal (el mismo separador que los cronómetros, Sprint 6):
+     * 2927 -> `+2.927`, -350 -> `-0.350`, 62345 -> `+1:02.345`.
      */
     fun formatDelta(deltaMs: Long): String {
         val sign = if (deltaMs < 0) "-" else "+"
@@ -29,16 +29,16 @@ object LapTime {
         val seconds = (total % 60_000) / 1_000
         val millis = total % 1_000
         return if (minutes > 0) {
-            String.format(Locale.ROOT, "%s%d:%02d,%03d", sign, minutes, seconds, millis)
+            String.format(Locale.ROOT, "%s%d:%02d.%03d", sign, minutes, seconds, millis)
         } else {
-            String.format(Locale.ROOT, "%s%d,%03d", sign, seconds, millis)
+            String.format(Locale.ROOT, "%s%d.%03d", sign, seconds, millis)
         }
     }
 
-    /** Consistencia (desviación típica en ms) como `±0,214` (segundos con coma). */
+    /** Consistencia (desviación típica en ms) como `±0.214` (segundos con punto). */
     fun formatConsistency(stdDevMs: Double): String {
         val ms = Math.round(stdDevMs)
-        return String.format(Locale.ROOT, "±%d,%03d", ms / 1_000, ms % 1_000)
+        return String.format(Locale.ROOT, "±%d.%03d", ms / 1_000, ms % 1_000)
     }
 
     /** Muestra los dígitos tecleados rellenando de derecha a izquierda: `48532` -> `0:48.532`. */
@@ -82,6 +82,6 @@ object LapTime {
     fun bestLapMs(laps: List<Lap>): Long? = laps.minOfOrNull { it.timeMs }
 
 
-    /** Segundos con tres decimales y coma («0,053»), para errores y desviaciones; los tiempos de vuelta siguen `m:ss.mmm`. */
-    fun formatSeconds(ms: Double): String = String.format(Locale("es", "ES"), "%.3f", ms / 1000.0)
+    /** Segundos con tres decimales y punto («0.053»), para errores y desviaciones; los tiempos de vuelta siguen `m:ss.mmm`. */
+    fun formatSeconds(ms: Double): String = String.format(Locale.ROOT, "%.3f", ms / 1000.0)
 }

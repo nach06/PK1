@@ -17,6 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.nacho.kartlog.ui.theme.kartColors
 
@@ -51,6 +53,7 @@ internal fun Chip(text: String, selected: Boolean, onClick: () -> Unit, modifier
             .clip(shape)
             .background(if (selected) MaterialTheme.colorScheme.primary else kart.card)
             .border(BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.primary else kart.cardBorder), shape)
+            .semantics { this.selected = selected }
             .clickable(role = Role.RadioButton, onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,

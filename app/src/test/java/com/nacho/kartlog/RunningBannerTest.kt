@@ -5,6 +5,10 @@ import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -93,6 +97,13 @@ class RunningBannerTest {
         compose.onNodeWithTag("fab_main").performClick()
         compose.onNodeWithTag("fab_track").performClick()
         waitFor("EMPEZAR")
+        // A7: la ficha del tipo por defecto aparece seleccionada, y sin kart (valor «–») se puede empezar igualmente.
+        compose.onNodeWithText("Libre").assertIsSelected()
+        compose.onNodeWithText("Carrera").assertIsNotSelected()
+        compose.onNodeWithText("Carrera").performClick()
+        compose.onNodeWithText("Carrera").assertIsSelected()
+        compose.onNodeWithText("Libre").assertIsNotSelected()
+        compose.onAllNodesWithText("EMPEZAR")[0].assertIsEnabled()
         compose.onAllNodesWithText("EMPEZAR")[0].performClick()
         waitForTag("dash_current")
         runBlocking { sim.fixes.filter { it.elapsedNs <= sim.crossingNs[2] + 2_000_000_000L }.forEach { source.flow.emit(it) } }

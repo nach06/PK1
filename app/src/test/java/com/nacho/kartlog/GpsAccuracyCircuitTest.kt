@@ -65,7 +65,7 @@ class GpsAccuracyCircuitTest {
         compose.waitUntil(8_000) { compose.onAllNodesWithText("Tandas").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Circuitos").performClick()
         compose.waitUntil(8_000) { compose.onAllNodesWithTag("circuit_gps_accuracy", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithTag("circuit_gps_accuracy", useUnmergedTree = true).assertTextEquals("Precisión GPS ±0,053 s (1 tanda)")
+        compose.onNodeWithTag("circuit_gps_accuracy", useUnmergedTree = true).assertTextEquals("Precisión GPS ±0.053 s (1 tanda)")
         // El circuito sin comparaciones no muestra la línea.
         check(compose.onAllNodesWithTag("circuit_gps_accuracy", useUnmergedTree = true).fetchSemanticsNodes().size == 1)
     }

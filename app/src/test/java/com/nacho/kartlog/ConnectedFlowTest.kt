@@ -91,7 +91,7 @@ class ConnectedFlowTest {
         compose.onNodeWithText("GRÁFICA DE VUELTAS").performClick()
         compose.onNodeWithTag("lap_chart").assertIsDisplayed()
         compose.onNodeWithText("Media limpia 1:13.082").assertIsDisplayed()
-        compose.onNodeWithText("±0,", substring = true).assertExists() // consistencia junto a MEDIA LIMPIA
+        compose.onNodeWithText("±0.", substring = true).assertExists() // consistencia junto a MEDIA LIMPIA
         compose.onNodeWithText("Mejor").assertIsDisplayed()
         compose.onNodeWithText("Fuera de escala").assertIsDisplayed()
 

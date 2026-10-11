@@ -78,12 +78,12 @@ class GpsAccuracyDetailTest {
         show(container, id)
 
         compose.onNodeWithTag("gps_accuracy_mean", useUnmergedTree = true).assertIsDisplayed()
-        compose.onNodeWithTag("gps_accuracy_mean", useUnmergedTree = true).assertTextEquals("±0,053 s") // (60+80+30+40)/4 = 52,5 ms
+        compose.onNodeWithTag("gps_accuracy_mean", useUnmergedTree = true).assertTextEquals("±0.053 s") // (60+80+30+40)/4 = 52,5 ms
         compose.onNodeWithTag("gps_accuracy").performClick() // desplegar
         compose.onNodeWithTag("lap_list").performScrollToNode(hasTestTag("gps_accuracy_summary"))
         compose.onNodeWithTag("gps_accuracy_summary").assertIsDisplayed()
         check(compose.onAllNodesWithTag("gps_accuracy_mismatch").fetchSemanticsNodes().isEmpty()) { "mismo nº de vueltas: sin aviso" }
-        compose.onNodeWithText("+0,060", useUnmergedTree = true).assertExists()
+        compose.onNodeWithText("+0.060", useUnmergedTree = true).assertExists()
     }
 
     @Test
