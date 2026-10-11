@@ -1,5 +1,12 @@
 package com.nacho.kartlog.ui.analysis
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.platform.testTag
+import com.nacho.kartlog.domain.analytics.ConsistencyTrend
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -145,7 +152,9 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
                         )
                     }
                 } else {
+                    ImprovementGapSection(stats)
                     EvolutionSection(stats)
+                    ConsistencySection(stats)
                     KartRankingSection(stats.karts)
                     ConditionsSection(stats.conditions)
                 }
@@ -189,6 +198,83 @@ private fun EvolutionSection(stats: CircuitStats) {
             highlightLabel = stringResource(R.string.stat_record),
             xSpacing = ((evolution.size + 4) / 5).coerceAtLeast(1),
         )
+    }
+}
+
+/** Hueco de mejora: lo que separa tu media limpia de tu récord. */
+@Composable
+private fun ImprovementGapSection(stats: CircuitStats) {
+    val gap = stats.improvementGapMs ?: return
+    val record = stats.recordMs ?: return
+    val average = stats.historicCleanAverageMs ?: return
+    SectionTitle(stringResource(R.string.analysis_gap_title))
+    KartCard(Modifier.fillMaxWidth().testTag("improvement_gap")) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(R.string.analysis_gap_value, LapTime.formatSeconds(gap.toDouble())),
+                style = MaterialTheme.typography.headlineSmall.copy(fontFamily = MonoFontFamily),
+                color = MaterialTheme.kartColors.warning,
+                modifier = Modifier.testTag("improvement_gap_value"),
+            )
+        }
+        Text(
+            text = stringResource(R.string.analysis_gap_explain, LapTime.format(average), LapTime.format(record)),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.kartColors.textMuted,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
+}
+
+/** Consistencia de cada tanda (barras proporcionales) y su tendencia: ¿te vuelves más regular? */
+@Composable
+private fun ConsistencySection(stats: CircuitStats) {
+    val series = stats.consistencySeries
+    if (series.isEmpty()) return
+    val kart = MaterialTheme.kartColors
+    SectionTitle(stringResource(R.string.analysis_consistency_title))
+    KartCard(Modifier.fillMaxWidth().testTag("consistency_section")) {
+        stats.consistencyTrend?.let { trend ->
+            val slope = stats.consistencyTrendMsPerSession ?: 0.0
+            Text(
+                text = stringResource(
+                    when (trend) {
+                        ConsistencyTrend.IMPROVING -> R.string.analysis_trend_improving
+                        ConsistencyTrend.STABLE -> R.string.analysis_trend_stable
+                        ConsistencyTrend.WORSENING -> R.string.analysis_trend_worsening
+                    },
+                    (if (slope >= 0) "+" else "−") + LapTime.formatSeconds(kotlin.math.abs(slope)),
+                ),
+                style = MaterialTheme.typography.titleSmall,
+                color = when (trend) {
+                    ConsistencyTrend.IMPROVING -> kart.telemetry
+                    ConsistencyTrend.STABLE -> kart.textMuted
+                    ConsistencyTrend.WORSENING -> kart.warning
+                },
+                modifier = Modifier.padding(bottom = 8.dp).testTag("consistency_trend"),
+            )
+        }
+        val max = series.maxOf { it.consistencyMs }.coerceAtLeast(1.0)
+        series.takeLast(10).forEach { point ->
+            Row(Modifier.fillMaxWidth().heightIn(min = 32.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(formatShortDate(point.dateTime), style = MaterialTheme.typography.bodyMedium, color = kart.textMuted, modifier = Modifier.width(64.dp), maxLines = 1)
+                Box(Modifier.weight(1f).height(10.dp)) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth((point.consistencyMs / max).toFloat().coerceIn(0.03f, 1f))
+                            .height(10.dp)
+                            .background(kart.telemetry.copy(alpha = 0.8f), RoundedCornerShape(5.dp)),
+                    )
+                }
+                Text(
+                    text = LapTime.formatConsistency(point.consistencyMs),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = MonoFontFamily),
+                    modifier = Modifier.width(76.dp).padding(start = 8.dp),
+                    maxLines = 1,
+                    softWrap = false,
+                )
+            }
+        }
     }
 }
 

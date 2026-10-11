@@ -89,6 +89,17 @@ object Analytics {
         return AnalyticsSnapshot(sessions = sessionStats, circuits = circuitStats)
     }
 
+    /** Pendiente de la recta de mínimos cuadrados de [values] frente a su índice (0, 1, 2…); 0,0 con menos de 2 valores. */
+    fun slope(values: List<Double>): Double {
+        val n = values.size
+        if (n < 2) return 0.0
+        val meanX = (n - 1) / 2.0
+        val meanY = values.average()
+        val num = values.indices.sumOf { (it - meanX) * (values[it] - meanY) }
+        val den = values.indices.sumOf { (it - meanX) * (it - meanX) }
+        return num / den
+    }
+
     /** Estadísticas de un circuito con circuito sin tandas (para listados). */
     fun emptyCircuitStats(circuit: Circuit) = circuitStats(circuit, emptyList())
 
@@ -127,7 +138,14 @@ object Analytics {
         }
 
         val accuracy = sessions.mapNotNull { it.gpsAccuracy?.meanAbsErrorMs }
+        val consistencySeries = withLaps
+            .filter { hasMeaningfulConsistency(it.lapTimes) }
+            .sortedBy { it.summary.session.dateTime }
+            .mapNotNull { st -> st.consistencyMs?.let { ConsistencyPoint(st.summary.session.id, st.summary.session.dateTime, it) } }
         return CircuitStats(
+            consistencySeries = consistencySeries,
+            consistencyTrendMsPerSession = slope(consistencySeries.map { it.consistencyMs })
+                .takeIf { consistencySeries.size >= ConsistencyTrend.MIN_POINTS },
             circuit = circuit,
             gpsAccuracyMs = accuracy.takeIf { it.isNotEmpty() }?.average(),
             gpsAccuracySessions = accuracy.size,
@@ -179,6 +197,29 @@ data class ConditionStats(
     val sessionCount: Int,
 )
 
+/** Consistencia (desviación típica de vueltas limpias, ms) de una tanda con al menos 2 vueltas limpias. */
+data class ConsistencyPoint(val sessionId: Long, val dateTime: Long, val consistencyMs: Double)
+
+enum class ConsistencyTrend {
+    /** La desviación baja de una tanda a la siguiente: cada vez más regular. */
+    IMPROVING,
+    STABLE,
+    WORSENING,
+    ;
+
+    companion object {
+        /** Cambio medio por tanda (ms) a partir del cual se habla de tendencia. */
+        const val THRESHOLD_MS = 10.0
+        const val MIN_POINTS = 3
+
+        fun of(slopeMsPerSession: Double): ConsistencyTrend = when {
+            slopeMsPerSession <= -THRESHOLD_MS -> IMPROVING
+            slopeMsPerSession >= THRESHOLD_MS -> WORSENING
+            else -> STABLE
+        }
+    }
+}
+
 data class CircuitStats(
     val circuit: Circuit,
     val recordMs: Long?,
@@ -198,7 +239,19 @@ data class CircuitStats(
     val gpsAccuracyMs: Double? = null,
     /** Nº de tandas que entran en [gpsAccuracyMs]. */
     val gpsAccuracySessions: Int = 0,
-)
+    /** Consistencia de cada tanda con ≥ 2 vueltas limpias, por fecha ascendente. */
+    val consistencySeries: List<ConsistencyPoint> = emptyList(),
+    /** Pendiente de la consistencia por tanda (ms/tanda; negativa = mejora); `null` con menos de 3 tandas. */
+    val consistencyTrendMsPerSession: Double? = null,
+) {
+    val consistencyTrend: ConsistencyTrend? get() = consistencyTrendMsPerSession?.let(ConsistencyTrend::of)
+
+    /**
+     * Hueco de mejora: media limpia histórica − récord. Es lo que separa tu ritmo habitual de tu mejor vuelta; no es un «mejor
+     * teórico» por sectores (no se miden sectores).
+     */
+    val improvementGapMs: Long? get() = if (historicCleanAverageMs != null && recordMs != null) historicCleanAverageMs - recordMs else null
+}
 
 data class AnalyticsSnapshot(
     val sessions: List<SessionStats>,

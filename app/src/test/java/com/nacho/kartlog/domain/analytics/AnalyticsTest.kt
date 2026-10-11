@@ -1,6 +1,7 @@
 package com.nacho.kartlog.domain.analytics
 
 import com.nacho.kartlog.domain.model.Circuit
+import com.nacho.kartlog.domain.analytics.ConsistencyTrend
 import com.nacho.kartlog.domain.model.Lap
 import com.nacho.kartlog.domain.model.LapSource
 import com.nacho.kartlog.domain.model.Session
@@ -214,5 +215,51 @@ class AnalyticsTest {
         assertEquals(100.0, stats.gpsAccuracyMs!!, 1e-9)
         assertEquals(50.0, snapshot.session(1)!!.gpsAccuracy!!.meanAbsErrorMs!!, 1e-9)
         assertNull(snapshot.session(3)!!.gpsAccuracy)
+    }
+
+    @Test
+    fun consistencySeriesAndTrend_followTheSessionsInDateOrder() {
+        // Cuatro tandas cada vez más regulares: desviaciones ~0,5 s, 0,35 s, 0,2 s y 0,1 s.
+        fun summary(id: Long, date: Long) = SessionSummary(Session(id, 1, date, SessionType.FREE, 7, null, null, null, TrackCondition.DRY, ""), zuera, 4, 58_000)
+        fun laps(session: Long, base: Long, spread: Long) = listOf(base - spread, base + spread, base - spread, base + spread)
+            .mapIndexed { i, ms -> Lap(session * 10 + i, session, i + 1, ms, LapSource.MANUAL) }
+        val summaries = listOf(summary(1, 1_000), summary(2, 2_000), summary(3, 3_000), summary(4, 4_000))
+        val all = laps(1, 58_000, 500) + laps(2, 58_000, 350) + laps(3, 58_000, 200) + laps(4, 58_000, 100)
+        // Se mezclan en desorden: la serie sale por fecha.
+        val stats = Analytics.compute(summaries.shuffled(), all.shuffled()).circuits.getValue(zuera.id)
+        assertEquals(listOf(1L, 2L, 3L, 4L), stats.consistencySeries.map { it.sessionId })
+        assertEquals(listOf(500.0, 350.0, 200.0, 100.0), stats.consistencySeries.map { it.consistencyMs })
+        assertEquals(-135.0, stats.consistencyTrendMsPerSession!!, 1e-9) // mínimos cuadrados de 500, 350, 200, 100
+        assertEquals(ConsistencyTrend.IMPROVING, stats.consistencyTrend)
+    }
+
+    @Test
+    fun trendThresholds_andNotEnoughSessions() {
+        assertEquals(ConsistencyTrend.IMPROVING, ConsistencyTrend.of(-10.0))
+        assertEquals(ConsistencyTrend.STABLE, ConsistencyTrend.of(-9.9))
+        assertEquals(ConsistencyTrend.STABLE, ConsistencyTrend.of(9.9))
+        assertEquals(ConsistencyTrend.WORSENING, ConsistencyTrend.of(10.0))
+        assertEquals(0.0, Analytics.slope(listOf(5.0)), 0.0)
+        assertEquals(2.0, Analytics.slope(listOf(1.0, 3.0, 5.0, 7.0)), 1e-9)
+        // Con solo dos tandas hay serie pero no tendencia.
+        val s1 = SessionSummary(Session(1, 1, 1_000, SessionType.FREE, 7, null, null, null, TrackCondition.DRY, ""), zuera, 3, 58_000)
+        val s2 = SessionSummary(Session(2, 1, 2_000, SessionType.FREE, 7, null, null, null, TrackCondition.DRY, ""), zuera, 3, 58_000)
+        val laps = listOf(58_000L, 58_300L, 58_100L).mapIndexed { i, ms -> listOf(1L, 2L).map { Lap(it * 10 + i, it, i + 1, ms, LapSource.MANUAL) } }.flatten()
+        val stats = Analytics.compute(listOf(s1, s2), laps).circuits.getValue(zuera.id)
+        assertEquals(2, stats.consistencySeries.size)
+        assertNull(stats.consistencyTrendMsPerSession)
+        assertNull(stats.consistencyTrend)
+    }
+
+    @Test
+    fun improvementGap_isTheCleanAverageMinusTheRecord() {
+        val s1 = SessionSummary(Session(1, 1, 1_000, SessionType.FREE, 7, null, null, null, TrackCondition.DRY, ""), zuera, 3, 57_500)
+        val laps = listOf(57_500L, 58_000L, 58_500L).mapIndexed { i, ms -> Lap(i + 1L, 1, i + 1, ms, LapSource.MANUAL) }
+        val stats = Analytics.compute(listOf(s1), laps).circuits.getValue(zuera.id)
+        assertEquals(57_500L, stats.recordMs)
+        assertEquals(58_000L, stats.historicCleanAverageMs)
+        assertEquals(500L, stats.improvementGapMs)
+        // Sin vueltas no hay hueco.
+        assertNull(Analytics.emptyCircuitStats(zuera).improvementGapMs)
     }
 }

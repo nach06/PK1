@@ -368,4 +368,13 @@
     <string name="restore_invalid">Ese fichero no es una copia de seguridad válida de KartLog (está dañado o incompleto). No se ha cambiado nada.</string>
     <string name="restore_newer">Esa copia es de una versión más nueva de KartLog y esta app no puede leerla. Actualiza la app e inténtalo de nuevo. No se ha cambiado nada.</string>
     <string name="restore_io">No se pudo escribir la copia en el dispositivo. Revisa el espacio libre.</string>
+
+    <!-- Análisis: hueco de mejora y consistencia -->
+    <string name="analysis_gap_title">Hueco de mejora</string>
+    <string name="analysis_gap_value">+%1$s s</string>
+    <string name="analysis_gap_explain">Tu media limpia (%1$s) está por encima de tu mejor vuelta (%2$s). Es lo que ganarías si repitieras siempre tu mejor vuelta; no se miden sectores, así que no hay un «mejor teórico».</string>
+    <string name="analysis_consistency_title">Consistencia por tanda</string>
+    <string name="analysis_trend_improving">Cada vez más regular: %1$s s por tanda</string>
+    <string name="analysis_trend_stable">Consistencia estable (%1$s s por tanda)</string>
+    <string name="analysis_trend_worsening">Menos regular que antes: %1$s s por tanda</string>
 </resources>
