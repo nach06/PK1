@@ -69,6 +69,8 @@ android {
     sourceSets {
         // Room exported schemas are versioned and used by instrumented migration tests.
         getByName("androidTest").assets.srcDir("$projectDir/schemas")
+        // Solo debug: Robolectric lee los esquemas exportados de los assets de la app para probar migraciones en JVM.
+        getByName("debug").assets.srcDir("$projectDir/schemas")
     }
 }
 

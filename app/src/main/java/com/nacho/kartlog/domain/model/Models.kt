@@ -24,6 +24,9 @@ data class Session(
     val trackTempC: Float?,
     val trackCondition: TrackCondition,
     val notes: String,
+    /** Título de la sesión importada (p. ej. «Sesión 46 GP3 DIEGO»). */
+    val label: String? = null,
+    val durationMin: Int? = null,
 )
 
 /** Datos para crear una sesión; el id lo asigna la base de datos. */
@@ -37,6 +40,10 @@ data class NewSession(
     val trackTempC: Float?,
     val trackCondition: TrackCondition,
     val notes: String,
+    val label: String? = null,
+    val durationMin: Int? = null,
+    /** Texto original (o salida del OCR) de la importación. */
+    val importedRaw: String? = null,
 )
 
 data class Lap(
@@ -59,3 +66,44 @@ data class SessionSummary(
     val lapCount: Int,
     val bestLapMs: Long?,
 )
+
+/** Piloto de una sesión importada. `isMe` marca al usuario (sus vueltas están en [Lap], origen IMPORTED). */
+data class Participant(
+    val id: Long,
+    val sessionId: Long,
+    val position: Int?,
+    val name: String?,
+    val kartNumber: Int?,
+    val isMe: Boolean,
+    val bestMs: Long?,
+    val avgMs: Long?,
+    val lapCount: Int?,
+)
+
+/** Piloto a guardar en una importación; [lapTimesMs] solo se guarda para los demás pilotos. */
+data class ParticipantImport(
+    val position: Int?,
+    val name: String?,
+    val kartNumber: Int?,
+    val bestMs: Long?,
+    val avgMs: Long?,
+    val lapCount: Int?,
+    val lapTimesMs: List<Long> = emptyList(),
+)
+
+/**
+ * Resultado de la vista previa listo para guardar. O bien [newSession], o bien [existingSessionId]
+ * (las vueltas se añaden a continuación de las que ya tiene).
+ */
+data class ImportRequest(
+    val newSession: NewSession?,
+    val existingSessionId: Long?,
+    val myLapTimesMs: List<Long>,
+    /** Fila del propio usuario en la clasificación (sin vueltas propias: van a [Lap]). */
+    val me: ParticipantImport?,
+    val others: List<ParticipantImport>,
+) {
+    init {
+        require((newSession == null) != (existingSessionId == null)) { "Indica una sesión nueva o una existente" }
+    }
+}

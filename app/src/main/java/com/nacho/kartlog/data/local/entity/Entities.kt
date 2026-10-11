@@ -42,6 +42,11 @@ data class SessionEntity(
     val trackTempC: Float? = null,
     val trackCondition: TrackCondition,
     val notes: String = "",
+    /** Título de la sesión importada (p. ej. «Sesión 46 GP3 DIEGO»). */
+    val label: String? = null,
+    val durationMin: Int? = null,
+    /** Texto original (o salida del OCR) de la importación; nunca la foto. */
+    val importedRaw: String? = null,
 )
 
 @Entity(
@@ -65,6 +70,51 @@ data class LapEntity(
     val number: Int,
     val timeMs: Long,
     val source: LapSource,
+)
+
+/** Piloto de una sesión importada; `isMe` marca al propio usuario (sus vueltas están en `laps`). */
+@Entity(
+    tableName = "participants",
+    foreignKeys = [
+        ForeignKey(
+            entity = SessionEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["sessionId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("sessionId")],
+)
+data class ParticipantEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val sessionId: Long,
+    val position: Int? = null,
+    val name: String? = null,
+    val kartNumber: Int? = null,
+    val isMe: Boolean = false,
+    val bestMs: Long? = null,
+    val avgMs: Long? = null,
+    val lapCount: Int? = null,
+)
+
+/** Vuelta de otro piloto (las del propio usuario se guardan como [LapEntity] con origen IMPORTED). */
+@Entity(
+    tableName = "participant_laps",
+    foreignKeys = [
+        ForeignKey(
+            entity = ParticipantEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["participantId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index(value = ["participantId", "number"], unique = true)],
+)
+data class ParticipantLapEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val participantId: Long,
+    val number: Int,
+    val timeMs: Long,
 )
 
 /** Sesión con su circuito. */

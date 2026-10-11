@@ -1,8 +1,10 @@
 package com.nacho.kartlog.domain.repository
 
 import com.nacho.kartlog.domain.model.Circuit
+import com.nacho.kartlog.domain.model.ImportRequest
 import com.nacho.kartlog.domain.model.Lap
 import com.nacho.kartlog.domain.model.NewSession
+import com.nacho.kartlog.domain.model.Participant
 import com.nacho.kartlog.domain.model.SessionDetail
 import com.nacho.kartlog.domain.model.SessionSummary
 import kotlinx.coroutines.flow.Flow
@@ -47,4 +49,17 @@ interface LapRepository {
     suspend fun updateTime(lapId: Long, timeMs: Long)
 
     suspend fun delete(lapId: Long)
+}
+
+interface ParticipantRepository {
+    /** Clasificación de la sesión importada, por posición (los sin posición, al final). */
+    fun observeBySession(sessionId: Long): Flow<List<Participant>>
+}
+
+interface ImportRepository {
+    /**
+     * Guarda en una sola transacción la sesión (o las vueltas añadidas a la existente), las vueltas
+     * propias con origen IMPORTED y los participantes con las vueltas de los demás. Devuelve el id de la sesión.
+     */
+    suspend fun importSession(request: ImportRequest): Long
 }
