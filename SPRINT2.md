@@ -190,3 +190,10 @@ Otras diferencias reales respecto a lo pedido en T2, corregidas: MEDIA LIMPIA co
 **Hipótesis más probable de lo visto en el emulador: una build antigua.** El `SPRINT2.md` de la carpeta local del responsable pesa 19 KB, que es el tamaño
 de la versión *con* el Sprint 2.1 (la anterior pesa ~10,5 KB), así que ese clon sí tenía los commits; pero la captura muestra clones **anidados**
 (`pk1\pk1\pk1\pk1`, cada uno con su propio `.git`) y Android Studio puede tener abierto uno más antiguo. La línea de build de T0 lo confirma o lo descarta.
+
+## T3. Test de conexión por el `NavHost`
+`ConnectedFlowTest` arranca `KartNavHost` (el mismo que `MainActivity`) con datos reales y recorre las rutas: Tandas → tocar card → Detalle → gráfica
+(leyenda, media limpia sin la salida de boxes, «Fuera de escala») → abrir teclado (la gráfica se pliega, teclado completo, franja `V10 … · V9 …`)
+→ volver → Análisis (circuito por defecto = el de más tandas con vueltas, elección recordada tras cambiar de pestaña) → Ajustes (línea de build).
+**Comprobado con mutaciones:** romper F1 (el teclado deja de plegar la gráfica) y romper F7 (circuito por defecto = el de la tanda más reciente)
+hacen fallar el test; ambos cambios se revirtieron.
