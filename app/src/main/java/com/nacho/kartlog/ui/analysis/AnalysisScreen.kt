@@ -24,6 +24,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -152,8 +154,8 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
                         )
                     }
                 } else {
-                    ImprovementGapSection(stats)
                     EvolutionSection(stats)
+                    ImprovementGapSection(stats)
                     ConsistencySection(stats)
                     KartRankingSection(stats.karts)
                     ConditionsSection(stats.conditions)
@@ -189,7 +191,7 @@ private fun EvolutionSection(stats: CircuitStats) {
     val evolution = stats.evolution
     val best = evolution.minOf { it.bestMs }
     SectionTitle(stringResource(R.string.analysis_evolution))
-    KartCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)) {
+    KartCard(Modifier.fillMaxWidth().testTag("evolution_card"), contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)) {
         TimeLineChart(
             x = evolution.indices.map { it.toDouble() },
             timesMs = evolution.map { it.bestMs },
@@ -201,28 +203,43 @@ private fun EvolutionSection(stats: CircuitStats) {
     }
 }
 
-/** Hueco de mejora: lo que separa tu media limpia de tu récord. */
+/** Hueco de mejora, compacto: una fila (título + cifra + ⓘ) y la explicación solo si se despliega. */
 @Composable
 private fun ImprovementGapSection(stats: CircuitStats) {
     val gap = stats.improvementGapMs ?: return
     val record = stats.recordMs ?: return
     val average = stats.historicCleanAverageMs ?: return
-    SectionTitle(stringResource(R.string.analysis_gap_title))
-    KartCard(Modifier.fillMaxWidth().testTag("improvement_gap")) {
+    var explain by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    KartCard(Modifier.fillMaxWidth().testTag("improvement_gap"), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
+                text = stringResource(R.string.analysis_gap_title).uppercase(),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.kartColors.textMuted,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
                 text = stringResource(R.string.analysis_gap_value, LapTime.formatSeconds(gap.toDouble())),
-                style = MaterialTheme.typography.headlineSmall.copy(fontFamily = MonoFontFamily),
+                style = MaterialTheme.typography.titleLarge.copy(fontFamily = MonoFontFamily),
                 color = MaterialTheme.kartColors.warning,
                 modifier = Modifier.testTag("improvement_gap_value"),
             )
+            androidx.compose.material3.IconButton(onClick = { explain = !explain }, modifier = Modifier.testTag("improvement_gap_info")) {
+                androidx.compose.material3.Icon(
+                    Icons.Outlined.Info,
+                    contentDescription = stringResource(R.string.analysis_gap_info),
+                    tint = MaterialTheme.kartColors.textMuted,
+                )
+            }
         }
-        Text(
-            text = stringResource(R.string.analysis_gap_explain, LapTime.format(average), LapTime.format(record)),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.kartColors.textMuted,
-            modifier = Modifier.padding(top = 4.dp),
-        )
+        if (explain) {
+            Text(
+                text = stringResource(R.string.analysis_gap_explain, LapTime.format(average), LapTime.format(record)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.kartColors.textMuted,
+                modifier = Modifier.padding(bottom = 4.dp).testTag("improvement_gap_explain"),
+            )
+        }
     }
 }
 

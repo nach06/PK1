@@ -378,6 +378,7 @@
     <string name="restore_io">No se pudo escribir la copia en el dispositivo. Revisa el espacio libre.</string>
 
     <!-- Análisis: hueco de mejora y consistencia -->
+    <string name="analysis_gap_info">Qué significa el hueco de mejora</string>
     <string name="analysis_gap_title">Hueco de mejora</string>
     <string name="analysis_gap_value">+%1$s s</string>
     <string name="analysis_gap_explain">Tu media limpia (%1$s) está por encima de tu mejor vuelta (%2$s). Es lo que ganarías si repitieras siempre tu mejor vuelta; no se miden sectores, así que no hay un «mejor teórico».</string>
