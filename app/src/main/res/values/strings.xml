@@ -82,6 +82,8 @@
     <string name="action_cancel_edit">Cancelar edición</string>
     <string name="time_invalid">Los segundos deben ser menores de 60</string>
     <string name="keypad_backspace">Borrar dígito</string>
+    <string name="action_share_summary">Compartir resumen (imagen)</string>
+    <string name="share_summary_title">Compartir resumen de la tanda</string>
     <string name="action_delete_session">Borrar tanda</string>
     <string name="action_open_keyboard">Abrir teclado</string>
     <string name="action_close_keyboard">Plegar teclado</string>

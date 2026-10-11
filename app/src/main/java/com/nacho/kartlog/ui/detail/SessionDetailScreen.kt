@@ -56,7 +56,9 @@ import com.nacho.kartlog.ui.theme.KartTextStyles
 import com.nacho.kartlog.ui.theme.kartColors
 import com.nacho.kartlog.ui.util.formatDateTime
 import com.nacho.kartlog.ui.util.labelRes
+import com.nacho.kartlog.ui.util.ShareCardData
 import com.nacho.kartlog.ui.util.shareLapsCsv
+import com.nacho.kartlog.ui.util.shareSessionImage
 import kotlinx.coroutines.launch
 
 @Composable
@@ -112,6 +114,31 @@ fun SessionDetailScreen(
                                         scope.launch {
                                             shareLapsCsv(context, detail.circuit.name, detail.session.dateTime, state.laps)
                                         }
+                                    }
+                                },
+                            ),
+                            MenuAction(
+                                label = stringResource(R.string.action_share_summary),
+                                enabled = state.laps.isNotEmpty() && detail != null,
+                                onClick = {
+                                    if (detail != null) {
+                                        val trace = (trackState as? TrackUiState.Ready)?.let { ready ->
+                                            val best = ready.matched?.minByOrNull { it.path.timeMs }?.path?.points ?: ready.geometry.all
+                                            com.nacho.kartlog.domain.gps.TrackAnalysis.decimate(best, 600).map { it.x to it.y }
+                                        }
+                                        val data = ShareCardData(
+                                            circuitName = detail.circuit.name,
+                                            dateText = formatDateTime(detail.session.dateTime),
+                                            subtitle = listOfNotNull(
+                                                context.getString(detail.session.type.labelRes()),
+                                                detail.session.kartNumber?.let { context.getString(R.string.format_kart, it) },
+                                            ).joinToString(" · "),
+                                            bestMs = state.bestLapMs,
+                                            cleanAverageMs = state.cleanAverageMs,
+                                            lapCount = state.laps.size,
+                                            trace = trace,
+                                        )
+                                        scope.launch { shareSessionImage(context, data) }
                                     }
                                 },
                             ),

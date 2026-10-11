@@ -10,6 +10,11 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onLast
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.geometry.Offset
@@ -193,5 +198,31 @@ class TrackCardFlowTest {
         compose.onNodeWithTag("track_sel_last").performClick()
         compose.waitUntil(5_000) { canvasState().startsWith("sel=LAST") }
         assertTrue(textOf("track_info").startsWith("V18  "))
+    }
+
+    @Test
+    fun sharingTheSummaryProducesAPngWithTheTraceAndNoRivalData() {
+        openDetail()
+        waitForTag("track_card")
+        compose.onAllNodesWithContentDescription("Más opciones").onLast().performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Compartir resumen (imagen)").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Compartir resumen (imagen)").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        // Se abre el selector de compartir con una imagen PNG por FileProvider.
+        val app = org.robolectric.Shadows.shadowOf(context as android.app.Application)
+        val deadline = System.currentTimeMillis() + 10_000
+        var chooser: android.content.Intent? = null
+        while (chooser == null && System.currentTimeMillis() < deadline) {
+            chooser = app.nextStartedActivity
+            if (chooser == null) Thread.sleep(50)
+        }
+        assertTrue("debe abrirse el selector de compartir", chooser != null)
+        val send = chooser!!.getParcelableExtra<android.content.Intent>(android.content.Intent.EXTRA_INTENT)!!
+        assertEquals("image/png", send.type)
+        val uri = send.getParcelableExtra<android.net.Uri>(android.content.Intent.EXTRA_STREAM)!!
+        val file = File(context.cacheDir, "exports/" + uri.lastPathSegment!!.substringAfterLast('/'))
+        assertTrue("el PNG existe: $file", file.exists())
+        val bitmap = android.graphics.BitmapFactory.decodeFile(file.path)
+        assertEquals(1080, bitmap.width)
+        assertEquals(1350, bitmap.height)
     }
 }
