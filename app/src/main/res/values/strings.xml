@@ -284,8 +284,12 @@
     <string name="track_last">Última</string>
     <string name="track_delta">Delta vs mejor</string>
     <string name="track_signal_lost">SIN SEÑAL GPS</string>
-    <string name="track_poor_accuracy">precisión baja</string>
+    <string name="gps_health_good">GPS BUENO</string>
+    <string name="gps_health_fair">GPS REGULAR</string>
+    <string name="gps_health_poor">GPS MALO</string>
     <string name="track_unreliable_lap">Alguna vuelta se midió con un hueco de señal GPS: su tiempo es menos fiable.</string>
+    <string name="track_lap_kept">Se guardará</string>
+    <string name="track_lap_discarded">No se guardará</string>
     <string name="track_hold_to_finish">Mantén pulsado para terminar</string>
     <string name="track_summary_laps">Vueltas</string>
     <string name="track_no_laps">No se cerró ninguna vuelta: no hay nada que guardar.</string>
@@ -326,4 +330,10 @@
     <string name="calibration_verify_again">Repetir verificación</string>
     <string name="calibration_verify_exit">Salir de la verificación</string>
     <string name="calibration_reversed_warning">Esta meta va en sentido contrario a la guardada: parece que el circuito se recorre al revés. Se sustituirá la anterior; las tandas ya guardadas no cambian.</string>
+
+    <!-- Recuperación de una tanda GPS interrumpida -->
+    <string name="draft_title">Tanda interrumpida</string>
+    <string name="draft_message">La app se cerró durante una tanda GPS (%1$s, %2$d posiciones). ¿Quieres recuperarla? Las vueltas se recalculan con las posiciones guardadas.</string>
+    <string name="draft_recover">Recuperar tanda interrumpida</string>
+    <string name="draft_discard">Descartar</string>
 </resources>

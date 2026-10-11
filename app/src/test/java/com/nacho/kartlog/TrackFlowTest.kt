@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -173,5 +174,47 @@ class TrackFlowTest {
         waitForTag("needs_finish")
         compose.onNodeWithText("MARCAR META").performClick()
         waitFor("Pasa por la línea de meta a velocidad normal y pulsa MARCAR.")
+    }
+
+    @Test
+    fun unreliableLapsCanBeDiscardedInTheSummary_andAreNotSaved() {
+        val container = AppContainer(context)
+        container.trackingController = FakeController()
+        val clean = TrackSimulator.simulate(oval, lapTimes, hz = 1.0)
+        val idx = clean.fixes.indexOfFirst { it.elapsedNs >= clean.crossingNs[3] }
+        val gappy = TrackSimulator.simulate(oval, lapTimes, hz = 1.0, dropFixes = setOf(idx - 2, idx - 1))
+        container.locationSource = ReplayLocationSource(gappy.fixes, speedFactor = 0.0)
+        runBlocking { container.circuitRepository.add("Óvalo simulado", 780).also { container.circuitRepository.setFinishLine(it, oval.finishLine) } }
+        compose.setContent { KartLogTheme { CompositionLocalProvider(LocalLiveClock provides false) { KartNavHost(container) } } }
+
+        waitFor("Tandas")
+        compose.onNodeWithTag("fab_main").performClick()
+        compose.onNodeWithTag("fab_track").performClick()
+        waitFor("Óvalo simulado", substring = true)
+        compose.onNodeWithText("EMPEZAR").performClick()
+        compose.waitUntil(10_000) { container.timingSession.state.value.laps.size == lapTimes.size }
+        waitForTag("dash_current")
+
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithTag("finish_hold").performTouchInput { down(center) }
+        compose.mainClock.advanceTimeBy(1_700)
+        compose.mainClock.autoAdvance = true
+        waitFor("Tanda terminada")
+        compose.onNodeWithText("GUARDAR TANDA").performTouchInput { up() }
+
+        // Las dos vueltas que comparten el cruce con hueco (V3 y V4) se ofrecen para mantener o descartar.
+        compose.onNodeWithTag("unreliable_laps").assertIsDisplayed()
+        compose.onNodeWithTag("summary_laps").assertTextEquals("6")
+        compose.onNodeWithTag("lap_toggle_3").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("No se guardará").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("summary_laps").assertTextEquals("5") // las cifras se recalculan sin ella
+        compose.onNodeWithText("GUARDAR TANDA").performClick()
+
+        compose.waitUntil(10_000) { compose.onAllNodesWithContentDescription("Cronometrada por GPS").fetchSemanticsNodes().isNotEmpty() }
+        val sessionId = runBlocking { container.sessionRepository.observeSummaries().first().single().session.id }
+        val saved = runBlocking { container.lapRepository.observeBySession(sessionId).first() }
+        assertEquals((1..5).toList(), saved.map { it.number })
+        val expected = lapTimes.filterIndexed { i, _ -> i != 2 }
+        saved.forEachIndexed { i, lap -> assertEquals("vuelta ${i + 1}", expected[i].toDouble(), lap.timeMs.toDouble(), 30.0) }
     }
 }

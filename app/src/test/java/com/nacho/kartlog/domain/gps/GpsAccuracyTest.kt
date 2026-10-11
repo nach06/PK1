@@ -48,4 +48,15 @@ class GpsAccuracyTest {
         assertNull(r.meanAbsErrorMs)
         assertNull(r.maxAbsErrorMs)
     }
+
+    @Test
+    fun gpsHealthLevels_followTheAccuracyThresholds() {
+        assertEquals(GpsHealth.GOOD, GpsHealth.of(3f))
+        assertEquals(GpsHealth.GOOD, GpsHealth.of(8f))
+        assertEquals(GpsHealth.FAIR, GpsHealth.of(8.1f))
+        assertEquals(GpsHealth.FAIR, GpsHealth.of(15f))
+        assertEquals(GpsHealth.POOR, GpsHealth.of(15.1f))
+        assertEquals(GpsHealth.POOR, GpsHealth.of(3f, signalLost = true))
+        assertNull(GpsHealth.of(null))
+    }
 }

@@ -3,6 +3,7 @@ package com.nacho.kartlog.ui.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nacho.kartlog.domain.analytics.Analytics
+import com.nacho.kartlog.domain.gps.GpsRecording
 import com.nacho.kartlog.domain.gps.GpsSessionSaver
 import com.nacho.kartlog.domain.gps.GpsSessionSetup
 import com.nacho.kartlog.domain.gps.LocationSource
@@ -23,13 +24,20 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** Resumen de una tanda parada. */
+/** Una vuelta de la tanda parada, con su fiabilidad y si se conserva al guardar. */
+data class SummaryLap(val number: Int, val timeMs: Long, val reliable: Boolean, val kept: Boolean)
+
+/** Resumen de una tanda parada. Las cifras se calculan solo con las vueltas que se conservan. */
 data class DashboardSummary(
-    val lapCount: Int,
-    val bestMs: Long?,
-    val cleanAverageMs: Long?,
-    val hasUnreliableLap: Boolean,
-)
+    val laps: List<SummaryLap>,
+) {
+    private val keptTimes get() = laps.filter { it.kept }.map { it.timeMs }
+    val lapCount: Int get() = keptTimes.size
+    val bestMs: Long? get() = keptTimes.minOrNull()
+    val cleanAverageMs: Long? get() = Analytics.cleanAverageMs(keptTimes)
+    val unreliableLaps: List<SummaryLap> get() = laps.filter { !it.reliable }
+    val hasUnreliableLap: Boolean get() = laps.any { !it.reliable }
+}
 
 data class DashboardUiState(
     val circuits: List<Circuit> = emptyList(),
@@ -78,6 +86,8 @@ class DashboardViewModel(
         val saving: Boolean = false,
         val nothingToSave: Boolean = false,
         val summary: DashboardSummary? = null,
+        /** Vueltas poco fiables que el usuario ha decidido descartar al guardar (nº de vuelta de la grabación). */
+        val discardedLaps: Set<Int> = emptySet(),
     )
 
     private val form = MutableStateFlow(Form())
@@ -92,7 +102,7 @@ class DashboardViewModel(
             circuitId = activeCircuit ?: f.circuitId ?: circuits.firstOrNull { it.finishLine != null }?.id,
             kartNumber = f.kartNumber, ballastKg = f.ballastKg, ambientTempC = f.ambientTempC, trackTempC = f.trackTempC,
             condition = f.condition, type = f.type, showCircuitPicker = f.showCircuitPicker, timing = timing,
-            summary = if (timing.phase == TimingPhase.STOPPED) f.summary ?: summaryOf(timing) else null,
+            summary = if (timing.phase == TimingPhase.STOPPED) summaryOf(timing, f.discardedLaps) else null,
             saving = f.saving, nothingToSave = f.nothingToSave,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardUiState())
@@ -141,12 +151,24 @@ class DashboardViewModel(
     fun finish() {
         timingSession.stop()
         stopTracking()
-        form.update { it.copy(summary = summaryOf(timingSession.state.value)) }
+        form.update { it.copy(discardedLaps = emptySet()) }
     }
 
-    /** Guarda la tanda como sesión normal (vueltas `GPS`) y avisa para abrir su Detalle. */
+    /** Alterna entre mantener y descartar una vuelta poco fiable del resumen. */
+    fun toggleLap(number: Int) = form.update {
+        it.copy(discardedLaps = if (number in it.discardedLaps) it.discardedLaps - number else it.discardedLaps + number)
+    }
+
+    /** Guarda la tanda como sesión normal (vueltas `GPS`) y avisa para abrir su Detalle. Las descartadas no se guardan. */
     fun save() {
-        val recording = timingSession.recording() ?: return
+        val full = timingSession.recording() ?: return
+        val discarded = form.value.discardedLaps
+        val recording = GpsRecording(
+            setup = full.setup,
+            laps = full.laps.filterIndexed { i, _ -> (i + 1) !in discarded },
+            fixes = full.fixes,
+            stoppedAtMs = full.stoppedAtMs,
+        )
         if (form.value.saving) return
         form.update { it.copy(saving = true) }
         viewModelScope.launch {
@@ -168,11 +190,10 @@ class DashboardViewModel(
         form.update { it.copy(summary = null, nothingToSave = false) }
     }
 
-    private fun summaryOf(timing: TimingState) = DashboardSummary(
-        lapCount = timing.laps.size,
-        bestMs = timing.bestLapMs,
-        cleanAverageMs = Analytics.cleanAverageMs(timing.laps),
-        hasUnreliableLap = timing.hasUnreliableLap,
+    private fun summaryOf(timing: TimingState, discarded: Set<Int>) = DashboardSummary(
+        laps = timing.laps.mapIndexed { i, ms ->
+            SummaryLap(number = i + 1, timeMs = ms, reliable = timing.lapReliable.getOrElse(i) { true }, kept = (i + 1) !in discarded)
+        },
     )
 
     private companion object {

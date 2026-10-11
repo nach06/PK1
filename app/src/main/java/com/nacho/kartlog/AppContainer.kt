@@ -6,10 +6,12 @@ import java.io.File
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.nacho.kartlog.data.gps.FileDraftStore
 import com.nacho.kartlog.data.gps.FileTrackStore
 import com.nacho.kartlog.data.gps.FusedLocationSource
 import com.nacho.kartlog.data.tracking.ServiceTrackingController
 import com.nacho.kartlog.data.tracking.TrackingController
+import com.nacho.kartlog.domain.gps.DraftStore
 import com.nacho.kartlog.domain.gps.GpsSessionSaver
 import com.nacho.kartlog.domain.gps.LocationSource
 import com.nacho.kartlog.domain.gps.TimingSession
@@ -96,7 +98,9 @@ class AppContainer(context: Context) {
 
     /** Alcance de la app: el cronometraje sigue aunque se cierre la pantalla. */
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    val timingSession = TimingSession(appScope, wallClockMs = { wallClockMs() })
+    /** Borrador de la tanda en curso (para recuperarla si el sistema mata la app). */
+    val draftStore: DraftStore = FileDraftStore(File(context.filesDir, "tracks"))
+    val timingSession = TimingSession(appScope, wallClockMs = { wallClockMs() }, draftStore = draftStore)
     val gpsSessionSaver = GpsSessionSaver(sessionRepository, lapRepository, trackStore)
 
     /** Reloj de pared (epoch ms); los tests lo sustituyen para fijar la fecha de las tandas GPS. */

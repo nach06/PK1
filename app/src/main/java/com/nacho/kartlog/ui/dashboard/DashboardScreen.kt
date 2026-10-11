@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -47,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nacho.kartlog.R
+import com.nacho.kartlog.domain.gps.GpsHealth
 import com.nacho.kartlog.domain.gps.GpsSessionSetup
 import com.nacho.kartlog.domain.gps.TimingEvent
 import com.nacho.kartlog.domain.gps.TimingPhase
@@ -79,7 +82,6 @@ val LocalLiveClock = compositionLocalOf { true }
 
 private const val FINISH_HOLD_MS = 1_500
 private const val SIGNAL_LOST_MS = 3_000L
-private const val POOR_ACCURACY_M = 10f
 
 @Composable
 fun DashboardScreen(
@@ -112,6 +114,7 @@ fun DashboardScreen(
                 state = state,
                 onSave = viewModel::save,
                 onDiscard = viewModel::discard,
+                onToggleLap = viewModel::toggleLap,
                 modifier = Modifier.padding(padding),
             )
         }
@@ -357,20 +360,35 @@ private fun DashValue(label: String, value: String, color: Color, modifier: Modi
 @Composable
 private fun GpsIndicator(timing: TimingState, signalLost: Boolean) {
     val kart = MaterialTheme.kartColors
-    val acc = timing.accuracyM
-    val poor = acc != null && acc > POOR_ACCURACY_M
-    val color = when {
-        signalLost || poor -> kart.warning
-        acc == null -> kart.textMuted
-        else -> kart.telemetry
+    val health = GpsHealth.of(timing.accuracyM, signalLost)
+    val color = when (health) {
+        GpsHealth.GOOD -> kart.telemetry
+        GpsHealth.FAIR -> kart.warning
+        GpsHealth.POOR -> MaterialTheme.colorScheme.primary
+        null -> kart.textMuted
     }
-    val text = when {
-        signalLost -> stringResource(R.string.track_signal_lost)
-        acc == null -> stringResource(R.string.gps_waiting)
-        else -> stringResource(R.string.gps_status, String.format(Locale.ROOT, "%.0f", acc), timing.rateHz?.let { String.format(Locale.ROOT, "%.1f", it) } ?: "—") +
-            if (poor) "  ·  " + stringResource(R.string.track_poor_accuracy) else ""
+    val label = when (health) {
+        GpsHealth.GOOD -> stringResource(R.string.gps_health_good)
+        GpsHealth.FAIR -> stringResource(R.string.gps_health_fair)
+        GpsHealth.POOR -> stringResource(R.string.gps_health_poor)
+        null -> stringResource(R.string.gps_waiting)
     }
-    Text(text, style = MaterialTheme.typography.titleSmall, color = color, modifier = Modifier.testTag("dash_gps"))
+    val detail = if (signalLost) {
+        stringResource(R.string.track_signal_lost)
+    } else {
+        timing.accuracyM?.let {
+            stringResource(R.string.gps_status, String.format(Locale.ROOT, "%.0f", it), timing.rateHz?.let { hz -> String.format(Locale.ROOT, "%.1f", hz) } ?: "—")
+        }
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.testTag("dash_gps")) {
+        Box(Modifier.size(14.dp).clip(CircleShape).background(color).testTag("dash_gps_dot"))
+        Text(
+            text = "  $label" + (detail?.let { "  ·  $it" } ?: ""),
+            style = MaterialTheme.typography.titleSmall,
+            color = color,
+            modifier = Modifier.testTag("dash_gps_text"),
+        )
+    }
 }
 
 /**
@@ -425,7 +443,7 @@ internal fun FinishHoldButton(onConfirmed: () -> Unit, modifier: Modifier = Modi
 // ---------------------------------------------------------------- Resumen
 
 @Composable
-private fun SummaryContent(state: DashboardUiState, onSave: () -> Unit, onDiscard: () -> Unit, modifier: Modifier = Modifier) {
+private fun SummaryContent(state: DashboardUiState, onSave: () -> Unit, onDiscard: () -> Unit, onToggleLap: (Int) -> Unit, modifier: Modifier = Modifier) {
     val kart = MaterialTheme.kartColors
     val summary = state.summary
     Column(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -436,6 +454,29 @@ private fun SummaryContent(state: DashboardUiState, onSave: () -> Unit, onDiscar
         }
         if (summary?.hasUnreliableLap == true) {
             Text(stringResource(R.string.track_unreliable_lap), style = MaterialTheme.typography.bodyLarge, color = kart.warning)
+            KartCard(Modifier.fillMaxWidth().testTag("unreliable_laps")) {
+                summary.unreliableLaps.forEach { lap ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                stringResource(R.string.lap_short, lap.number) + "  " + LapTime.format(lap.timeMs),
+                                style = MaterialTheme.typography.titleMedium.copy(fontFamily = MonoFontFamily),
+                                color = if (lap.kept) MaterialTheme.colorScheme.onSurface else kart.textMuted,
+                            )
+                            Text(
+                                stringResource(if (lap.kept) R.string.track_lap_kept else R.string.track_lap_discarded),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (lap.kept) kart.warning else kart.textMuted,
+                            )
+                        }
+                        SecondaryButton(
+                            text = stringResource(if (lap.kept) R.string.import_lap_discard else R.string.import_lap_restore).uppercase(),
+                            onClick = { onToggleLap(lap.number) },
+                            modifier = Modifier.testTag("lap_toggle_${lap.number}"),
+                        )
+                    }
+                }
+            }
         }
         if ((summary?.lapCount ?: 0) == 0 || state.nothingToSave) {
             Text(stringResource(R.string.track_no_laps), style = MaterialTheme.typography.bodyLarge, color = kart.warning)
@@ -452,9 +493,10 @@ private fun SummaryContent(state: DashboardUiState, onSave: () -> Unit, onDiscar
 
 @Composable
 private fun SummaryRow(label: String, value: String, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.kartColors.textMuted, modifier = Modifier.weight(1f))
-        Text(value, style = MaterialTheme.typography.headlineSmall.copy(fontFamily = MonoFontFamily))
+        // La etiqueta de prueba va en el valor (no en la fila) para poder comprobar su texto.
+        Text(value, style = MaterialTheme.typography.headlineSmall.copy(fontFamily = MonoFontFamily), modifier = modifier)
     }
 }
 

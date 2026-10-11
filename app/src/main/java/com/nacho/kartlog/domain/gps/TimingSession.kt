@@ -5,6 +5,8 @@ import com.nacho.kartlog.domain.model.SessionType
 import com.nacho.kartlog.domain.model.TrackCondition
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,12 +56,17 @@ data class TimingState(
     val rateHz: Double? = null,
     val speedMps: Float? = null,
     val playbackSpeed: Double = 1.0,
-    /** Alguna vuelta se midió con un hueco de fixes grande: su tiempo es menos fiable. */
-    val hasUnreliableLap: Boolean = false,
+    /** Fiabilidad de cada vuelta cerrada (misma posición que [laps]): `false` si un hueco de fixes rodeó alguno de sus dos cruces. */
+    val lapReliable: List<Boolean> = emptyList(),
+    /** Fiabilidad del último cruce de meta (inicio de la vuelta en curso). */
+    val lastCrossingReliable: Boolean = true,
     val error: String? = null,
     /** Hora (epoch ms) a la que se paró la tanda; `null` mientras sigue en marcha. */
     val stoppedAtMs: Long? = null,
 ) {
+    /** Alguna vuelta se midió con un hueco de fixes grande: su tiempo es menos fiable. */
+    val hasUnreliableLap: Boolean get() = lapReliable.any { !it }
+
     val running: Boolean get() = phase == TimingPhase.RUNNING
     val started: Boolean get() = currentLapStartNs != null
     val lastLapMs: Long? get() = laps.lastOrNull()
@@ -107,6 +114,8 @@ class TimingSession(
     private val scope: CoroutineScope,
     private val clockNs: () -> Long = System::nanoTime,
     private val wallClockMs: () -> Long = System::currentTimeMillis,
+    private val draftStore: DraftStore? = null,
+    private val draftIntervalMs: Long = DRAFT_INTERVAL_MS,
 ) {
     private val _state = MutableStateFlow(TimingState())
     val state: StateFlow<TimingState> = _state.asStateFlow()
@@ -115,6 +124,11 @@ class TimingSession(
     val events: SharedFlow<TimingEvent> = _events.asSharedFlow()
 
     private var job: Job? = null
+    private var draftJob: Job? = null
+    private var draftOps: Channel<suspend () -> Unit>? = null
+    private val pendingForDraft = ArrayList<GpsFix>()
+    private var lastDraftFlushNs = 0L
+    private var restoring = false
     private var detector: GateDetector? = null
     private val fixes = ArrayList<GpsFix>()
     private val recentArrivals = ArrayDeque<Long>()
@@ -126,6 +140,7 @@ class TimingSession(
         recentArrivals.clear()
         detector = GateDetector(setup.finish, config)
         _state.value = TimingState(phase = TimingPhase.RUNNING, setup = setup, playbackSpeed = source.playbackSpeed)
+        startDraft(setup)
         job = scope.launch {
             try {
                 source.fixes().collect(::onFix)
@@ -140,9 +155,54 @@ class TimingSession(
         return true
     }
 
+    /** Las operaciones sobre el borrador salen por un canal y las ejecuta una sola corrutina: siempre en orden. */
+    private fun startDraft(setup: GpsSessionSetup) {
+        val store = draftStore ?: return
+        draftJob?.cancel()
+        pendingForDraft.clear()
+        lastDraftFlushNs = clockNs()
+        val ops = Channel<suspend () -> Unit>(Channel.UNLIMITED)
+        draftOps = ops
+        ops.trySend { store.begin(setup) }
+        draftJob = scope.launch(Dispatchers.IO) {
+            for (op in ops) runCatching { op() } // un fallo de disco no debe parar el cronometraje
+        }
+    }
+
+    private fun flushDraft() {
+        val ops = draftOps ?: return
+        val store = draftStore ?: return
+        if (pendingForDraft.isEmpty()) return
+        val batch = pendingForDraft.toList()
+        pendingForDraft.clear()
+        ops.trySend { store.append(batch) }
+    }
+
+    /** Recupera una tanda interrumpida: recalcula las vueltas con las posiciones y la deja «parada» para guardarla o descartarla. */
+    fun restore(draft: SessionDraft): Boolean {
+        if (_state.value.phase != TimingPhase.IDLE) return false
+        fixes.clear()
+        recentArrivals.clear()
+        detector = GateDetector(draft.setup.finish)
+        _state.value = TimingState(phase = TimingPhase.RUNNING, setup = draft.setup)
+        restoring = true
+        draft.fixes.forEach(::onFix)
+        restoring = false
+        job = null
+        _state.update { it.copy(phase = TimingPhase.STOPPED, stoppedAtMs = draft.savedAtMs) }
+        return true
+    }
+
     private fun onFix(fix: GpsFix) {
         val arrival = clockNs()
         fixes += fix
+        if (!restoring && draftOps != null) {
+            pendingForDraft += fix
+            if (arrival - lastDraftFlushNs >= draftIntervalMs * 1_000_000L) {
+                lastDraftFlushNs = arrival
+                flushDraft()
+            }
+        }
         recentArrivals.addLast(arrival)
         while (recentArrivals.isNotEmpty() && arrival - recentArrivals.first() > RATE_WINDOW_NS) recentArrivals.removeFirst()
         val span = (arrival - recentArrivals.first()) / 1e9 * _state.value.playbackSpeed
@@ -158,11 +218,12 @@ class TimingSession(
                 rateHz = rate,
             )
             if (event != null) {
-                next = next.copy(currentLapStartNs = event.crossing.elapsedNs)
+                next = next.copy(currentLapStartNs = event.crossing.elapsedNs, lastCrossingReliable = event.crossing.reliable)
                 if (event.lapTimeMs != null) {
                     next = next.copy(
                         laps = s.laps + event.lapTimeMs,
-                        hasUnreliableLap = s.hasUnreliableLap || !event.crossing.reliable,
+                        // Una vuelta es fiable si lo son sus dos cruces (el que la abre y el que la cierra).
+                        lapReliable = s.lapReliable + (s.lastCrossingReliable && event.crossing.reliable),
                     )
                 }
             }
@@ -190,6 +251,7 @@ class TimingSession(
         if (_state.value.phase != TimingPhase.RUNNING) return
         job?.cancel()
         job = null
+        flushDraft() // lo que quede pendiente, para que el borrador esté completo
         _state.update { it.copy(phase = TimingPhase.STOPPED, stoppedAtMs = wallClockMs()) }
     }
 
@@ -205,13 +267,29 @@ class TimingSession(
     fun discard() {
         job?.cancel()
         job = null
+        pendingForDraft.clear()
+        draftStore?.let { store ->
+            val ops = draftOps
+            if (ops != null) {
+                // El borrador se borra en orden, tras lo ya encolado; luego se cierra el canal.
+                ops.trySend { store.clear() }
+                ops.close()
+            } else {
+                // Tanda recuperada (sin canal abierto): se borra directamente.
+                scope.launch(Dispatchers.IO) { runCatching { store.clear() } }
+            }
+            draftOps = null
+        }
         detector = null
         fixes.clear()
         recentArrivals.clear()
         _state.value = TimingState()
     }
 
-    private companion object {
-        const val RATE_WINDOW_NS = 5_000_000_000L
+    companion object {
+        private const val RATE_WINDOW_NS = 5_000_000_000L
+
+        /** Cada cuánto se vuelcan las posiciones a disco. */
+        const val DRAFT_INTERVAL_MS = 30_000L
     }
 }

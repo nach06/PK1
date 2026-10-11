@@ -1,6 +1,16 @@
 package com.nacho.kartlog.ui.navigation
 
 import androidx.annotation.StringRes
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.nacho.kartlog.domain.gps.SessionDraft
+import com.nacho.kartlog.domain.gps.TimingPhase
+import com.nacho.kartlog.ui.util.formatDateTime
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
@@ -22,6 +32,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -101,6 +112,52 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
         if (shared != null && navController.currentDestination?.route != Routes.IMPORT) {
             navController.navigate(Routes.IMPORT) { launchSingleTop = true }
         }
+    }
+
+    // Tanda GPS interrumpida (la app murió a mitad de una tanda): se ofrece recuperarla o descartarla.
+    var pendingDraft by remember { mutableStateOf<SessionDraft?>(null) }
+    LaunchedEffect(Unit) {
+        if (container.timingSession.state.value.phase == TimingPhase.IDLE) {
+            val draft = container.draftStore.load()
+            // Sin circuito (borrado) no se podría guardar: se tira.
+            if (draft != null && container.circuitRepository.getById(draft.setup.circuitId) == null) {
+                container.draftStore.clear()
+            } else {
+                pendingDraft = draft
+            }
+        }
+    }
+    pendingDraft?.let { draft ->
+        AlertDialog(
+            onDismissRequest = {},
+            containerColor = MaterialTheme.kartColors.card,
+            title = { Text(stringResource(R.string.draft_title), style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Text(
+                    stringResource(R.string.draft_message, formatDateTime(draft.setup.startedAtMs), draft.fixes.size),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        container.timingSession.restore(draft)
+                        pendingDraft = null
+                        navController.navigate(Routes.TRACK) { launchSingleTop = true }
+                    },
+                    modifier = Modifier.heightIn(min = 56.dp),
+                ) { Text(stringResource(R.string.draft_recover).uppercase(), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary) }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        pendingDraft = null
+                        container.appScope.launch { container.draftStore.clear() }
+                    },
+                    modifier = Modifier.heightIn(min = 56.dp),
+                ) { Text(stringResource(R.string.draft_discard).uppercase(), style = MaterialTheme.typography.titleSmall) }
+            },
+        )
     }
 
     Scaffold(
