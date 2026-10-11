@@ -27,9 +27,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Detalle en una pantalla baja (360×560 dp) con 10 vueltas: reglas de F1 (gráfica/teclado). */
+/** Detalle en una pantalla baja (360×640 dp) con 10 vueltas: reglas de F1 (gráfica/teclado). */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35], qualifiers = "w360dp-h560dp-xxhdpi")
+@Config(sdk = [35], qualifiers = "w360dp-h640dp-xxhdpi")
 class DetailLayoutTest {
     @get:Rule
     val compose = createComposeRule()
@@ -77,6 +77,10 @@ class DetailLayoutTest {
         compose.onNodeWithText("GRÁFICA DE VUELTAS").performClick()
         compose.onNodeWithTag("lap_chart").assertIsDisplayed()
         compose.onNodeWithText("ABRIR TECLADO").assertIsDisplayed()
+        // Leyenda fuera del gráfico (F5): media limpia sin la salida de boxes (F3), mejor y fuera de escala.
+        compose.onNodeWithText("Media limpia 1:13.082").assertIsDisplayed()
+        compose.onNodeWithText("Mejor").assertIsDisplayed()
+        compose.onNodeWithText("Fuera de escala").assertIsDisplayed()
 
         // Abrir el teclado: la gráfica se pliega y el teclado cabe entero, con GUARDAR VUELTA a la vista.
         compose.onNodeWithText("ABRIR TECLADO").performClick()

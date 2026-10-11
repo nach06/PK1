@@ -169,6 +169,7 @@ private fun EvolutionSection(stats: CircuitStats) {
             timesMs = evolution.map { it.bestMs },
             xLabel = { value -> evolution.getOrNull(value.toInt())?.let { formatShortDate(it.dateTime) } ?: "" },
             highlightIndex = evolution.indexOfFirst { it.bestMs == best },
+            highlightLabel = stringResource(R.string.stat_record),
             xSpacing = ((evolution.size + 4) / 5).coerceAtLeast(1),
         )
     }
