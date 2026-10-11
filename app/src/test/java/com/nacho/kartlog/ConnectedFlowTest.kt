@@ -34,7 +34,7 @@ import org.robolectric.annotation.Config
  * quedar desconectado de su pantalla, este test falla.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35], qualifiers = "w360dp-h640dp-xxhdpi")
+@Config(sdk = [35], qualifiers = "w360dp-h720dp-xxhdpi")
 class ConnectedFlowTest {
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
@@ -98,6 +98,11 @@ class ConnectedFlowTest {
         compose.waitForIdle()
         check(compose.onAllNodesWithTag("lap_chart").fetchSemanticsNodes().isEmpty()) { "la gráfica debe plegarse" }
         compose.onNodeWithText("V10 1:12.858 · V9 1:12.980").assertIsDisplayed()
+        // P1: con el teclado abierto la lista conserva sitio (la última vuelta se ve) y termina antes de la franja.
+        val lastRow = compose.onNodeWithText("V10").fetchSemanticsNode().boundsInRoot
+        val strip = compose.onNodeWithText("V10 1:12.858 · V9 1:12.980").fetchSemanticsNode().boundsInRoot
+        check(lastRow.height > 0f) { "la lista de vueltas no puede quedarse sin altura con el teclado abierto" }
+        check(lastRow.bottom <= strip.top) { "la lista no debe pasar por debajo de la franja de las 2 últimas vueltas" }
         listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0", "⌫", "GUARDAR VUELTA")
             .forEach { compose.onNodeWithText(it).assertIsDisplayed() }
 

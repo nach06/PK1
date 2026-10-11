@@ -120,25 +120,26 @@ fun SessionDetailScreen(
         if (detail == null) {
             Box(Modifier.fillMaxSize().padding(padding))
         } else {
-            Column(
+            DetailBodyLayout(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-            ) {
+                header = {
                 HeaderCard(
                     detail = detail,
                     state = state,
                     chartExpanded = chartExpanded,
+                    compact = keypadExpanded,
                     onToggleChart = {
                         chartExpanded = !chartExpanded
                         if (chartExpanded) keypadExpanded = false
                     },
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
                 )
+                },
+                list = {
                 LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
+                    modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                 ) {
                     if (state.laps.isEmpty()) {
@@ -167,6 +168,8 @@ fun SessionDetailScreen(
                         }
                     }
                 }
+                },
+                panel = {
                 val editing = state.editingLap
                 LapEntryPanel(
                     expanded = keypadExpanded,
@@ -193,7 +196,8 @@ fun SessionDetailScreen(
                     },
                     onCancelEdit = viewModel::cancelEditing,
                 )
-            }
+                },
+            )
         }
     }
 
@@ -223,6 +227,8 @@ private fun HeaderCard(
     chartExpanded: Boolean,
     onToggleChart: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Con el teclado abierto se oculta la información de la tanda para dejar sitio a la lista. */
+    compact: Boolean = false,
 ) {
     val session = detail.session
     val kart = MaterialTheme.kartColors
@@ -240,37 +246,39 @@ private fun HeaderCard(
     }.joinToString(" · ")
 
     KartCard(modifier = modifier.fillMaxWidth(), contentPadding = PaddingValues(12.dp)) {
-        Text(
-            text = line1,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (line2.isNotEmpty()) {
-                Text(text = line2, style = MaterialTheme.typography.bodyMedium, color = kart.textMuted)
-            }
+        if (!compact) {
             Text(
-                text = stringResource(session.trackCondition.labelRes()),
+                text = line1,
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (session.trackCondition == TrackCondition.DRY) kart.textMuted else kart.warning,
-            )
-        }
-        if (session.notes.isNotBlank()) {
-            Text(
-                text = session.notes,
-                style = MaterialTheme.typography.bodyMedium,
-                color = kart.textMuted,
-                maxLines = 1,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (line2.isNotEmpty()) {
+                    Text(text = line2, style = MaterialTheme.typography.bodyMedium, color = kart.textMuted)
+                }
+                Text(
+                    text = stringResource(session.trackCondition.labelRes()),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (session.trackCondition == TrackCondition.DRY) kart.textMuted else kart.warning,
+                )
+            }
+            if (session.notes.isNotBlank()) {
+                Text(
+                    text = session.notes,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = kart.textMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         StatsRow(
             bestLapMs = state.bestLapMs,
             cleanAverageMs = state.cleanAverageMs,
             consistencyMs = state.consistencyMs,
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = if (compact) 0.dp else 8.dp),
         )
         // Gráfica de vueltas: plegable para no quitar sitio a la lista (necesita al menos 2 vueltas).
         if (state.laps.size >= 2) {
