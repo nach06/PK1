@@ -106,6 +106,9 @@ dependencies {
     // OCR en el dispositivo (modelo latino incluido en el APK: funciona sin conexión).
     implementation(libs.mlkit.text.recognition)
 
+    // Posición por GPS (FusedLocationProviderClient) para cronometrar vueltas.
+    implementation(libs.play.services.location)
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(platform(libs.androidx.compose.bom))
