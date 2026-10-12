@@ -145,7 +145,7 @@ private fun MetaSummary(state: ImportUiState, onEdit: () -> Unit) {
                 text = line,
                 style = MaterialTheme.typography.titleSmall,
                 color = if (circuit == null && state.destination == ImportDestination.NEW_SESSION) kart.warning else MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).testTag("meta_line"),
             )
@@ -463,18 +463,34 @@ private fun CheckChip(label: String, value: String, doc: String?, state: CheckSt
         CheckState.WARN -> "⚠" to kart.warning
         CheckState.NOT_AVAILABLE -> "–" to kart.textMuted
     }
+    // Con la letra grande no caben etiqueta y valor en una línea: etiqueta arriba y valor debajo (con la letra normal, una sola línea).
+    val largeFont = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.15f
     KartCard(modifier.semantics { stateDescription = state.name }, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)) {
-        // Una línea: ✓ + etiqueta + valor. Solo si no cuadra se añade el valor del documento debajo.
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(symbol, style = MaterialTheme.typography.titleSmall, color = color)
-            Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = kart.textMuted, maxLines = 1)
+        if (largeFont) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(symbol, style = MaterialTheme.typography.titleSmall, color = color)
+                Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = kart.textMuted, maxLines = 1)
+            }
             AutoSizeText(
                 text = value,
                 style = MaterialTheme.typography.bodyLarge.copy(fontFamily = MonoFontFamily, fontSize = 15.sp),
                 color = MaterialTheme.colorScheme.onSurface,
-                minSize = 10.sp,
-                modifier = Modifier.weight(1f),
+                minSize = 9.sp,
+                modifier = Modifier.fillMaxWidth(),
             )
+        } else {
+            // Una línea: ✓ + etiqueta + valor. Solo si no cuadra se añade el valor del documento debajo.
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(symbol, style = MaterialTheme.typography.titleSmall, color = color)
+                Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = kart.textMuted, maxLines = 1)
+                AutoSizeText(
+                    text = value,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontFamily = MonoFontFamily, fontSize = 15.sp),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    minSize = 10.sp,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
         if (state == CheckState.WARN && doc != null) {
             Text(stringResource(R.string.import_check_doc_value, doc), style = MaterialTheme.typography.labelMedium, color = color, maxLines = 1)
