@@ -76,6 +76,7 @@ object Routes {
     const val TRACK = "sessions/track"
     const val CIRCUIT_ID = "circuitId"
     const val FINISH = "circuits/{$CIRCUIT_ID}/finish"
+    const val FIELD_CAL = "settings/fieldcal"
 
     fun finish(circuitId: Long) = "circuits/$circuitId/finish"
     const val SESSION_ID = "sessionId"
@@ -228,6 +229,14 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
                 SettingsScreen(
                     viewModel = viewModel(factory = container.settingsViewModelFactory),
                     onOpenDashboard = { navController.navigate(Routes.TRACK) { launchSingleTop = true } },
+                    onOpenFieldCalibration = { navController.navigate(Routes.FIELD_CAL) { launchSingleTop = true } },
+                )
+            }
+            composable(Routes.FIELD_CAL) {
+                com.nacho.kartlog.ui.fieldcal.FieldCalibrationScreen(
+                    viewModel = viewModel(factory = container.fieldCalibrationViewModelFactory),
+                    onBack = { navController.popBackStack() },
+                    debugShortcuts = container.debugTools != null,
                 )
             }
             composable(Routes.NEW) {

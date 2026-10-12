@@ -175,6 +175,10 @@ class AppContainer(context: Context) {
         }
     }
 
+    val fieldCalibrationViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
+        initializer { com.nacho.kartlog.ui.fieldcal.FieldCalibrationViewModel(circuitRepository, locationSource, userSettings) }
+    }
+
     fun calibrationViewModelFactory(circuitId: Long): ViewModelProvider.Factory = viewModelFactory {
         initializer { CalibrationViewModel(circuitId, circuitRepository, locationSource) }
     }
