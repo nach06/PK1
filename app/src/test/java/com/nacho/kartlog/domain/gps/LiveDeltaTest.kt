@@ -151,4 +151,34 @@ class LiveDeltaTest {
         }
         assertTrue("delta suavizado tras 300 ms: $last", last >= 900)
     }
+
+    /**
+     * C2: error esperado del delta intermedio con GPS a 1 Hz y ruido realista (1,5 m lateral, 0,8 m a lo largo). La verdad es
+     * `p · (T_vuelta − T_ref)` con p = progreso de la vuelta (velocidad constante en el simulador).
+     */
+    @Test
+    fun expectedErrorWithNoisyOneHertzGps_isAFewTenthsOfASecondInTheMiddleOfTheLap() = runTest {
+        val h = Harness(setup, CoroutineScope(UnconfinedTestDispatcher(testScheduler)))
+        val lapTimes = listOf(58_000L, 57_000L, 58_000L)
+        val sim = TrackSimulator.simulate(oval, lapTimes, hz = 1.0, lateralNoiseM = 1.5, alongNoiseM = 0.8)
+        val errors = ArrayList<Double>()
+        for (fix in sim.fixes) {
+            h.feed(fix)
+            val s = h.session.state.value
+            val start = s.currentLapStartNs
+            if (s.laps.size == 2 && start != null && s.reference != null) {
+                val progress = (fix.elapsedNs - start) / 1e6 / lapTimes[2]
+                for (offset in listOf(0L, 500L)) {
+                    val atMs = (fix.elapsedNs - start) / 1e6 + offset
+                    val p = atMs / lapTimes[2]
+                    if (p in 0.1..0.9) h.delta(offset)?.let { errors += it - p * (lapTimes[2] - lapTimes[1]) }
+                }
+                check(progress >= 0)
+            }
+        }
+        val rms = kotlin.math.sqrt(errors.map { it * it }.average())
+        println("DELTA_ERROR_RMS_MS=" + rms + " MAX_MS=" + errors.maxOf { kotlin.math.abs(it) } + " N=" + errors.size)
+        assertTrue("RMS del error ${rms.toInt()} ms (esperado < 250 ms)", rms < 250.0)
+        assertTrue("máximo ${errors.maxOf { kotlin.math.abs(it) }} ms (esperado < 600 ms)", errors.maxOf { kotlin.math.abs(it) } < 600.0)
+    }
 }
