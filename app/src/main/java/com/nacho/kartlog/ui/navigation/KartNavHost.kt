@@ -250,6 +250,7 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
                     viewModel = viewModel(key = "finish-$circuitId", factory = container.calibrationViewModelFactory(circuitId)),
                     onBack = { navController.popBackStack() },
                     onSaved = { navController.popBackStack() },
+                    debugShortcuts = container.debugTools != null,
                 )
             }
             composable(Routes.TRACK) {

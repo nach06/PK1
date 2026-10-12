@@ -4,7 +4,13 @@ import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -25,6 +31,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -69,6 +76,15 @@ class DebugShortcutsFlowTest {
 
     private fun waitForTag(tag: String) = compose.waitUntil(10_000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
 
+    /** Cada etiqueta está entera dentro de la ventana (sin tener que desplazar). */
+    private fun assertInsideScreen(vararg tags: String) {
+        val root = compose.onRoot().getUnclippedBoundsInRoot()
+        tags.forEach { tag ->
+            val b = compose.onNodeWithTag(tag).getUnclippedBoundsInRoot()
+            assertTrue("$tag fuera de pantalla: $b (ventana $root)", b.top >= 0.dp && b.bottom <= root.bottom)
+        }
+    }
+
     private fun container(): AppContainer = AppContainer(context).also {
         it.trackingController = object : TrackingController {
             override fun start() = Unit
@@ -90,5 +106,34 @@ class DebugShortcutsFlowTest {
         compose.onNodeWithTag("debug_finish").performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("Tanda terminada", substring = true, ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
         assertEquals(TimingPhase.STOPPED, container.timingSession.state.value.phase)
+    }
+
+    @Test
+    fun b2_marcarMetaSimulada_reachesAdjustAndVerifyWithoutDriving() {
+        org.robolectric.Shadows.shadowOf(context as android.app.Application).grantPermissions(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        val container = container()
+        container.locationSource = IdleSource()
+        val circuitId = runBlocking { container.circuitRepository.add("Zuera", 1_100) }
+        compose.setContent { KartLogTheme { KartNavHost(container) } }
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Tandas", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Circuitos").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Sin meta").fetchSemanticsNodes().isNotEmpty() }
+        compose.onAllNodesWithContentDescription("Más opciones").onFirst().performClick()
+        compose.onNodeWithText("Marcar meta").performClick()
+        waitForTag("debug_mark_sim")
+
+        // Un toque: pase simulado + marcado. Salen el rumbo, el ajuste y GUARDAR.
+        compose.onNodeWithTag("debug_mark_sim").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Rumbo de paso", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
+        // Sin desplazarse: el ajuste (desplazar ±, ancho) y GUARDAR están dentro de la pantalla.
+        assertInsideScreen("shift_stepper", "width_stepper", "calibration_save")
+        compose.onNodeWithText("GUARDAR").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Meta guardada", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
+        val finish = runBlocking { container.circuitRepository.getById(circuitId)!!.finishLine }
+        assertNotNull("la meta simulada queda guardada", finish)
+
+        // Un toque más: verificación simulada con la meta guardada → resultado con tiempo y rumbo.
+        compose.onNodeWithTag("debug_verify_sim").performClick()
+        waitForTag("verification_values")
     }
 }

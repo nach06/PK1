@@ -1,6 +1,7 @@
 package com.nacho.kartlog.ui.calibration
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -64,10 +65,13 @@ internal class CalibrationActions(
     val onConfirmVerification: () -> Unit,
     val onEndVerification: () -> Unit,
     val onDone: () -> Unit,
+    /** Solo builds debug: marcar / verificar con un pase simulado. */
+    val onDebugMark: (() -> Unit)? = null,
+    val onDebugVerify: (() -> Unit)? = null,
 )
 
 @Composable
-fun CalibrationScreen(viewModel: CalibrationViewModel, onBack: () -> Unit, onSaved: () -> Unit) {
+fun CalibrationScreen(viewModel: CalibrationViewModel, onBack: () -> Unit, onSaved: () -> Unit, debugShortcuts: Boolean = false) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val actions = remember(viewModel) {
         CalibrationActions(
@@ -76,6 +80,8 @@ fun CalibrationScreen(viewModel: CalibrationViewModel, onBack: () -> Unit, onSav
             onWiden = viewModel::widen, onNarrow = viewModel::narrow,
             onStartVerification = viewModel::startVerification, onConfirmVerification = viewModel::confirmVerification,
             onEndVerification = viewModel::endVerification, onDone = onSaved,
+            onDebugMark = if (debugShortcuts) viewModel::debugSimulateMark else null,
+            onDebugVerify = if (debugShortcuts) viewModel::debugSimulateVerify else null,
         )
     }
 
@@ -101,61 +107,85 @@ internal fun CalibrationContent(
     modifier: Modifier = Modifier,
 ) {
     val kart = MaterialTheme.kartColors
-    Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text(state.circuitName, style = MaterialTheme.typography.titleLarge, maxLines = 1)
-        Text(
-            stringResource(if (state.verifying) R.string.calibration_verify_instructions else R.string.calibration_instructions),
-            style = MaterialTheme.typography.bodyLarge,
-            color = kart.textMuted,
-        )
-        GpsStatusLine(state)
-        if (state.locationError) {
-            Text(stringResource(R.string.calibration_location_error), style = MaterialTheme.typography.bodyLarge, color = kart.warning)
-        }
-
-        KartCard(Modifier.fillMaxWidth()) {
-            TracePlot(
-                trace = state.trace,
-                finish = state.displayLine,
-                confirmed = state.result != null || state.editingSaved || state.saved,
-                modifier = Modifier.fillMaxWidth().aspectRatio(1.4f).testTag("calibration_plot"),
-            )
-        }
-
-        state.failure?.let { failure ->
+    val compactPlot = state.hasPendingLine || state.saved || state.verifying
+    // Cuerpo desplazable arriba y botones de acción fijos abajo: GUARDAR / MARCAR / VERIFICAR siempre a la vista.
+    Column(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp).testTag("calibration_body"),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(state.circuitName, style = MaterialTheme.typography.titleLarge, maxLines = 1)
             Text(
-                text = stringResource(
-                    when (failure) {
-                        FinishCalibration.Failure.NO_FIXES -> R.string.calibration_fail_no_fixes
-                        FinishCalibration.Failure.POOR_ACCURACY -> R.string.calibration_fail_accuracy
-                        FinishCalibration.Failure.TOO_SLOW -> R.string.calibration_fail_slow
-                        FinishCalibration.Failure.NOT_STRAIGHT -> R.string.calibration_fail_curve
-                    },
-                ),
+                stringResource(if (state.verifying) R.string.calibration_verify_instructions else R.string.calibration_instructions),
                 style = MaterialTheme.typography.bodyLarge,
-                color = kart.warning,
-                modifier = Modifier.testTag("calibration_failure"),
+                color = kart.textMuted,
             )
-        }
+            GpsStatusLine(state)
+            if (actions.onDebugMark != null || actions.onDebugVerify != null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    actions.onDebugMark?.let { Box(Modifier.weight(1f)) { SecondaryButton(stringResource(R.string.debug_mark_sim), it, modifier = Modifier.testTag("debug_mark_sim")) } }
+                    actions.onDebugVerify?.let { Box(Modifier.weight(1f)) { SecondaryButton(stringResource(R.string.debug_verify_sim), it, modifier = Modifier.testTag("debug_verify_sim")) } }
+                }
+            }
+            if (state.locationError) {
+                Text(stringResource(R.string.calibration_location_error), style = MaterialTheme.typography.bodyLarge, color = kart.warning)
+            }
 
-        when {
-            state.verifying -> VerificationSection(state, actions)
-            state.hasPendingLine -> PendingLineSection(state, actions)
-            state.saved -> SavedSection(actions)
-            else -> LiveSection(state, actions)
+            KartCard(Modifier.fillMaxWidth()) {
+                TracePlot(
+                    trace = state.trace,
+                    finish = state.displayLine,
+                    confirmed = state.result != null || state.editingSaved || state.saved,
+                    modifier = Modifier.fillMaxWidth().aspectRatio(if (compactPlot) 2.4f else 1.4f).testTag("calibration_plot"),
+                )
+            }
+
+            state.failure?.let { failure ->
+                Text(
+                    text = stringResource(
+                        when (failure) {
+                            FinishCalibration.Failure.NO_FIXES -> R.string.calibration_fail_no_fixes
+                            FinishCalibration.Failure.POOR_ACCURACY -> R.string.calibration_fail_accuracy
+                            FinishCalibration.Failure.TOO_SLOW -> R.string.calibration_fail_slow
+                            FinishCalibration.Failure.NOT_STRAIGHT -> R.string.calibration_fail_curve
+                        },
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = kart.warning,
+                    modifier = Modifier.testTag("calibration_failure"),
+                )
+            }
+
+            when {
+                state.verifying -> VerificationBody(state, actions)
+                state.hasPendingLine -> PendingLineBody(state, actions)
+                state.saved -> SavedBody()
+                else -> LiveBody(state)
+            }
+        }
+        Column(
+            Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(horizontal = 16.dp, vertical = 8.dp).testTag("calibration_bar"),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            when {
+                state.verifying -> VerificationBar(state, actions)
+                state.hasPendingLine -> PendingLineBar(state, actions)
+                state.saved -> SavedBar(actions)
+                else -> LiveBar(state, actions)
+            }
         }
     }
 }
 
 @Composable
-private fun LiveSection(state: CalibrationUiState, actions: CalibrationActions) {
-    val kart = MaterialTheme.kartColors
+private fun LiveBody(state: CalibrationUiState) {
     if (state.currentFinish != null) {
-        Text(stringResource(R.string.calibration_current_saved), style = MaterialTheme.typography.bodyMedium, color = kart.textMuted)
+        Text(stringResource(R.string.calibration_current_saved), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.kartColors.textMuted)
     }
+}
+
+@Composable
+private fun LiveBar(state: CalibrationUiState, actions: CalibrationActions) {
     PrimaryButton(
         text = stringResource(R.string.calibration_mark).uppercase(),
         onClick = actions.onMark,
@@ -169,7 +199,7 @@ private fun LiveSection(state: CalibrationUiState, actions: CalibrationActions) 
 
 /** Resultado del marcado (o meta guardada en edición): valores, ajuste manual y guardar. */
 @Composable
-private fun PendingLineSection(state: CalibrationUiState, actions: CalibrationActions) {
+private fun PendingLineBody(state: CalibrationUiState, actions: CalibrationActions) {
     val kart = MaterialTheme.kartColors
     val line = state.adjustedLine ?: return
     if (state.reversed) {
@@ -203,14 +233,18 @@ private fun PendingLineSection(state: CalibrationUiState, actions: CalibrationAc
             modifier = Modifier.padding(top = 16.dp).testTag("width_stepper"),
         )
     }
+}
+
+@Composable
+private fun PendingLineBar(state: CalibrationUiState, actions: CalibrationActions) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
         Box(Modifier.weight(1f)) { SecondaryButton(stringResource(if (state.editingSaved) R.string.action_cancel else R.string.calibration_retry).uppercase(), actions.onRetry) }
-        Box(Modifier.weight(1f)) { PrimaryButton(stringResource(R.string.calibration_save).uppercase(), actions.onSave) }
+        Box(Modifier.weight(1f)) { PrimaryButton(stringResource(R.string.calibration_save).uppercase(), actions.onSave, modifier = Modifier.testTag("calibration_save")) }
     }
 }
 
 @Composable
-private fun SavedSection(actions: CalibrationActions) {
+private fun SavedBody() {
     Text(
         stringResource(R.string.calibration_saved),
         style = MaterialTheme.typography.titleMedium,
@@ -218,31 +252,25 @@ private fun SavedSection(actions: CalibrationActions) {
         modifier = Modifier.testTag("calibration_saved"),
     )
     Text(stringResource(R.string.calibration_verify_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.kartColors.textMuted)
+}
+
+@Composable
+private fun SavedBar(actions: CalibrationActions) {
     SecondaryButton(stringResource(R.string.calibration_verify).uppercase(), actions.onStartVerification)
     PrimaryButton(stringResource(R.string.calibration_done).uppercase(), actions.onDone)
 }
 
 @Composable
-private fun VerificationSection(state: CalibrationUiState, actions: CalibrationActions) {
+private fun VerificationBody(state: CalibrationUiState, actions: CalibrationActions) {
     val kart = MaterialTheme.kartColors
-    val outcome = state.verification
-    when (outcome) {
-        null -> {
-            PrimaryButton(
-                text = stringResource(R.string.calibration_verify_now).uppercase(),
-                onClick = actions.onConfirmVerification,
-                enabled = state.listening && state.fixCount > 0,
-            )
-        }
-        FinishVerification.Outcome.NoCrossing -> {
-            Text(
-                stringResource(R.string.calibration_verify_none),
-                style = MaterialTheme.typography.bodyLarge,
-                color = kart.warning,
-                modifier = Modifier.testTag("verification_none"),
-            )
-            SecondaryButton(stringResource(R.string.calibration_verify_again).uppercase(), actions.onStartVerification)
-        }
+    when (val outcome = state.verification) {
+        null -> Unit
+        FinishVerification.Outcome.NoCrossing -> Text(
+            stringResource(R.string.calibration_verify_none),
+            style = MaterialTheme.typography.bodyLarge,
+            color = kart.warning,
+            modifier = Modifier.testTag("verification_none"),
+        )
         is FinishVerification.Outcome.Checked -> {
             KartCard(Modifier.fillMaxWidth().testTag("verification_values")) {
                 ValueRow(stringResource(R.string.calibration_verify_time), String.format(Locale.ROOT, "%+.2f s", outcome.timeDiffMs / 1000.0))
@@ -255,6 +283,21 @@ private fun VerificationSection(state: CalibrationUiState, actions: CalibrationA
                 color = if (outcome.ok) kart.telemetry else kart.warning,
                 modifier = Modifier.testTag(if (outcome.ok) "verification_ok" else "verification_warn"),
             )
+        }
+    }
+}
+
+@Composable
+private fun VerificationBar(state: CalibrationUiState, actions: CalibrationActions) {
+    when (val outcome = state.verification) {
+        null -> PrimaryButton(
+            text = stringResource(R.string.calibration_verify_now).uppercase(),
+            onClick = actions.onConfirmVerification,
+            enabled = state.listening && state.fixCount > 0,
+        )
+        FinishVerification.Outcome.NoCrossing ->
+            SecondaryButton(stringResource(R.string.calibration_verify_again).uppercase(), actions.onStartVerification)
+        is FinishVerification.Outcome.Checked -> {
             SecondaryButton(stringResource(R.string.calibration_verify_again).uppercase(), actions.onStartVerification)
             if (!outcome.ok) SecondaryButton(stringResource(R.string.calibration_adjust).uppercase(), { actions.onEndVerification(); actions.onEditSaved() })
         }

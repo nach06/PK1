@@ -7,6 +7,8 @@ import com.nacho.kartlog.domain.gps.FinishCalibration
 import com.nacho.kartlog.domain.gps.FinishVerification
 import com.nacho.kartlog.domain.gps.GpsFix
 import com.nacho.kartlog.domain.gps.LocationSource
+import com.nacho.kartlog.domain.gps.OvalTrack
+import com.nacho.kartlog.domain.gps.TrackSimulator
 import com.nacho.kartlog.domain.model.FinishLine
 import com.nacho.kartlog.domain.repository.CircuitRepository
 import kotlinx.coroutines.Job
@@ -184,6 +186,30 @@ class CalibrationViewModel(
 
     /** Sale del modo verificación (vuelve al marcado normal). */
     fun endVerification() = _uiState.update { it.copy(verifying = false, verification = null) }
+
+    // ---------------- Atajos de depuración (la pantalla solo los ofrece en builds debug) ----------------
+
+    /** Marca la meta con un pase simulado por el óvalo de pruebas (sin salir a pista): llega hasta el resultado para ver Ajustar y Guardar. */
+    fun debugSimulateMark() {
+        if (_uiState.value.result != null || _uiState.value.editingSaved) return
+        job?.cancel()
+        buffer.clear()
+        val sim = TrackSimulator.simulate(OvalTrack(), listOf(58_000L), hz = 2.0, leadInM = 60.0, leadOutM = 0.0)
+        val crossing = sim.crossingNs.first()
+        sim.fixes.filter { it.elapsedNs <= crossing }.forEach(::onFix)
+        mark()
+    }
+
+    /** Verificación simulada: pasada por la meta guardada (válida si es la del óvalo de pruebas) y confirmación 1 s después. */
+    fun debugSimulateVerify() {
+        if (_uiState.value.currentFinish == null) return
+        startVerification()
+        job?.cancel()
+        val sim = TrackSimulator.simulate(OvalTrack(), listOf(58_000L), hz = 2.0, leadInM = 60.0, leadOutM = 20.0)
+        val crossing = sim.crossingNs.first()
+        sim.fixes.filter { it.elapsedNs <= crossing + 1_000_000_000L }.forEach(::onFix)
+        confirmVerification()
+    }
 
     private companion object {
         const val KEEP_NS = 15_000_000_000L
