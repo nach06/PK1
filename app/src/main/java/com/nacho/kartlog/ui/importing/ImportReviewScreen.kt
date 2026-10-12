@@ -33,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nacho.kartlog.R
@@ -427,30 +428,38 @@ private fun ReviewBottomBar(state: ImportUiState, onSave: () -> Unit) {
     }
 }
 
-/** Los tres indicadores de la validación cruzada (✓ cuadra, ⚠ no cuadra, – sin dato en el documento). */
+/**
+ * Los tres indicadores de la validación cruzada (✓ cuadra, ⚠ no cuadra, – sin dato en el documento). Cada ficha mide lo que
+ * necesita su contenido y, si no caben las tres en una fila (letra grande), pasan a una segunda fila. Texto siempre ≥ 12 sp.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun CheckRow(checks: DriverChecks, reportedBest: Long?, reportedCount: Int?, reportedAvg: Long?, currentCount: Int) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().testTag("check_row")) {
+    androidx.compose.foundation.layout.FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.fillMaxWidth().testTag("check_row"),
+    ) {
         CheckChip(
             label = stringResource(R.string.import_check_best),
             value = checks.computedBestMs?.let(LapTime::format) ?: stringResource(R.string.value_unset),
             doc = reportedBest?.let(LapTime::format),
             state = checks.best,
-            modifier = Modifier.weight(1f).testTag("check_best"),
+            modifier = Modifier.testTag("check_best"),
         )
         CheckChip(
             label = stringResource(R.string.import_check_laps),
             value = currentCount.toString(),
             doc = reportedCount?.toString(),
             state = checks.lapCount,
-            modifier = Modifier.weight(0.8f).testTag("check_laps"),
+            modifier = Modifier.testTag("check_laps"),
         )
         CheckChip(
             label = stringResource(R.string.import_check_average),
             value = checks.computedAvgMs?.let(LapTime::format) ?: stringResource(R.string.value_unset),
             doc = reportedAvg?.let(LapTime::format),
             state = checks.average,
-            modifier = Modifier.weight(1f).testTag("check_avg"),
+            modifier = Modifier.testTag("check_avg"),
         )
     }
 }
@@ -463,37 +472,14 @@ private fun CheckChip(label: String, value: String, doc: String?, state: CheckSt
         CheckState.WARN -> "⚠" to kart.warning
         CheckState.NOT_AVAILABLE -> "–" to kart.textMuted
     }
-    // Con la letra grande no caben etiqueta y valor en una línea: etiqueta arriba y valor debajo (con la letra normal, una sola línea).
-    val largeFont = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.15f
     KartCard(modifier.semantics { stateDescription = state.name }, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)) {
-        if (largeFont) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(symbol, style = MaterialTheme.typography.titleSmall, color = color)
-                Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = kart.textMuted, maxLines = 1)
-            }
-            AutoSizeText(
-                text = value,
-                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = MonoFontFamily, fontSize = 15.sp),
-                color = MaterialTheme.colorScheme.onSurface,
-                minSize = 9.sp,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        } else {
-            // Una línea: ✓ + etiqueta + valor. Solo si no cuadra se añade el valor del documento debajo.
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(symbol, style = MaterialTheme.typography.titleSmall, color = color)
-                Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = kart.textMuted, maxLines = 1)
-                AutoSizeText(
-                    text = value,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontFamily = MonoFontFamily, fontSize = 15.sp),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    minSize = 10.sp,
-                    modifier = Modifier.weight(1f),
-                )
-            }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(symbol, fontSize = 14.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = color)
+            Text(label, fontSize = 12.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = kart.textMuted, maxLines = 1)
+            Text(value, style = TextStyle(fontFamily = MonoFontFamily, fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface, maxLines = 1, softWrap = false)
         }
         if (state == CheckState.WARN && doc != null) {
-            Text(stringResource(R.string.import_check_doc_value, doc), style = MaterialTheme.typography.labelMedium, color = color, maxLines = 1)
+            Text(stringResource(R.string.import_check_doc_value, doc), fontSize = 12.sp, color = color, maxLines = 1)
         }
     }
 }

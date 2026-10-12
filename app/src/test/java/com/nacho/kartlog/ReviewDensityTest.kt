@@ -9,6 +9,8 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.dp
@@ -78,5 +80,32 @@ class ReviewDensityTest {
             }
         }
         assertTrue("filas de tiempos enteras visibles: $full", full >= 7)
+    }
+
+    /** A2 (Sprint 8): los controles cruzados se leen: todo su texto ≥ 12 sp y las tres fichas están dentro de la ventana. */
+    @Test
+    fun crossCheckChipsUseAtLeast12sp_andAreFullyOnScreen() {
+        val container = AppContainer(context)
+        val text = javaClass.getResource("/muestras/muestra_a_correo_lineas.txt")!!.readText()
+        compose.setContent { KartLogTheme { KartNavHost(container) } }
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Tandas", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
+        container.importInbox.put(SharedContent.Text(text, meName = "Nacho"))
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("check_row").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitForIdle()
+        val sizes = ArrayList<Float>()
+        fun walk(n: androidx.compose.ui.semantics.SemanticsNode) {
+            val results = ArrayList<androidx.compose.ui.text.TextLayoutResult>()
+            n.config.getOrNull(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult)?.action?.invoke(results)
+            results.firstOrNull()?.let { sizes += it.layoutInput.style.fontSize.value }
+            n.children.forEach(::walk)
+        }
+        walk(compose.onNodeWithTag("check_row", useUnmergedTree = true).fetchSemanticsNode())
+        assertTrue("textos en los controles: ${sizes.size}", sizes.size >= 9)
+        assertTrue("tamaños de letra: $sizes", sizes.all { it >= 12f })
+        val rootW = compose.onRoot().getUnclippedBoundsInRoot().right
+        listOf("check_best", "check_laps", "check_avg").forEach {
+            val b = compose.onNodeWithTag(it).getUnclippedBoundsInRoot()
+            assertTrue("$it dentro: $b", b.left >= 0.dp && b.right <= rootW)
+        }
     }
 }
