@@ -75,7 +75,11 @@ internal fun ReviewContent(state: ImportUiState, viewModel: ImportViewModel, onB
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             MetaSummary(state, onEditMeta)
-            FormatRow(state, onChange = viewModel::openFormatPicker)
+            FormatRow(
+                state,
+                onChange = viewModel::openFormatPicker,
+                onDebugDump = if (debugShortcuts && state.scan != null) viewModel::shareOcrDump else null,
+            )
             val image = state.reviewImage
             if (image != null && state.scan != null) {
                 SheetPreview(
@@ -151,7 +155,7 @@ private fun MetaSummary(state: ImportUiState, onEdit: () -> Unit) {
 }
 
 @Composable
-private fun FormatRow(state: ImportUiState, onChange: () -> Unit) {
+private fun FormatRow(state: ImportUiState, onChange: () -> Unit, onDebugDump: (() -> Unit)? = null) {
     val format = state.format ?: return
     Row(Modifier.fillMaxWidth().heightIn(min = 32.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
@@ -161,6 +165,11 @@ private fun FormatRow(state: ImportUiState, onChange: () -> Unit) {
             modifier = Modifier.weight(1f).testTag("format_label"),
             maxLines = 1,
         )
+        if (onDebugDump != null) {
+            TextButton(onClick = onDebugDump, modifier = Modifier.heightIn(min = 32.dp).testTag("debug_share_dump"), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                Text(stringResource(R.string.debug_share_dump).uppercase(), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.kartColors.warning)
+            }
+        }
         TextButton(onClick = onChange, modifier = Modifier.heightIn(min = 32.dp).testTag("format_change"), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
             Text(stringResource(R.string.import_format_change).uppercase(), style = MaterialTheme.typography.labelLarge)
         }

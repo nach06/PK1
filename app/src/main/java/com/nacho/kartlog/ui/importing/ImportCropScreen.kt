@@ -28,6 +28,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.nacho.kartlog.R
 import com.nacho.kartlog.domain.importing.PhotoProblem
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
+import com.nacho.kartlog.domain.importing.PhotoQualityReport
+import com.nacho.kartlog.domain.importing.PhotoQuality
 import com.nacho.kartlog.ui.components.KartCard
 import com.nacho.kartlog.ui.components.KartTopBar
 import com.nacho.kartlog.ui.components.PrimaryButton
@@ -63,6 +67,7 @@ internal fun CropContent(
                     }
                 } else {
                     state.error?.let { ErrorText(it) }
+                    photo?.photo?.quality?.let { QualityIndicator(it) }
                     Text(stringResource(R.string.import_crop_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.kartColors.textMuted)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -101,6 +106,51 @@ internal fun CropContent(
                 }
             }
         }
+    }
+}
+
+/**
+ * Calidad de la foto a la vista antes de analizar: nitidez, brillo y reflejos con su valor y el umbral (mín/máx) que se exige,
+ * en verde si pasa y en ámbar si no. Sirve para entender por qué la app avisa y para afinar los umbrales con fotos reales.
+ */
+@Composable
+internal fun QualityIndicator(report: PhotoQualityReport, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth().testTag("quality_indicator"), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        QualityChip(
+            label = stringResource(R.string.quality_sharpness),
+            value = String.format(java.util.Locale.ROOT, "%.2f", report.sharpness),
+            threshold = stringResource(R.string.quality_min, String.format(java.util.Locale.ROOT, "%.2f", PhotoQuality.MIN_SHARPNESS)),
+            ok = PhotoProblem.BLURRY !in report.problems,
+            modifier = Modifier.weight(1f).testTag("quality_sharpness"),
+        )
+        QualityChip(
+            label = stringResource(R.string.quality_brightness),
+            value = String.format(java.util.Locale.ROOT, "%.0f", report.meanBrightness),
+            threshold = stringResource(R.string.quality_min, String.format(java.util.Locale.ROOT, "%.0f", PhotoQuality.MIN_BRIGHTNESS)),
+            ok = PhotoProblem.TOO_DARK !in report.problems,
+            modifier = Modifier.weight(1f).testTag("quality_brightness"),
+        )
+        QualityChip(
+            label = stringResource(R.string.quality_glare),
+            value = String.format(java.util.Locale.ROOT, "%.0f %%", report.glareFraction * 100),
+            threshold = stringResource(R.string.quality_max, String.format(java.util.Locale.ROOT, "%.0f %%", PhotoQuality.MAX_GLARE_FRACTION * 100)),
+            ok = PhotoProblem.GLARE !in report.problems,
+            modifier = Modifier.weight(1f).testTag("quality_glare"),
+        )
+    }
+}
+
+@Composable
+private fun QualityChip(label: String, value: String, threshold: String, ok: Boolean, modifier: Modifier = Modifier) {
+    val kart = MaterialTheme.kartColors
+    val color = if (ok) kart.telemetry else kart.warning
+    KartCard(
+        modifier.semantics { stateDescription = if (ok) "OK" else "PROBLEM" },
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+    ) {
+        Text(label.uppercase(), style = MaterialTheme.typography.labelMedium, color = kart.textMuted, maxLines = 1)
+        Text((if (ok) "✓ " else "⚠ ") + value, style = MaterialTheme.typography.titleSmall, color = color, maxLines = 1)
+        Text(threshold, style = MaterialTheme.typography.labelMedium, color = kart.textMuted, maxLines = 1)
     }
 }
 

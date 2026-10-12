@@ -94,6 +94,7 @@ class AppContainer(context: Context) {
                 participantRepository = participantRepository,
                 photoProcessor = photoProcessor,
                 photoStore = importPhotoStore,
+                debugTools = debugTools,
             )
         }
     }

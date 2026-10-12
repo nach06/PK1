@@ -38,6 +38,12 @@ class DebugBackupFolder(private val context: Context) {
         }
     }
 
+    /** Guarda un texto (volcado de OCR) junto a las copias; devuelve la ruta o `null`. */
+    fun saveText(name: String, content: String): String? {
+        val target = File(dir() ?: return null, name)
+        return runCatching { target.writeText(content); target.absolutePath }.getOrNull()
+    }
+
     /** La copia más reciente guardada con [save], o `null`. */
     fun latest(): (() -> InputStream?)? {
         val newest = dir()?.listFiles { f -> f.name.startsWith(PREFIX) && f.name.endsWith(".zip") }?.maxByOrNull { it.name } ?: return null

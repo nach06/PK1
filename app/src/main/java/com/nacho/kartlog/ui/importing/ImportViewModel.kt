@@ -40,6 +40,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import com.nacho.kartlog.domain.importing.OcrDump
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -225,6 +226,8 @@ class ImportViewModel(
     private val participantRepository: ParticipantRepository? = null,
     private val photoProcessor: PhotoProcessor? = null,
     private val photoStore: ImportPhotoStore? = null,
+    /** Solo builds debug: guardar el volcado de OCR de la lectura actual. */
+    private val debugTools: com.nacho.kartlog.debug.DebugTools? = null,
 ) : ViewModel() {
 
     private val form = MutableStateFlow(Form(dateTime = now()))
@@ -457,6 +460,26 @@ class ImportViewModel(
                     viewedDriverKey = me ?: doc.drivers.firstOrNull { d -> d.laps.isNotEmpty() }?.key, selectedLap = null, editing = null,
                 )
             }
+        }
+    }
+
+    private val dumpChannel = kotlinx.coroutines.channels.Channel<String>(kotlinx.coroutines.channels.Channel.BUFFERED)
+
+    /** Volcados de OCR (JSON) que la pantalla debe compartir (solo debug). */
+    val ocrDumps = dumpChannel.receiveAsFlow()
+
+    /** Ruta donde quedó el último volcado guardado (solo debug); se enseña en la revisión. */
+    private val dumpPath = MutableStateFlow<String?>(null)
+    val lastDumpPath: StateFlow<String?> = dumpPath
+
+    /** Solo debug: guarda el volcado de OCR de la lectura en curso (cajas + geometría + confianza) y lo entrega para compartir. */
+    fun shareOcrDump() {
+        val scan = form.value.scan ?: return
+        val json = OcrDump.toJson(scan)
+        viewModelScope.launch {
+            val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.ROOT).format(java.util.Date(now()))
+            dumpPath.value = debugTools?.saveDump("ocr-dump-$stamp.json", json)
+            dumpChannel.send(json)
         }
     }
 

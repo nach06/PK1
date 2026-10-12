@@ -145,6 +145,8 @@ class DebugSeeder(
 
     override suspend fun saveBackupCopy(file: java.io.File): String? = withContext(Dispatchers.IO) { backupFolder?.save(file) }
 
+    override suspend fun saveDump(name: String, json: String): String? = withContext(Dispatchers.IO) { backupFolder?.saveText(name, json) }
+
     override fun latestBackupOpener(): (() -> java.io.InputStream?)? = backupFolder?.latest()
 
     override suspend fun prepareEnduranceSimulation(): EnduranceSimulation {

@@ -82,6 +82,19 @@ fun ImportScreen(
     debugShortcuts: Boolean = false,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val shareContext = androidx.compose.ui.platform.LocalContext.current
+    if (debugShortcuts) {
+        androidx.compose.runtime.LaunchedEffect(viewModel) {
+            viewModel.ocrDumps.collect { json ->
+                val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(android.content.Intent.EXTRA_TEXT, json)
+                    putExtra(android.content.Intent.EXTRA_SUBJECT, "KartLog OCR dump")
+                }
+                runCatching { shareContext.startActivity(android.content.Intent.createChooser(send, null).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            }
+        }
+    }
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     var showDatePicker by rememberSaveable { mutableStateOf(false) }

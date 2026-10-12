@@ -34,6 +34,9 @@ interface DebugTools {
      */
     suspend fun saveBackupCopy(file: java.io.File): String?
 
+    /** Guarda un volcado de OCR (JSON) en la misma carpeta que las copias y devuelve la ruta, o `null` si falla. */
+    suspend fun saveDump(name: String, json: String): String?
+
     /** Abre la copia guardada con [saveBackupCopy] más reciente, o `null` si no hay ninguna. */
     fun latestBackupOpener(): (() -> java.io.InputStream?)?
 

@@ -219,8 +219,20 @@ class ImportFlowTest {
         container.importInbox.put(SharedContent.Image(testImage(context)))
         waitForTag("crop_canvas")
         compose.onNodeWithTag("crop_editor").assertIsDisplayed()
+        // D2: calidad de la foto a la vista, con el umbral que se exige (aquí todo en orden).
+        compose.onNodeWithTag("quality_indicator").assertIsDisplayed()
+        assertEquals("OK", state("quality_sharpness"))
+        assertEquals("OK", state("quality_brightness"))
         compose.onNodeWithTag("crop_analyze").performClick()
         waitForTag("review_summary")
+
+        // D2 (debug): el volcado de OCR se guarda y se puede leer de vuelta con las mismas cajas.
+        compose.onNodeWithTag("debug_share_dump").performClick()
+        val dumpDir = File(context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS), "")
+        val deadline = System.currentTimeMillis() + 8_000
+        while ((dumpDir.listFiles { f -> f.name.startsWith("ocr-dump-") }?.isEmpty() != false) && System.currentTimeMillis() < deadline) { Thread.sleep(100); compose.waitForIdle() }
+        val dump = dumpDir.listFiles { f -> f.name.startsWith("ocr-dump-") }!!.single()
+        assertEquals(boxes.size, com.nacho.kartlog.domain.importing.OcrDump.fromJson(dump.readText()).boxes.size)
 
         // Revisión: la tuya (Nacho) ya elegida por el ajuste; los estados por celda.
         assertTrue(textOf("format_label").contains("matriz vuelta × piloto"))
@@ -325,6 +337,10 @@ class ImportFlowTest {
         waitFor("Tandas")
         container.importInbox.put(SharedContent.Image(testImage(context)))
         waitForTag("crop_analyze")
+        // D2: el indicador marca la nitidez en rojo/ámbar con su umbral, y el resto en orden.
+        assertEquals("PROBLEM", state("quality_sharpness"))
+        assertEquals("OK", state("quality_brightness"))
+        waitFor("mín. 0.50", substring = true)
         compose.onNodeWithTag("crop_analyze").performClick()
         waitForTag("quality_title")
         waitFor("movida o desenfocada", substring = true)

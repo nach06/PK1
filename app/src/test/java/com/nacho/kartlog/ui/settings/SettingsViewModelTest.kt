@@ -56,6 +56,7 @@ class SettingsViewModelTest {
 
     private class FakeDebugTools(val samples: List<String>) : com.nacho.kartlog.debug.DebugTools {
         override suspend fun prepareEnduranceSimulation(): com.nacho.kartlog.debug.EnduranceSimulation = error("no usado")
+        override suspend fun saveDump(name: String, json: String): String? = null
         override suspend fun saveBackupCopy(file: java.io.File): String? = null
         override fun latestBackupOpener(): (() -> java.io.InputStream?)? = null
         override suspend fun ensureCircuit(name: String, lengthM: Int): Long = 1L
