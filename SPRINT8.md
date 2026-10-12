@@ -16,16 +16,20 @@ __ESTADO__
 
 ## Parte A — Pulido visible (causa raíz)
 
-| # | Causa raíz | Qué cambia | Test (y mutación) |
+| # | Causa raíz (lo que encontré y cambié) | Qué cambia | Test |
 |---|---|---|---|
-| **A1** botones de Depuración con palabras partidas a 393 dp | Los botones de la rejilla usaban el relleno por defecto de 24 dp y etiquetas largas: a 393 dp el ancho útil (~150 dp) obligaba a partir palabras. | `DebugGridButton` con poco relleno y etiquetas cortas. | `DebugPanelWordsTest`: ninguna palabra partida en ningún botón (recorre el árbol sin fusionar). Mutación (relleno original) → falla. |
-| **A2** controles cruzados de la Revisión < 12 sp | Estaban a 10–11 sp para ganar alto. | Fichas por contenido en `FlowRow` (dos filas con letra grande), texto ≥ 12 sp. | `ReviewDensityTest` (tamaño de letra y filas visibles). |
-| **A3** clasificación ilegible: tu fila en rojo sobre rojo y nombres cortados | Color de fila con contraste < 3:1 y nombres a 1 línea con elipsis. | Tu fila en texto claro sobre rojo oscuro (contraste ≥ 4,5:1, calculado en el test), kart como `K28` bajo la posición, nombres que pasan a 2–3 líneas. | `ClassificationReadabilityTest` (contraste real WCAG + sin elipsis). |
-| **A4** Detalle con trazado a 736 dp: < 3 vueltas con la barra de teclado | Cabecera, tarjeta y barra de teclado sumaban demasiado alto. | Barra plegada sin tiempo en blanco, cabecera y tarjeta más bajas, lienzo según la forma del trazado (óvalo vs. cuadrado). | `TrackCardLayoutTest` (393×808 con teclado: ≥ 3 vueltas enteras). **Mutación de la altura del panel no detectada** (ver «Riesgos»). |
-| **A5** modo día activado por defecto y «Terminar (debug)» tapando el cronómetro | El modo día se guardaba al abrir la preparación sin que el usuario lo tocara. | Apagado por defecto, explicado en la preparación y solo se guarda si lo cambias. **«Terminar (debug)» pasa a la fila de la barra de delta** (no arriba a la izquierda: reservar una franja superior o ponerlo en el pie rompía el alto mínimo del cronómetro de Sprint 6, 127 dp, y el texto de batería; desviación documentada). | `DashboardDefaultsTest`. |
-| **A6** dos reglas de redondeo y «Media oficial» alarmante por 1 ms | La app redondeaba y la hoja trunca. | Una regla (la app redondea al ms; la hoja trunca) y nota «oficial» sin alarma si difiere 1 ms. | `ClassificationReadabilityTest`, `AnalyticsTest`. |
-| **A7** Marcar meta: AJUSTAR/VERIFICAR/GUARDAR fuera de la pantalla a 360×640 | Título, GPS e instrucciones ocupaban ~40 % del alto. | Datos de la meta en dos líneas, ajuste en una fila compacta y sin título/GPS/instrucciones con la meta pendiente. | `CalibrationReachabilityTest` (393×808 y 360×640, sin desplazar). |
-| **A8** resumen de resistencia sin stints | El resumen solo mostraba totales. | Desglose por stint (piloto, vueltas, mejor), tiempo en boxes de cada parada y total. | `EnduranceFlowTest`. |
+| **A1** palabras partidas en los botones de Depuración a 393 dp | Los botones de la rejilla llevaban el relleno por defecto y etiquetas largas: en media columna el texto se partía por palabras. | `DebugGridButton` con poco relleno y etiquetas cortas. | `DebugPanelWordsTest` recorre el árbol **sin fusionar** (las etiquetas fusionadas dentro del botón daban 0 comprobados la primera vez) y exige ninguna palabra partida. |
+| **A2** controles cruzados de la Revisión por debajo de 12 sp | Se había recortado la letra para ganar alto. | Fichas por contenido en `FlowRow` (dos filas con letra grande), texto ≥ 12 sp. | `ReviewDensityTest` |
+| **A3** clasificación poco legible | Tu fila no tenía contraste suficiente y los nombres se cortaban con elipsis aun con 2 líneas (columnas demasiado estrechas, kart en la misma celda). | Tu fila en texto claro sobre rojo oscuro (contraste ≥ 4,5:1, calculado en el test), kart como `K28` bajo la posición, columnas más anchas y nombres hasta 3 líneas. | `ClassificationReadabilityTest` (contraste WCAG real + sin elipsis) |
+| **A4** Detalle con trazado a 736 dp sin 3 vueltas con la barra de teclado | Cabecera, tarjeta de trazado y barra de teclado sumaban demasiado alto. | Barra plegada sin tiempo en blanco, cabecera y tarjeta más bajas, lienzo según la forma del trazado. | `TrackCardLayoutTest` (≥ 3 vueltas enteras). **Una mutación del panel no hizo fallar el test** (ver «Riesgos»). |
+| **A5** modo día / «Terminar (debug)» | El modo día no estaba apagado por defecto ni explicado, y «Terminar (debug)» competía con el cronómetro. | Modo día apagado por defecto y explicado en la preparación (solo se guarda si lo cambias). **«Terminar (debug)» va en la fila de la barra de delta** y no arriba a la izquierda: reservar una franja arriba o ponerlo en el pie rompía el alto mínimo del cronómetro de Sprint 6 (127 dp) y el texto de batería. | `DashboardDefaultsTest` (necesita el permiso de ubicación concedido para entrar en la preparación) |
+| **A6** dos reglas de redondeo y «Media oficial» alarmante por 1 ms | La app redondeaba y la hoja trunca. | Una regla (la app redondea al ms; la hoja trunca) y nota «oficial» sin alarma si difiere 1 ms. | `ClassificationReadabilityTest`, `AnalyticsTest` |
+| **A7** Marcar meta: AJUSTAR/VERIFICAR/GUARDAR fuera de la pantalla a 360×640 | Título, GPS, instrucciones y gráfico ocupaban el alto que necesitaban los controles. | Datos de la meta en dos líneas, ajuste en una fila compacta, sin título/GPS/instrucciones con la meta pendiente. | `CalibrationReachabilityTest` (393×808 y 360×640, sin desplazar) |
+| **A8** resumen de resistencia sin stints | El resumen solo mostraba totales. | Desglose por stint (piloto, vueltas, mejor), tiempo en boxes de cada parada y total. | `EnduranceFlowTest` |
+
+> **Mutaciones de A y B:** se hicieron durante el sprint al escribir cada test, pero no las he vuelto a ejecutar para este informe. Lo que
+> recuerdo con seguridad: A4 **no** se detectó, y el umbral de `SignalQuality` y un `sed` con nombre mal escrito tuvieron que repetirse.
+> Las de las partes C y D sí están ejecutadas y listadas abajo.
 
 ## Parte B — Preparación para pruebas en pista
 
@@ -62,14 +66,23 @@ Todo el análisis es **local** (dominio puro `RivalAnalytics`): nada de esto sal
 | **D5** textos sin recortar | `TextNotClippedTest` ampliado a Detalle con trazado, Rivales, Rivales cara a cara, Calibración y Marcar meta; **y ahora mide el árbol sin fusionar** (el texto de dentro de cards clicables no se medía). | Mutación (elipsis en Rivales) → falla. |
 | **D6** test intermitente | **Causa raíz encontrada** (ver abajo). | `DraftRecoveryFlowTest` |
 
-### D6 — causa del `DraftRecoveryFlowTest.draftWithoutLaps_…` intermitente
+### D6 — `DraftRecoveryFlowTest.draftWithoutLaps_…` intermitente
 
-El aviso «Tanda interrumpida sin vueltas: descartada» es un `Snackbar` de duración `Long` (10 s). Su temporizador corre en el **reloj
-virtual de Compose**, que `waitUntil` adelanta a ~16 ms por cada 10 ms reales (≈ 1,6× más rápido). Con la máquina cargada, el
-aviso aparecía y se retiraba entre dos comprobaciones y el test no lo veía. **Reproducido** saturando la CPU (8 procesos ocupados):
-1 fallo en 6 pasadas, con el diagnóstico mostrando el borrador ya borrado, fase `IDLE` y el aviso ausente de la pantalla (no era un fallo
-de la función). **Arreglo:** el test congela el reloj (`mainClock.autoAdvance = false`) y avanza fotograma a fotograma comprobando tras cada
-uno, así el aviso no puede pasar sin ser observado. Resultado: __D6RESULT__
+**Cómo se reprodujo:** saturando la CPU (8 procesos ocupados en 4 núcleos) y repitiendo solo ese test: falló 1 de 6, 1 de 12, 2 de 20 y
+1 de 40 pasadas (nunca en solitario y sin carga: 0 de 20). El síntoma era siempre el mismo: el borrador **sí** se borraba (el código llegaba a
+`showSnackbar`; lo comprobé con trazas temporales, ya retiradas) y la fase quedaba en `IDLE`, pero el aviso nunca llegaba a estar en pantalla.
+
+**Hipótesis descartada:** que el aviso (snackbar de 10 s) caducara en el reloj virtual de Compose entre dos comprobaciones. Congelé el
+reloj y avancé fotograma a fotograma comprobando tras cada uno; el fallo siguió (aviso ausente tras 2 800 fotogramas = 45 s virtuales).
+
+**Causa más probable (no demostrada al 100 %):** el `createAndroidComposeRule` clásico usa `UnconfinedTestDispatcher`: tras la lectura/borrado
+en `Dispatchers.IO` del borrador, el código del efecto (que escribe el estado del `SnackbarHostState`) **se reanuda en el hilo de IO** y no en
+el principal, y con la CPU cargada el cambio de estado y su recomposición se desordenan respecto al reloj de test. La propia biblioteca avisa
+de esta diferencia (la regla `v2` usa `StandardTestDispatcher`, que encola en vez de ejecutar de inmediato).
+
+**Arreglo:** el test usa `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` (y mantiene el reloj congelado + comprobación por
+fotograma). **Resultado:** 40/40 pasadas con la CPU saturada (los 6 tests de la clase), frente a ~3 fallos en ~100 antes; más las 5 pasadas
+completas consecutivas de abajo. No hay cambios en código de producción.
 
 ---
 

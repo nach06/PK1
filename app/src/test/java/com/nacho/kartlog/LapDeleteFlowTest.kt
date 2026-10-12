@@ -82,6 +82,11 @@ class LapDeleteFlowTest {
         check(!present("1:10.000")) { "la vuelta borrada no debe seguir en la lista" }
         // Mejor vuelta recalculada (1:12.500) y numeración consecutiva en la BD.
         waitFor("1:12.500")
+        // Con el borrado ya confirmado de verdad (sin esperar los 8 s del «Deshacer») la BD tiene la numeración consecutiva.
+        container.pendingDeletions.flush()
+        val deadline = System.currentTimeMillis() + 8_000
+        while (container.pendingDeletions.hiddenItems.value.isNotEmpty() && System.currentTimeMillis() < deadline) Thread.sleep(50)
+        check(container.pendingDeletions.hiddenItems.value.isEmpty()) { "el borrado no se confirmó" }
         val laps = runBlocking { container.lapRepository.observeBySession(sessionId).first() }
         check(laps.map { it.number } == (1..7).toList()) { "numeración: ${laps.map { it.number }}" }
     }

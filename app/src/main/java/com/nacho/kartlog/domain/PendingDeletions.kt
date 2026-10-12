@@ -55,6 +55,12 @@ class PendingDeletions(private val scope: CoroutineScope, private val windowMs: 
         return true
     }
 
+    /** Confirma ya el borrado deshacible (si lo hay), sin esperar a que acabe la ventana. */
+    @Synchronized
+    fun flush() {
+        _current.value?.let { finish(it) }
+    }
+
     @Synchronized
     private fun finish(pending: Pending) {
         if (_current.value === pending) {

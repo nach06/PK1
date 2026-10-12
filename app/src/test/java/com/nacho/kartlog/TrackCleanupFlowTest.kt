@@ -82,7 +82,9 @@ class TrackCleanupFlowTest {
         waitFor("¿Borrar tanda?")
         compose.onNodeWithText("BORRAR").performClick()
 
-        // El borrado termina en un hilo de IO: se sondea con tiempo real (waitUntil no cede el hilo a IO).
+        // El borrado se oculta al instante y se ejecuta a los 8 s (D2: «Deshacer»); aquí se confirma ya, sin esperar la ventana.
+        container.pendingDeletions.flush()
+        // Termina en un hilo de IO: se sondea con tiempo real (waitUntil no cede el hilo a IO).
         val deadline = System.currentTimeMillis() + 8_000
         while (trackFile(drop).exists() && System.currentTimeMillis() < deadline) {
             Thread.sleep(100)
