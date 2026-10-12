@@ -208,7 +208,7 @@ Montarlo en el **centro del volante o ligeramente por encima del cubo, en horizo
 | E2 compartir imagen | `382c3de` |
 | B4 test de elementos pulsables | `607bcf4` |
 | Lint (`removeLast`, textos en composición) | `7354204` |
-| Informe, confianza 0 = sin dato y tests sin carreras (`UiFlowTest`, EMPEZAR antes de tener circuito) | ver «Último commit» |
+| Informe, confianza 0 = sin dato y tests sin carreras (`UiFlowTest`, EMPEZAR antes de tener circuito) | `5a38991` |
 
 ### Lint
 
@@ -216,4 +216,4 @@ La primera pasada de `lintDebug` falló con 4 errores reales: `List.removeLast()
 
 ### Último commit y push
 
-Ver el mensaje final de la sesión (hash del commit del informe y confirmación de `git push`).
+Último commit: `5a38991` (este informe), subido con `git push -u origin claude/kartlog-sprint-1-3hhlkb`; `HEAD` y `origin/claude/kartlog-sprint-1-3hhlkb` coinciden.
