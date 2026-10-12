@@ -21,6 +21,14 @@ class SharedPreferencesUserSettings(context: Context) : UserSettings {
         prefs.edit().putString(KEY_DRIVER_NAME, name).apply()
     }
 
+    private val _lastImportColumn = MutableStateFlow(prefs.getString(KEY_LAST_IMPORT_COLUMN, "").orEmpty())
+    override val lastImportColumn: StateFlow<String> = _lastImportColumn.asStateFlow()
+
+    override fun setLastImportColumn(value: String) {
+        _lastImportColumn.value = value
+        prefs.edit().putString(KEY_LAST_IMPORT_COLUMN, value).apply()
+    }
+
     private val _lapFeedback = MutableStateFlow(prefs.getBoolean(KEY_LAP_FEEDBACK, true))
     override val lapFeedback: StateFlow<Boolean> = _lapFeedback.asStateFlow()
 
@@ -114,6 +122,7 @@ class SharedPreferencesUserSettings(context: Context) : UserSettings {
         const val KEY_SAVE_IMPORT_PHOTO = "save_import_photo"
         const val FILE = "kartlog_settings"
         const val KEY_DRIVER_NAME = "driver_name"
+        const val KEY_LAST_IMPORT_COLUMN = "last_import_column"
         const val KEY_LAP_FEEDBACK = "lap_feedback"
         const val KEY_ORIENTATION = "dashboard_orientation"
         const val KEY_DAY_MODE = "dashboard_day_mode"

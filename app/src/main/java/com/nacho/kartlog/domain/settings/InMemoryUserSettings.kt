@@ -9,6 +9,10 @@ class InMemoryUserSettings(driverName: String = "") : UserSettings {
     override val driverName: StateFlow<String> = driver
     override fun setDriverName(name: String) { driver.value = name }
 
+    private val lastColumn = MutableStateFlow("")
+    override val lastImportColumn: StateFlow<String> = lastColumn
+    override fun setLastImportColumn(value: String) { lastColumn.value = value }
+
     private val feedback = MutableStateFlow(true)
     override val lapFeedback: StateFlow<Boolean> = feedback
     override fun setLapFeedback(enabled: Boolean) { feedback.value = enabled }

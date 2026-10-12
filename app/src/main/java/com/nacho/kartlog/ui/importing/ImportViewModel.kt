@@ -103,6 +103,8 @@ data class ImportUiState(
     val forcedFormat: ImportFormat? = null,
     val review: ImportReview? = null,
     val viewedDriverKey: String? = null,
+    /** Columna sugerida por haber sido la elegida la última vez (sin nombre guardado); no cuenta como «tuya» hasta pulsar «Soy yo». */
+    val suggestedDriverKey: String? = null,
     val selectedLap: Int? = null,
     val othersExpanded: Boolean = false,
     // Destino
@@ -186,6 +188,7 @@ private data class Form(
     val forcedFormat: ImportFormat? = null,
     val review: ImportReview? = null,
     val viewedDriverKey: String? = null,
+    val suggestedDriverKey: String? = null,
     val selectedLap: Int? = null,
     val othersExpanded: Boolean = false,
     val destination: ImportDestination = ImportDestination.NEW_SESSION,
@@ -240,7 +243,7 @@ class ImportViewModel(
         ImportUiState(
             stage = f.stage, rawText = f.rawText, isBusy = f.isBusy, error = f.error, photo = f.photo,
             reviewImage = f.reviewImage, scan = f.scan, parsed = f.parsed, format = f.parsed?.format, forcedFormat = f.forcedFormat,
-            review = f.review, viewedDriverKey = f.viewedDriverKey, selectedLap = f.selectedLap, othersExpanded = f.othersExpanded,
+            review = f.review, viewedDriverKey = f.viewedDriverKey, suggestedDriverKey = f.suggestedDriverKey, selectedLap = f.selectedLap, othersExpanded = f.othersExpanded,
             destination = f.destination, circuits = circuitList, circuitId = f.circuitId, dateTime = f.dateTime, type = f.type,
             kartNumber = f.kartNumber, label = f.label, durationMin = f.durationMin, sessions = summaries,
             existingSessionId = f.existingSessionId, duplicateCount = duplicateCount, editing = f.editing,
@@ -307,12 +310,15 @@ class ImportViewModel(
         val grid = scan?.grid
         val review = ImportReview.from(doc) { line, col -> grid?.boxAt(line, col)?.confidence }
         val meDriver = DriverMatcher.findMe(doc.drivers, settings.driverName.value) ?: doc.drivers.singleOrNull { it.laps.isNotEmpty() }
+        // Sin nombre guardado ni coincidencia: se sugiere (sin marcarla) la columna elegida la última vez.
+        val suggested = if (meDriver == null) DriverMatcher.findSuggested(doc.drivers, settings.lastImportColumn.value) else null
         val circuit = doc.circuitName?.let { name -> known.firstOrNull { it.name.equals(name, ignoreCase = true) } }
         val withMe = review.setMe(meDriver?.key)
         form.update {
             it.copy(
                 stage = ImportStage.REVIEW, parsed = doc, forcedFormat = forced, error = null, isBusy = false, rawText = text,
-                review = withMe, viewedDriverKey = meDriver?.key ?: doc.drivers.firstOrNull { d -> d.laps.isNotEmpty() }?.key,
+                review = withMe, viewedDriverKey = meDriver?.key ?: suggested?.key ?: doc.drivers.firstOrNull { d -> d.laps.isNotEmpty() }?.key,
+                suggestedDriverKey = suggested?.key,
                 selectedLap = null, editing = null, scan = scan ?: it.scan,
                 circuitId = circuit?.id ?: it.circuitId,
                 dateTime = doc.dateTime?.atZone(zone)?.toInstant()?.toEpochMilli() ?: now(),
@@ -456,7 +462,8 @@ class ImportViewModel(
     /** Marca la columna que se está viendo como la tuya. */
     fun setMe(key: String) {
         val driver = form.value.review?.driver(key) ?: return
-        form.update { it.copy(review = it.review?.setMe(key), viewedDriverKey = key, kartNumber = driver.kartNumber ?: it.kartNumber) }
+        settings.setLastImportColumn(DriverMatcher.encodeColumn(driver.name, driver.kartNumber))
+        form.update { it.copy(review = it.review?.setMe(key), viewedDriverKey = key, suggestedDriverKey = null, kartNumber = driver.kartNumber ?: it.kartNumber) }
     }
 
     fun selectLap(number: Int?) = form.update { it.copy(selectedLap = if (it.selectedLap == number) null else number) }

@@ -82,9 +82,9 @@ internal fun ReviewContent(state: ImportUiState, viewModel: ImportViewModel, onB
                 )
             }
             if (review != null) {
-                DriverStrip(review, state.viewedDriverKey, onSelect = viewModel::viewDriver)
+                DriverStrip(review, state.viewedDriverKey, state.suggestedDriverKey, onSelect = viewModel::viewDriver)
                 if (state.me == null) {
-                    Text(stringResource(R.string.import_who_pick), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.kartColors.warning, modifier = Modifier.testTag("who_banner"))
+                    Text(stringResource(if (state.suggestedDriverKey != null) R.string.import_who_suggested else R.string.import_who_pick), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.kartColors.warning, modifier = Modifier.testTag("who_banner"))
                 }
                 if (viewed != null) {
                     DriverActions(
@@ -166,13 +166,13 @@ private fun FormatRow(state: ImportUiState, onChange: () -> Unit) {
 
 /** Una ficha por piloto con vueltas: la tuya con ★, y ⚠ si sus controles cruzados no cuadran. */
 @Composable
-private fun DriverStrip(review: ImportReview, viewedKey: String?, onSelect: (String) -> Unit) {
+private fun DriverStrip(review: ImportReview, viewedKey: String?, suggestedKey: String?, onSelect: (String) -> Unit) {
     val kart = MaterialTheme.kartColors
     LazyRow(Modifier.fillMaxWidth().testTag("driver_strip"), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(review.drivers.filter { d -> d.cells.isNotEmpty() || d.key == review.meKey }, key = { it.key }) { d ->
             val selected = d.key == viewedKey
             val warn = review.checks(d.key)?.allOk == false
-            val label = (if (d.key == review.meKey) "★ " else "") + d.displayName + (if (warn) " ⚠" else "")
+            val label = (if (d.key == review.meKey) "★ " else if (d.key == suggestedKey) "☆ " else "") + d.displayName + (if (warn) " ⚠" else "")
             Box(
                 Modifier
                     .heightIn(min = 40.dp)

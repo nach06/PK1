@@ -15,6 +15,11 @@ interface UserSettings {
 
     fun setDriverName(name: String)
 
+    /** Última columna marcada con «Soy yo» al importar (`nombre|kart`): se sugiere la próxima vez si no hay nombre guardado. */
+    val lastImportColumn: StateFlow<String>
+
+    fun setLastImportColumn(value: String)
+
     /** Vibración y pitido corto al cruzar la meta en el Dashboard. Activado por defecto. */
     val lapFeedback: StateFlow<Boolean>
 
