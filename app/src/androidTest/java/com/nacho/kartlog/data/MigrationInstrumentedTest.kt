@@ -7,6 +7,7 @@ import com.nacho.kartlog.data.local.KartLogDatabase
 import com.nacho.kartlog.data.local.MIGRATION_1_2
 import com.nacho.kartlog.data.local.MIGRATION_2_3
 import com.nacho.kartlog.data.local.MIGRATION_3_4
+import com.nacho.kartlog.data.local.MIGRATION_4_5
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -60,5 +61,16 @@ class MigrationInstrumentedTest {
         val db = helper.runMigrationsAndValidate("migration-instrumented-4", 4, true, MIGRATION_3_4)
         db.query("SELECT COUNT(*), SUM(stintId IS NULL) FROM laps").use { assertTrue(it.moveToFirst()); assertEquals(1, it.getInt(0)); assertEquals(1, it.getInt(1)) }
         db.execSQL("INSERT INTO stints (sessionId, startLap, endLap) VALUES (10, 1, 1)")
+    }
+
+    @Test
+    fun migrate4To5_addsSignalScore() {
+        helper.createDatabase("migration-instrumented-5", 4).apply {
+            execSQL("INSERT INTO circuits (id, name, lengthMeters) VALUES (1, 'Zuera', 1100)")
+            execSQL("INSERT INTO sessions (id, circuitId, dateTime, type, trackCondition, notes) VALUES (10, 1, 1760000000000, 'RACE', 'DRY', '')")
+            close()
+        }
+        val db = helper.runMigrationsAndValidate("migration-instrumented-5", 5, true, MIGRATION_4_5)
+        db.query("SELECT signalScore FROM sessions WHERE id = 10").use { assertTrue(it.moveToFirst()); assertTrue(it.isNull(0)) }
     }
 }

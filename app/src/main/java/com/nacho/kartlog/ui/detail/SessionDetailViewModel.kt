@@ -43,7 +43,7 @@ sealed interface TrackUiState {
      * [matched] = vueltas guardadas emparejadas con el trazado (selector de vuelta); `null` si no se pueden emparejar,
      * con el motivo en [note]: entonces solo se muestra el trazado completo.
      */
-    data class Ready(val geometry: TrackGeometry, val matched: List<MatchedLap>?, val note: TrackNote?) : TrackUiState
+    data class Ready(val geometry: TrackGeometry, val matched: List<MatchedLap>?, val note: TrackNote?, val quality: com.nacho.kartlog.domain.gps.SignalQuality? = null) : TrackUiState
 }
 
 enum class TrackNote { NO_FINISH, MISMATCH }
@@ -138,7 +138,7 @@ class SessionDetailViewModel(
                     matched == null -> TrackNote.MISMATCH
                     else -> null
                 }
-                TrackUiState.Ready(geometry, matched, note)
+                TrackUiState.Ready(geometry, matched, note, com.nacho.kartlog.domain.gps.SignalQuality.of(fixes))
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TrackUiState.Loading)

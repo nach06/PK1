@@ -44,6 +44,8 @@ data class Session(
     /** Título de la sesión importada (p. ej. «Sesión 46 GP3 DIEGO»). */
     val label: String? = null,
     val durationMin: Int? = null,
+    /** Calidad de la señal GPS (código de `SignalQuality.Score`), si la tanda se cronometró por GPS. */
+    val signalScore: Int? = null,
 )
 
 /** Datos para crear una sesión; el id lo asigna la base de datos. */
@@ -61,6 +63,7 @@ data class NewSession(
     val durationMin: Int? = null,
     /** Texto original (o salida del OCR) de la importación. */
     val importedRaw: String? = null,
+    val signalScore: Int? = null,
 )
 
 data class Lap(

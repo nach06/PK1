@@ -30,6 +30,7 @@ class GpsSessionSaver(
                 trackTempC = setup.trackTempC,
                 trackCondition = setup.trackCondition,
                 notes = "",
+                signalScore = SignalQuality.of(recording.fixes)?.score?.code,
                 durationMin = ((recording.stoppedAtMs - setup.startedAtMs) / 60_000.0).let { Math.round(it).toInt() }.takeIf { it > 0 },
             ),
         )

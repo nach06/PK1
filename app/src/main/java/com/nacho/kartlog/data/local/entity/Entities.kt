@@ -52,6 +52,8 @@ data class SessionEntity(
     val durationMin: Int? = null,
     /** Texto original (o salida del OCR) de la importación; nunca la foto. */
     val importedRaw: String? = null,
+    /** Calidad de la señal GPS al guardar (0 buena, 1 regular, 2 mala); `null` en tandas manuales o importadas. */
+    val signalScore: Int? = null,
 )
 
 @Entity(

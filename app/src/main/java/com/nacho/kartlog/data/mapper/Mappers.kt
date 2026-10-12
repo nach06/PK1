@@ -41,6 +41,7 @@ fun SessionEntity.toDomain() = Session(
     notes = notes,
     label = label,
     durationMin = durationMin,
+    signalScore = signalScore,
 )
 
 fun NewSession.toEntity() = SessionEntity(
@@ -56,6 +57,7 @@ fun NewSession.toEntity() = SessionEntity(
     label = label,
     durationMin = durationMin,
     importedRaw = importedRaw,
+    signalScore = signalScore,
 )
 
 fun LapEntity.toDomain() = Lap(

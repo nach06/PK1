@@ -43,11 +43,11 @@ abstract class KartLogDatabase : RoomDatabase() {
         const val NAME = "kartlog.db"
 
         /** Versión del esquema Room (la que se guarda en cada copia de seguridad). */
-        const val VERSION = 4
+        const val VERSION = 5
 
         fun create(context: Context): KartLogDatabase =
             Room.databaseBuilder(context.applicationContext, KartLogDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4) // migración explícita; nunca fallbackToDestructiveMigration
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5) // migración explícita; nunca fallbackToDestructiveMigration
                 .build()
     }
 }

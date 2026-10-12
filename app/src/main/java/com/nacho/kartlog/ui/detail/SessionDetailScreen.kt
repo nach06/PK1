@@ -192,6 +192,7 @@ fun SessionDetailScreen(
                     state = state,
                     chartExpanded = chartExpanded,
                     compact = keypadExpanded,
+                    quality = (trackState as? TrackUiState.Ready)?.quality,
                     onToggleChart = {
                         chartExpanded = !chartExpanded
                         if (chartExpanded) keypadExpanded = false
@@ -333,6 +334,7 @@ private fun HeaderCard(
     modifier: Modifier = Modifier,
     /** Con el teclado abierto se oculta la información de la tanda para dejar sitio a la lista. */
     compact: Boolean = false,
+    quality: com.nacho.kartlog.domain.gps.SignalQuality? = null,
 ) {
     val session = detail.session
     val kart = MaterialTheme.kartColors
@@ -349,6 +351,15 @@ private fun HeaderCard(
         session.trackTempC?.let { add(stringResource(R.string.format_temp_track, it.toInt())) }
     }.joinToString(" · ")
 
+    val score = com.nacho.kartlog.domain.gps.SignalQuality.Score.fromCode(session.signalScore)
+    val signalLine = score?.let { sc ->
+        val label = stringResource(sc.labelRes())
+        if (quality != null) {
+            stringResource(R.string.signal_detail, label, quality.goodAccuracyPercent, java.lang.String.format(java.util.Locale.ROOT, "%.1f", quality.meanHz), quality.gaps)
+        } else {
+            label
+        }
+    }
     KartCard(modifier = modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
         if (!compact) {
             Text(
@@ -368,6 +379,7 @@ private fun HeaderCard(
                     color = if (session.trackCondition == TrackCondition.DRY) kart.textMuted else kart.warning,
                 )
             }
+            signalLine?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = kart.textMuted, modifier = Modifier.testTag("signal_quality")) }
             if (session.notes.isNotBlank()) {
                 Text(
                     text = session.notes,

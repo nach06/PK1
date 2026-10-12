@@ -6,6 +6,7 @@ import com.nacho.kartlog.data.local.KartLogDatabase
 import com.nacho.kartlog.data.local.MIGRATION_1_2
 import com.nacho.kartlog.data.local.MIGRATION_2_3
 import com.nacho.kartlog.data.local.MIGRATION_3_4
+import com.nacho.kartlog.data.local.MIGRATION_4_5
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -165,6 +166,40 @@ class MigrationTest {
             assertEquals(1, c.getInt(0))
             assertEquals(20, c.getInt(1))
             assertEquals(0, c.getInt(2))
+        }
+    }
+
+    @Test
+    fun migrate4To5_addsNullableSignalScore_keepingSessions() {
+        helper.createDatabase(dbName, 4).apply {
+            execSQL("INSERT INTO circuits (id, name, lengthMeters) VALUES (1, 'Zuera', 1100)")
+            execSQL("INSERT INTO sessions (id, circuitId, dateTime, type, trackCondition, notes) VALUES (10, 1, 1760000000000, 'FREE', 'DRY', 'n')")
+            execSQL("INSERT INTO laps (sessionId, number, timeMs, source) VALUES (10, 1, 58400, 'GPS')")
+            close()
+        }
+        val db = helper.runMigrationsAndValidate(dbName, 5, true, MIGRATION_4_5)
+        db.query("SELECT signalScore, notes, (SELECT COUNT(*) FROM laps) FROM sessions WHERE id = 10").use { c ->
+            assertTrue(c.moveToFirst())
+            assertTrue(c.isNull(0))
+            assertEquals("n", c.getString(1))
+            assertEquals(1, c.getInt(2))
+        }
+        db.execSQL("UPDATE sessions SET signalScore = 1 WHERE id = 10")
+        db.query("SELECT signalScore FROM sessions WHERE id = 10").use { assertTrue(it.moveToFirst()); assertEquals(1, it.getInt(0)) }
+    }
+
+    @Test
+    fun migrate1To5_fullChainKeepsData() {
+        helper.createDatabase(dbName, 1).apply {
+            execSQL("INSERT INTO circuits (id, name, lengthMeters) VALUES (1, 'Zuera', 1100)")
+            execSQL("INSERT INTO sessions (id, circuitId, dateTime, type, trackCondition, notes) VALUES (10, 1, 1760000000000, 'FREE', 'DRY', '')")
+            execSQL("INSERT INTO laps (sessionId, number, timeMs, source) VALUES (10, 1, 58400, 'MANUAL')")
+            close()
+        }
+        val db = helper.runMigrationsAndValidate(dbName, 5, true, MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+        db.query("SELECT (SELECT COUNT(*) FROM laps), (SELECT gateWidthM FROM circuits), (SELECT COUNT(*) FROM stints), (SELECT signalScore FROM sessions)").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals(1, c.getInt(0)); assertEquals(20, c.getInt(1)); assertEquals(0, c.getInt(2)); assertTrue(c.isNull(3))
         }
     }
 }

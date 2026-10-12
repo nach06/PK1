@@ -124,6 +124,15 @@ fun SessionCard(stats: SessionStats, onClick: () -> Unit, modifier: Modifier = M
             )
         }
 
+        com.nacho.kartlog.domain.gps.SignalQuality.Score.fromCode(session.signalScore)?.let { sc ->
+            Text(
+                stringResource(sc.labelRes()),
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (sc == com.nacho.kartlog.domain.gps.SignalQuality.Score.GOOD) kart.telemetry else if (sc == com.nacho.kartlog.domain.gps.SignalQuality.Score.FAIR) kart.warning else MaterialTheme.colorScheme.primary,
+                modifier = Modifier.testTag("card_signal"),
+            )
+        }
+
         // 4. Condiciones con iconos.
         Spacer(Modifier.height(8.dp))
         Row(

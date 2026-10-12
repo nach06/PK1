@@ -55,7 +55,7 @@ class BackupServiceTest {
         service = newService()
     }
 
-    private fun newService(schemaVersion: Int = 4) = ZipBackupService(
+    private fun newService(schemaVersion: Int = KartLogDatabase.VERSION) = ZipBackupService(
         databaseFile = context.getDatabasePath(KartLogDatabase.NAME),
         tracksDir = tracksDir,
         cacheDir = context.cacheDir,
@@ -125,7 +125,7 @@ class BackupServiceTest {
 
         // ...y se restaura: la BD se cierra, se sustituyen los ficheros y se vuelve a abrir como haría la app reiniciada.
         val info = service.restore { zip.inputStream() }.getOrThrow()
-        assertEquals(4, info.schemaVersion)
+        assertEquals(KartLogDatabase.VERSION, info.schemaVersion)
         assertEquals(1, info.trackCount)
         val reopened = KartLogDatabase.create(context)
         try {
@@ -160,10 +160,10 @@ class BackupServiceTest {
             assertEquals(why, BackupError.INVALID, (result.exceptionOrNull() as BackupException).error)
         }
         assertInvalid("esto no es un zip".toByteArray(), "basura")
-        assertInvalid(zipOf("manifest.json" to """{"schemaVersion":4}""".toByteArray()), "sin base de datos")
+        assertInvalid(zipOf("manifest.json" to """{"schemaVersion":5}""".toByteArray()), "sin base de datos")
         assertInvalid(zipOf("kartlog.db" to zip.readBytes().copyOf(64)), "sin manifiesto")
-        assertInvalid(zipOf("manifest.json" to """{"schemaVersion":4}""".toByteArray(), "kartlog.db" to "no es sqlite".toByteArray()), "BD dañada")
-        assertInvalid(zipOf("manifest.json" to """{"schemaVersion":4}""".toByteArray(), "../evil.txt" to "x".toByteArray()), "ruta fuera de la copia")
+        assertInvalid(zipOf("manifest.json" to """{"schemaVersion":5}""".toByteArray(), "kartlog.db" to "no es sqlite".toByteArray()), "BD dañada")
+        assertInvalid(zipOf("manifest.json" to """{"schemaVersion":5}""".toByteArray(), "../evil.txt" to "x".toByteArray()), "ruta fuera de la copia")
         assertInvalid(rewriteManifest(zip) { it.put("schemaVersion", 3) }, "manifiesto que no coincide con la BD")
         assertEquals(5, count(db, "laps"))
         assertTrue(File(tracksDir, "1.csv").exists())

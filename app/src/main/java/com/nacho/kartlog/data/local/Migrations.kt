@@ -80,3 +80,10 @@ val MIGRATION_3_4: Migration = object : Migration(3, 4) {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_stints_sessionId` ON `stints` (`sessionId`)")
     }
 }
+
+/** v4 → v5 (Sprint 8, B4): `sessions.signalScore` nulable (calidad de la señal GPS). Las tandas existentes quedan sin puntuación. */
+val MIGRATION_4_5: Migration = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `sessions` ADD COLUMN `signalScore` INTEGER")
+    }
+}

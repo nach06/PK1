@@ -337,6 +337,10 @@
     <string name="fieldcal_col_diff">Dif. ms</string>
     <string name="tools_title">Herramientas</string>
     <string name="tools_fieldcal">Calibración en pista</string>
+    <string name="signal_good">Señal GPS buena</string>
+    <string name="signal_fair">Señal GPS regular</string>
+    <string name="signal_poor">Señal GPS mala</string>
+    <string name="signal_detail">%1$s · %2$d %% del tiempo con ±8 m o mejor · %3$s Hz · %4$d huecos</string>
     <string name="more_below">Hay más contenido abajo</string>
     <string name="debug_jump_end">Ir al final (debug)</string>
     <string name="debug_finish_tap">Terminar (debug)</string>
