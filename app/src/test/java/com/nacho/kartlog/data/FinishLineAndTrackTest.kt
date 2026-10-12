@@ -84,10 +84,8 @@ class FinishLineAndTrackTest {
         )
         store.save(id, fixes)
         assertTrue(File(dir, "$id.csv").exists())
-        assertEquals(
-            "elapsedNs;lat;lon;speedMps;accuracyM",
-            File(dir, "$id.csv").readLines().first(),
-        )
+        // Sprint 8, B1: v2 = línea de versión + cabecera con rumbo, proveedor y marca de cruce.
+        assertEquals(listOf("#kartlog-track v2", "elapsedNs;lat;lon;speedMps;accuracyM;bearingDeg;provider;crossingNs"), File(dir, "$id.csv").readLines().take(2))
         val loaded = store.load(id)
         assertEquals(2, loaded.size)
         assertEquals(fixes[0].elapsedNs, loaded[0].elapsedNs)

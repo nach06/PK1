@@ -49,6 +49,8 @@ class FusedLocationSource(
         lon = longitude,
         speedMps = if (hasSpeed()) speed else 0f,
         accuracyM = if (hasAccuracy()) accuracy else UNKNOWN_ACCURACY_M,
+        bearingDeg = if (hasBearing()) bearing else null,
+        provider = provider,
     )
 
     private companion object {

@@ -6,23 +6,43 @@ import kotlin.math.hypot
 
 /** Lectura y escritura de trazados: CSV propio (`tracks/{id}.csv`) y GPX (`<trkpt lat lon><time>`). */
 object TrackFormats {
-    const val CSV_HEADER = "elapsedNs;lat;lon;speedMps;accuracyM"
+    /** Versión 2 (Sprint 8): registro bruto con rumbo, proveedor y marca de cruce. Los ficheros v1 (5 columnas) se siguen leyendo. */
+    const val CSV_VERSION_LINE = "#kartlog-track v2"
+    const val CSV_HEADER = "elapsedNs;lat;lon;speedMps;accuracyM;bearingDeg;provider;crossingNs"
+
+    /** Una línea de datos v2 (sin salto de línea). */
+    fun csvLine(f: GpsFix): String = String.format(
+        Locale.ROOT, "%d;%.7f;%.7f;%.2f;%.1f;%s;%s;%s",
+        f.elapsedNs, f.lat, f.lon, f.speedMps, f.accuracyM,
+        f.bearingDeg?.let { String.format(Locale.ROOT, "%.1f", it) }.orEmpty(),
+        f.provider.orEmpty().replace(';', ',').replace('\n', ' '),
+        f.crossingNs?.toString().orEmpty(),
+    )
 
     fun toCsv(fixes: List<GpsFix>): String = buildString {
+        appendLine(CSV_VERSION_LINE)
         appendLine(CSV_HEADER)
-        fixes.forEach { f ->
-            appendLine(String.format(Locale.ROOT, "%d;%.7f;%.7f;%.2f;%.1f", f.elapsedNs, f.lat, f.lon, f.speedMps, f.accuracyM))
-        }
+        fixes.forEach { appendLine(csvLine(it)) }
     }
 
     /** Detecta el formato: si contiene `<gpx` o `<trkpt` es GPX; si no, CSV. */
     fun parse(text: String): List<GpsFix> =
         if (text.contains("<trkpt", ignoreCase = true)) parseGpx(text) else parseCsv(text)
 
-    fun parseCsv(text: String): List<GpsFix> = text.lineSequence().drop(1).mapNotNull { line ->
-        val p = line.trim().split(';')
+    /** Lee v1 (cabecera de una línea, 5 columnas) y v2 (línea `#kartlog-track v2` + cabecera + 8 columnas); ignora líneas cortadas. */
+    fun parseCsv(text: String): List<GpsFix> = text.lineSequence().mapNotNull { line ->
+        val t = line.trim()
+        if (t.isEmpty() || t.startsWith("#") || t.startsWith("elapsedNs")) return@mapNotNull null
+        val p = t.split(';')
         if (p.size < 5) return@mapNotNull null
-        runCatching { GpsFix(p[0].toLong(), p[1].toDouble(), p[2].toDouble(), p[3].toFloat(), p[4].toFloat()) }.getOrNull()
+        runCatching {
+            GpsFix(
+                p[0].toLong(), p[1].toDouble(), p[2].toDouble(), p[3].toFloat(), p[4].toFloat(),
+                bearingDeg = p.getOrNull(5)?.takeIf { it.isNotBlank() }?.toFloat(),
+                provider = p.getOrNull(6)?.takeIf { it.isNotBlank() },
+                crossingNs = p.getOrNull(7)?.takeIf { it.isNotBlank() }?.toLong(),
+            )
+        }.getOrNull()
     }.toList()
 
     private val trkpt = Regex("""<trkpt\b([^>]*)>(.*?)</trkpt>""", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))

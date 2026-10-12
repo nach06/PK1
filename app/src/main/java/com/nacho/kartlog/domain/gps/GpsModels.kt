@@ -11,6 +11,12 @@ data class GpsFix(
     val speedMps: Float,
     /** Radio de error horizontal estimado, en metros. */
     val accuracyM: Float,
+    /** Rumbo del fix (grados, 0 = norte) si el proveedor lo da. Solo informativo: ningún cálculo depende de él. */
+    val bearingDeg: Float? = null,
+    /** Proveedor que entregó el fix (`fused`, `gps`…), para saber con qué se midió. */
+    val provider: String? = null,
+    /** `elapsedNs` interpolado del cruce de meta detectado justo antes de este fix (marca del registro bruto), si lo hubo. */
+    val crossingNs: Long? = null,
 )
 
 /** Trazado de una tanda GPS, guardado en `tracks/{sessionId}.csv` (no en Room). */

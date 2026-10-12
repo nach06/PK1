@@ -268,6 +268,8 @@ class TimingSession(
         val rate = if (recentArrivals.size >= 2 && span > 0) (recentArrivals.size - 1) / span else null
 
         val event = detector?.feed(fix)
+        // Registro bruto: el fix que sigue a un cruce lleva la marca del instante interpolado del cruce.
+        if (event != null) fixes[fixes.lastIndex] = fix.copy(crossingNs = event.crossing.elapsedNs)
         var pitCompleted: TimingEvent.PitCompleted? = null
 
         // Geometría de la vuelta: posición/velocidad del fix y, al cerrar una vuelta válida, su perfil como candidata a referencia.

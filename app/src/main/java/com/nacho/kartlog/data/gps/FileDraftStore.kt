@@ -26,7 +26,7 @@ class FileDraftStore(private val dir: File) : DraftStore {
 
     override suspend fun begin(setup: GpsSessionSetup) = withContext(Dispatchers.IO) {
         dir.mkdirs()
-        csv.writeText(TrackFormats.CSV_HEADER + "\n")
+        csv.writeText(TrackFormats.CSV_VERSION_LINE + "\n" + TrackFormats.CSV_HEADER + "\n")
         pits.delete()
         json.writeText(setup.toJson().toString())
     }
@@ -34,9 +34,7 @@ class FileDraftStore(private val dir: File) : DraftStore {
     override suspend fun append(fixes: List<GpsFix>) = withContext(Dispatchers.IO) {
         if (fixes.isEmpty() || !json.exists()) return@withContext
         csv.appendText(
-            fixes.joinToString(separator = "") { f ->
-                String.format(Locale.ROOT, "%d;%.7f;%.7f;%.2f;%.1f\n", f.elapsedNs, f.lat, f.lon, f.speedMps, f.accuracyM)
-            },
+            fixes.joinToString(separator = "") { f -> TrackFormats.csvLine(f) + "\n" },
         )
     }
 
