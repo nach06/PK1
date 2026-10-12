@@ -23,7 +23,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Ajustes → Depuración → «Importar muestra de texto A/B» abre Importar tiempos con el texto ya analizado (A4). */
+/** Ajustes → Depuración → «Muestra A (texto)/B» abre Importar tiempos con el texto ya analizado (A4). */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "w360dp-h900dp-xxhdpi")
 class DebugSamplesFlowTest {
@@ -59,8 +59,8 @@ class DebugSamplesFlowTest {
         waitFor("Tandas")
         compose.onNodeWithText("Ajustes").performClick()
         compose.onNodeWithTag("debug_header").performClick() // la sección Depuración arranca plegada
-        waitFor("Importar muestra de texto A")
-        compose.onNodeWithText("Importar muestra de texto A", ignoreCase = true).performScrollTo().performClick()
+        waitFor("Muestra A (texto)")
+        compose.onNodeWithText("Muestra A (texto)", ignoreCase = true).performScrollTo().performClick()
         waitForTag("who_banner")
         waitFor("Nacho · Kart 28", substring = true)
     }
@@ -91,8 +91,8 @@ class DebugSamplesFlowTest {
         waitFor("Tandas")
         compose.onNodeWithText("Ajustes").performClick()
         compose.onNodeWithTag("debug_header").performClick()
-        waitFor("Importar muestra de texto B")
-        compose.onNodeWithText("Importar muestra de texto B", ignoreCase = true).performScrollTo().performClick()
+        waitFor("Muestra B (texto)")
+        compose.onNodeWithText("Muestra B (texto)", ignoreCase = true).performScrollTo().performClick()
         waitForTag("who_banner")
         waitFor("Kart 28", substring = true)
     }
@@ -109,13 +109,13 @@ class DebugSamplesFlowTest {
         val debugTop = compose.onNodeWithTag("debug_section").fetchSemanticsNode().boundsInRoot.top
         val profileTop = compose.onNodeWithText("Mi perfil", ignoreCase = true).fetchSemanticsNode().boundsInRoot.top
         check(debugTop < profileTop) { "Depuración ($debugTop) debe ir antes de Mi perfil ($profileTop)" }
-        check(compose.onAllNodesWithText("Simular tanda en pista", ignoreCase = true).fetchSemanticsNodes().isEmpty()) { "debe arrancar plegada" }
+        check(compose.onAllNodesWithText("Simular tanda", ignoreCase = true).fetchSemanticsNodes().isEmpty()) { "debe arrancar plegada" }
 
         compose.onNodeWithTag("debug_header").performClick()
-        listOf("Simular tanda en pista", "Probar importación con muestra A/B (imagen)", "Importar muestra de texto A", "Importar muestra de texto B", "Cargar datos de prueba", "Borrar todos los datos")
+        listOf("Simular tanda", "Muestra A/B (imagen)", "Muestra A (texto)", "Muestra B (texto)", "Datos de prueba", "Borrar todo")
             .forEach { waitFor(it) }
         compose.onNodeWithTag("debug_header").performClick()
-        compose.waitUntil(5_000) { compose.onAllNodesWithText("Simular tanda en pista", ignoreCase = true).fetchSemanticsNodes().isEmpty() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Simular tanda", ignoreCase = true).fetchSemanticsNodes().isEmpty() }
     }
 
     @Test

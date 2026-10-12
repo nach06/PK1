@@ -151,13 +151,7 @@ fun SettingsScreen(
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     pair.forEach { b ->
                                         Box(Modifier.weight(1f)) {
-                                            SecondaryButton(
-                                                text = b.label,
-                                                onClick = b.onClick,
-                                                enabled = b.enabled,
-                                                color = if (b.warn) MaterialTheme.kartColors.warning else MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.testTag(b.tag),
-                                            )
+                                            DebugGridButton(b)
                                         }
                                     }
                                     if (pair.size == 1) Box(Modifier.weight(1f))
@@ -540,4 +534,21 @@ private fun debugButtons(viewModel: SettingsViewModel, state: SettingsUiState, p
         DebugButton(stringResource(R.string.settings_to_end), "debug_to_end", onEnd),
         DebugButton(stringResource(R.string.settings_wipe), "debug_wipe", onWipe, idle, warn = true),
     )
+}
+
+/** Botón de la rejilla de depuración: poco relleno lateral y texto que se parte por palabras (nunca por letras). */
+@Composable
+private fun DebugGridButton(b: DebugButton) {
+    val color = if (b.warn) MaterialTheme.kartColors.warning else MaterialTheme.colorScheme.primary
+    androidx.compose.material3.OutlinedButton(
+        onClick = b.onClick,
+        enabled = b.enabled,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag(b.tag),
+        shape = MaterialTheme.shapes.medium,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+        border = androidx.compose.foundation.BorderStroke(2.dp, if (b.enabled) color else MaterialTheme.kartColors.cardBorder),
+        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = color, disabledContentColor = MaterialTheme.kartColors.textMuted),
+    ) {
+        Text(b.label, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center, maxLines = 3, modifier = Modifier.testTag("${b.tag}_text"))
+    }
 }
