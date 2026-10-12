@@ -2,6 +2,7 @@ package com.nacho.kartlog.ui.history
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,6 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.Thermostat
@@ -46,13 +48,17 @@ import com.nacho.kartlog.ui.util.labelRes
 
 /** Card de tanda del histórico: circuito + delta, mejor vuelta, datos, condiciones y sparkline. */
 @Composable
-fun SessionCard(stats: SessionStats, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun SessionCard(stats: SessionStats, onClick: () -> Unit, modifier: Modifier = Modifier, compact: Boolean = false) {
     val summary = stats.summary
     val session = summary.session
     val kart = MaterialTheme.kartColors
     val hasLaps = stats.lapTimes.isNotEmpty()
 
-    KartCard(modifier = modifier.fillMaxWidth(), onClick = onClick) {
+    if (compact) {
+        CompactSessionCard(stats, onClick, modifier)
+        return
+    }
+    KartCard(modifier = modifier.fillMaxWidth().testTag("session_card"), onClick = onClick) {
         // 1. Circuito y, a la derecha, RÉCORD o diferencia con el récord.
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -175,6 +181,40 @@ fun SessionCard(stats: SessionStats, onClick: () -> Unit, modifier: Modifier = M
                         .width(120.dp)
                         .height(40.dp),
                 )
+            }
+        }
+    }
+}
+
+/** Card de una sola fila para pantallas bajas (móvil apaisado): circuito y fecha, mejor vuelta, y delta o nº de vueltas. */
+@Composable
+private fun CompactSessionCard(stats: SessionStats, onClick: () -> Unit, modifier: Modifier) {
+    val session = stats.summary.session
+    val kart = MaterialTheme.kartColors
+    val line = buildList {
+        add(formatDateTime(session.dateTime))
+        add(stringResource(session.type.labelRes()))
+        session.kartNumber?.let { add(stringResource(R.string.format_kart, it)) }
+    }.joinToString(" · ")
+    KartCard(modifier = modifier.fillMaxWidth().testTag("session_card"), onClick = onClick, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text(stats.summary.circuit.name, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(line, style = MaterialTheme.typography.bodyMedium, color = kart.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (stats.lapTimes.isNotEmpty() && stats.bestMs != null) {
+                Text(LapTime.format(stats.bestMs), style = KartTextStyles.bestLap.copy(fontSize = 28.sp), color = kart.telemetry, maxLines = 1, softWrap = false)
+                Column(horizontalAlignment = Alignment.End) {
+                    val extra = when {
+                        stats.isRecord -> stringResource(R.string.badge_record).uppercase()
+                        stats.deltaToRecordMs != null -> LapTime.formatDelta(stats.deltaToRecordMs)
+                        else -> ""
+                    }
+                    if (extra.isNotEmpty()) Text(extra, style = MaterialTheme.typography.labelLarge, color = if (stats.isRecord) kart.telemetry else kart.textMuted, maxLines = 1, softWrap = false)
+                    Text(pluralStringResource(R.plurals.format_lap_count, stats.lapTimes.size, stats.lapTimes.size), style = MaterialTheme.typography.bodyMedium, color = kart.textMuted, maxLines = 1, softWrap = false)
+                }
+            } else {
+                Text(stringResource(R.string.history_no_laps), style = MaterialTheme.typography.titleMedium, color = kart.textMuted)
             }
         }
     }

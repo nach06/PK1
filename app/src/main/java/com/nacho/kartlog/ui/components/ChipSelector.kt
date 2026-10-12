@@ -44,18 +44,18 @@ fun <T> ChipSelector(
 }
 
 @Composable
-internal fun Chip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun Chip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, minHeight: androidx.compose.ui.unit.Dp = 56.dp, verticalPadding: androidx.compose.ui.unit.Dp = 12.dp) {
     val kart = MaterialTheme.kartColors
     val shape = MaterialTheme.shapes.medium
     Box(
         modifier = modifier
-            .heightIn(min = 56.dp)
+            .heightIn(min = minHeight)
             .clip(shape)
             .background(if (selected) MaterialTheme.colorScheme.primary else kart.card)
             .border(BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.primary else kart.cardBorder), shape)
             .semantics { this.selected = selected }
             .clickable(role = Role.RadioButton, onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(horizontal = 20.dp, vertical = verticalPadding),
         contentAlignment = Alignment.Center,
     ) {
         Text(

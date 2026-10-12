@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -53,6 +54,10 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 private val ACTION_STRIP_HEIGHT = 84.dp
+private val ACTION_STRIP_HEIGHT_COMPACT = 60.dp
+
+/** Alto útil escaso (móvil apaisado): franja inferior y chips más bajos para que quepa al menos una card entera. */
+private const val COMPACT_HEIGHT_DP = 480
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -70,6 +75,8 @@ fun SessionListScreen(
     // la lista vuelve a la misma posición al regresar del Detalle.
     val listState = rememberLazyListState()
     val checked = stringResource(R.string.menu_checked)
+    val compact = LocalConfiguration.current.screenHeightDp < COMPACT_HEIGHT_DP
+    val stripHeight = if (compact) ACTION_STRIP_HEIGHT_COMPACT else ACTION_STRIP_HEIGHT
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -100,8 +107,9 @@ fun SessionListScreen(
         // La acción principal vive en una franja reservada al pie: la lista termina encima de ella, así que la
         // FAB (cerrada) nunca tapa el texto de ninguna card. Al desplegarla se oscurece el fondo a propósito.
         Box(Modifier.fillMaxSize().padding(padding)) {
-            Column(Modifier.fillMaxSize().padding(bottom = ACTION_STRIP_HEIGHT)) {
+            Column(Modifier.fillMaxSize().padding(bottom = stripHeight)) {
                 SessionListBody(
+                    compact = compact,
                     state = state,
                     listState = listState,
                     onNewSession = onNewSession,
@@ -131,7 +139,7 @@ fun SessionListScreen(
                     },
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.kartColors.textMuted,
-                    modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 24.dp).testTag("list_count"),
+                    modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = if (compact) 16.dp else 24.dp).testTag("list_count"),
                 )
             }
             SpeedDialFab(
@@ -143,7 +151,7 @@ fun SessionListScreen(
                     FabAction(stringResource(R.string.import_title), onImport, tag = "fab_import"),
                     FabAction(stringResource(R.string.action_on_track), onTrack, tag = "fab_track"),
                 ),
-                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 12.dp),
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = if (compact) 2.dp else 12.dp),
             )
         }
     }
@@ -169,6 +177,7 @@ fun SessionListScreen(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SessionListBody(
+    compact: Boolean,
     state: SessionListUiState,
     listState: androidx.compose.foundation.lazy.LazyListState,
     onNewSession: () -> Unit,
@@ -190,6 +199,7 @@ private fun SessionListBody(
         )
         else -> Column(Modifier.fillMaxSize()) {
             FilterRow(
+                compact = compact,
                 state = state,
                 onCircuitClick = onCircuitClick,
                 onTypeClick = viewModel::toggleType,
@@ -205,17 +215,18 @@ private fun SessionListBody(
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = if (compact) 2.dp else 8.dp, bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 12.dp),
                 ) {
                     state.items.forEach { item ->
                         when (item) {
                             is SessionListItem.MonthHeader -> stickyHeader(key = item.key, contentType = "header") {
-                                MonthHeader(item.month)
+                                MonthHeader(item.month, compact)
                             }
                             is SessionListItem.Entry -> item(key = item.key, contentType = "session") {
                                 SessionCard(
                                     stats = item.stats,
+                                    compact = compact,
                                     onClick = { onOpenSession(item.stats.summary.session.id) },
                                 )
                             }
@@ -229,15 +240,18 @@ private fun SessionListBody(
 
 @Composable
 private fun FilterRow(
+    compact: Boolean,
     state: SessionListUiState,
     onCircuitClick: () -> Unit,
     onTypeClick: (SessionType) -> Unit,
 ) {
+    val chipHeight = if (compact) 40.dp else 56.dp
+    val chipPadding = if (compact) 6.dp else 12.dp
     // LazyRow: arranca siempre sin desplazamiento (primer chip completo) y conserva el scroll horizontal.
     LazyRow(
         modifier = Modifier.fillMaxWidth(),
         state = rememberLazyListState(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = if (compact) 4.dp else 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item(key = "circuit") {
@@ -245,6 +259,8 @@ private fun FilterRow(
                 text = (state.selectedCircuit?.name ?: stringResource(R.string.filter_circuit)) + " ▾",
                 selected = state.filters.circuitId != null,
                 onClick = onCircuitClick,
+                minHeight = chipHeight,
+                verticalPadding = chipPadding,
             )
         }
         items(SessionType.entries, key = { it.name }) { type ->
@@ -252,6 +268,8 @@ private fun FilterRow(
                 text = stringResource(type.labelRes()),
                 selected = state.filters.type == type,
                 onClick = { onTypeClick(type) },
+                minHeight = chipHeight,
+                verticalPadding = chipPadding,
             )
         }
     }
@@ -260,7 +278,7 @@ private fun FilterRow(
 /** Cabecera de mes pegajosa («Octubre 2026»). */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun MonthHeader(month: YearMonth) {
+private fun MonthHeader(month: YearMonth, compact: Boolean) {
     val name = month.month.getDisplayName(TextStyle.FULL_STANDALONE, Locale("es", "ES"))
         .replaceFirstChar { it.uppercase() }
     Text(
@@ -270,7 +288,7 @@ private fun MonthHeader(month: YearMonth) {
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.background)
-            .padding(top = 8.dp, bottom = 4.dp),
+            .padding(top = if (compact) 2.dp else 8.dp, bottom = if (compact) 0.dp else 4.dp),
     )
 }
 
