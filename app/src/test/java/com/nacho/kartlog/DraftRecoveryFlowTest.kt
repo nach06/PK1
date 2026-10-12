@@ -8,6 +8,8 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
@@ -162,7 +164,16 @@ class DraftRecoveryFlowTest {
         }
         content(container)
 
-        waitFor("Tanda interrumpida sin vueltas: descartada")
+        try {
+            waitFor("Tanda interrumpida sin vueltas: descartada")
+        } catch (e: androidx.compose.ui.test.ComposeTimeoutException) {
+            val texts = compose.onRoot().fetchSemanticsNode().let { root ->
+                fun walk(n: androidx.compose.ui.semantics.SemanticsNode): List<String> =
+                    (n.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)?.map { it.text }.orEmpty()) + n.children.flatMap(::walk)
+                walk(root)
+            }
+            throw AssertionError("DIAG textos=$texts draftFiles=${draftFiles().map { it.exists() }} fase=${container.timingSession.state.value.phase}", e)
+        }
         assertTrue(compose.onAllNodesWithText("Tanda interrumpida").fetchSemanticsNodes().isEmpty())
         assertTrue(compose.onAllNodesWithText("Tanda terminada", substring = true).fetchSemanticsNodes().isEmpty())
         val deadline = System.currentTimeMillis() + 8_000
