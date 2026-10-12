@@ -3,6 +3,14 @@ package com.nacho.kartlog.ui.navigation
 import androidx.annotation.StringRes
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.platform.testTag
+import com.nacho.kartlog.domain.gps.TimingSession
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -119,12 +127,18 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
 
     // Tanda GPS interrumpida (la app murió a mitad de una tanda): se ofrece recuperarla o descartarla.
     var pendingDraft by remember { mutableStateOf<SessionDraft?>(null) }
+    val snackbarHost = remember { SnackbarHostState() }
+    val draftEmptyNotice = stringResource(R.string.draft_empty_discarded)
     LaunchedEffect(Unit) {
         if (container.timingSession.state.value.phase == TimingPhase.IDLE) {
             val draft = container.draftStore.load()
             // Sin circuito (borrado) no se podría guardar: se tira.
             if (draft != null && container.circuitRepository.getById(draft.setup.circuitId) == null) {
                 container.draftStore.clear()
+            } else if (draft != null && countRecoverableLaps(draft) == 0) {
+                // Sin ninguna vuelta cerrada no hay nada que guardar: se descarta y se avisa (no queda una tanda «terminada» vacía).
+                container.draftStore.clear()
+                snackbarHost.showSnackbar(draftEmptyNotice)
             } else {
                 pendingDraft = draft
             }
@@ -135,10 +149,12 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
             onDismissRequest = {},
             containerColor = MaterialTheme.kartColors.card,
             title = { Text(stringResource(R.string.draft_title), style = MaterialTheme.typography.titleLarge) },
+            // Desplazable: en apaisado (360 dp de alto) el mensaje y los botones no caben sin scroll.
             text = {
                 Text(
                     stringResource(R.string.draft_message, formatDateTime(draft.setup.startedAtMs), draft.fixes.size),
                     style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.verticalScroll(rememberScrollState()).testTag("draft_message"),
                 )
             },
             confirmButton = {
@@ -167,6 +183,7 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        snackbarHost = { SnackbarHost(snackbarHost) },
         bottomBar = {
             if (showBottomBar) {
                 androidx.compose.foundation.layout.Column {
@@ -307,4 +324,11 @@ private fun KartNavigationBar(
             )
         }
     }
+}
+
+/** Vueltas que saldrían de recuperar [draft] (se recalcula en una sesión desechable, sin tocar la real ni el disco). */
+internal fun countRecoverableLaps(draft: SessionDraft): Int {
+    val probe = TimingSession(CoroutineScope(Dispatchers.Unconfined))
+    probe.restore(draft)
+    return probe.state.value.laps.size
 }

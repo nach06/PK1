@@ -474,6 +474,7 @@
     <string name="draft_title">Tanda interrumpida</string>
     <string name="draft_message">La app se cerró durante una tanda GPS (%1$s, %2$d posiciones). ¿Quieres recuperarla? Las vueltas se recalculan con las posiciones guardadas.</string>
     <string name="draft_recover">Recuperar tanda interrumpida</string>
+    <string name="draft_empty_discarded">Tanda interrumpida sin vueltas: descartada</string>
     <string name="draft_discard">Descartar</string>
 
     <!-- Resistencia: stints -->

@@ -149,4 +149,25 @@ class DraftRecoveryFlowTest {
         while (draftFiles().any { it.exists() } && System.currentTimeMillis() < deadline) { Thread.sleep(100); compose.waitForIdle() }
         assertFalse(draftFiles().any { it.exists() })
     }
+
+    @Test
+    fun draftWithoutLaps_isDiscardedAutomatically_withANotice_andLeavesNothingDangling() {
+        val container = AppContainer(context)
+        val circuitId = runBlocking { container.circuitRepository.add("Óvalo simulado", 780) }
+        runBlocking {
+            val sim = TrackSimulator.simulate(oval, lapTimes, hz = 1.0)
+            val store = FileDraftStore(File(context.filesDir, "tracks"))
+            store.begin(GpsSessionSetup(circuitId, oval.finishLine, kartNumber = 9, type = SessionType.RACE, startedAtMs = startedAt))
+            store.append(sim.fixes.take(30)) // menos de una vuelta
+        }
+        content(container)
+
+        waitFor("Tanda interrumpida sin vueltas: descartada")
+        assertTrue(compose.onAllNodesWithText("Tanda interrumpida").fetchSemanticsNodes().isEmpty())
+        assertTrue(compose.onAllNodesWithText("Tanda terminada", substring = true).fetchSemanticsNodes().isEmpty())
+        val deadline = System.currentTimeMillis() + 8_000
+        while (draftFiles().any { it.exists() } && System.currentTimeMillis() < deadline) { Thread.sleep(100); compose.waitForIdle() }
+        assertFalse(draftFiles().any { it.exists() })
+        assertEquals(TimingPhase.IDLE, container.timingSession.state.value.phase)
+    }
 }
