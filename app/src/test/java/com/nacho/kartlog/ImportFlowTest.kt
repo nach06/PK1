@@ -229,7 +229,7 @@ class ImportFlowTest {
         assertEquals("OK", state("review_row_3"))
         assertEquals("INVALID", state("review_row_4")) // fuera de rango
         assertEquals("OK", state("review_row_5"))
-        assertTrue(textOf("review_summary").contains("2 celdas dudosas"))
+        assertTrue(textOf("review_summary").contains("2 dudosas"))
         assertTrue(textOf("review_summary").contains("1 inválidas"))
         // Todo lo importante está en pantalla sin desplazarse.
         assertInsideScreen("meta_summary", "format_label", "driver_strip", "review_row_1", "review_row_2", "review_summary", "review_save")

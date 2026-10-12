@@ -69,8 +69,8 @@ internal fun ReviewContent(state: ImportUiState, viewModel: ImportViewModel, onB
         bottomBar = { ReviewBottomBar(state, onSave = viewModel::save) },
     ) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 12.dp, vertical = 2.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             MetaSummary(state, onEditMeta)
             FormatRow(state, onChange = viewModel::openFormatPicker)
@@ -132,13 +132,14 @@ private fun MetaSummary(state: ImportUiState, onEdit: () -> Unit) {
         state.kartNumber?.let { add(stringResource(R.string.format_kart, it)) }
         state.durationMin?.let { add(stringResource(R.string.format_duration_value, it)) }
     }.joinToString(" · ")
-    KartCard(Modifier.fillMaxWidth().testTag("meta_summary"), onClick = onEdit, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+    KartCard(Modifier.fillMaxWidth().testTag("meta_summary"), onClick = onEdit, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = line,
                 style = MaterialTheme.typography.titleSmall,
                 color = if (circuit == null && state.destination == ImportDestination.NEW_SESSION) kart.warning else MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).testTag("meta_line"),
             )
             Text(stringResource(R.string.import_meta_edit).uppercase().take(6) + "…", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
@@ -149,7 +150,7 @@ private fun MetaSummary(state: ImportUiState, onEdit: () -> Unit) {
 @Composable
 private fun FormatRow(state: ImportUiState, onChange: () -> Unit) {
     val format = state.format ?: return
-    Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 32.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
             stringResource(R.string.import_format_detected, formatLabel(format)),
             style = MaterialTheme.typography.bodyMedium,
@@ -157,7 +158,7 @@ private fun FormatRow(state: ImportUiState, onChange: () -> Unit) {
             modifier = Modifier.weight(1f).testTag("format_label"),
             maxLines = 1,
         )
-        TextButton(onClick = onChange, modifier = Modifier.heightIn(min = 40.dp).testTag("format_change")) {
+        TextButton(onClick = onChange, modifier = Modifier.heightIn(min = 32.dp).testTag("format_change"), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
             Text(stringResource(R.string.import_format_change).uppercase(), style = MaterialTheme.typography.labelLarge)
         }
     }
@@ -174,11 +175,11 @@ private fun DriverStrip(review: ImportReview, viewedKey: String?, onSelect: (Str
             val label = (if (d.key == review.meKey) "★ " else "") + d.displayName + (if (warn) " ⚠" else "")
             Box(
                 Modifier
-                    .heightIn(min = 44.dp)
+                    .heightIn(min = 40.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(if (selected) MaterialTheme.colorScheme.primary else kart.card)
                     .clickable { onSelect(d.key) }
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .padding(horizontal = 14.dp, vertical = 6.dp)
                     .semantics { stateDescription = if (selected) "selected" else "" }
                     .testTag("driver_chip_${d.name ?: d.kartNumber ?: d.key}"),
                 contentAlignment = Alignment.Center,
@@ -217,11 +218,11 @@ private fun ActionChip(text: String, tag: String, selected: Boolean = false, onC
     val kart = MaterialTheme.kartColors
     Box(
         Modifier
-            .heightIn(min = 40.dp)
+            .heightIn(min = 36.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(if (selected) kart.telemetry.copy(alpha = 0.25f) else kart.card)
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .padding(horizontal = 14.dp, vertical = 4.dp)
             .testTag(tag),
         contentAlignment = Alignment.Center,
     ) { Text(text, style = MaterialTheme.typography.titleSmall, color = if (selected) kart.telemetry else MaterialTheme.colorScheme.onSurface, maxLines = 1) }
@@ -263,7 +264,7 @@ private fun LapTable(
     onAdd: () -> Unit,
 ) {
     val rows = review.rows(driver.key)
-    LazyColumn(modifier.testTag("lap_table"), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    LazyColumn(modifier.testTag("lap_table")) {
         items(rows, key = { "${driver.key}-${it.first.number}" }) { (cell, status) ->
             ReviewLapRow(
                 cell = cell,
@@ -328,7 +329,7 @@ private fun ReviewLapRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 52.dp)
+            .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(if (selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
             .background(background)
@@ -342,7 +343,7 @@ private fun ReviewLapRow(
         Column(Modifier.weight(1f)) {
             AutoSizeText(
                 text = timeText,
-                style = KartTextStyles.lapTime.copy(fontSize = 24.sp, textDecoration = if (status == CellStatus.INVALID) TextDecoration.LineThrough else TextDecoration.None),
+                style = KartTextStyles.lapTime.copy(fontSize = 20.sp, textDecoration = if (status == CellStatus.INVALID) TextDecoration.LineThrough else TextDecoration.None),
                 color = timeColor,
                 minSize = 14.sp,
                 modifier = Modifier.fillMaxWidth().testTag("review_time_${cell.number}"),
@@ -351,15 +352,15 @@ private fun ReviewLapRow(
         }
         if (status == CellStatus.DOUBTFUL) {
             TextButton(onClick = onConfirm, modifier = Modifier.heightIn(min = 48.dp).testTag("confirm_${cell.number}")) {
-                Text("✓", style = MaterialTheme.typography.titleLarge, color = kart.telemetry)
+                Text("✓", style = MaterialTheme.typography.titleMedium, color = kart.telemetry)
             }
         }
         TextButton(onClick = onEdit, modifier = Modifier.heightIn(min = 48.dp).testTag("edit_${cell.number}")) {
-            Text("✎", style = MaterialTheme.typography.titleLarge)
+            Text("✎", style = MaterialTheme.typography.titleMedium)
         }
         if (status != CellStatus.EMPTY) {
             TextButton(onClick = onDelete, modifier = Modifier.heightIn(min = 48.dp).testTag("delete_${cell.number}")) {
-                Text("✕", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.kartColors.textMuted)
+                Text("✕", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.kartColors.textMuted)
             }
         }
     }
@@ -371,8 +372,8 @@ private fun ReviewLapRow(
 private fun ReviewBottomBar(state: ImportUiState, onSave: () -> Unit) {
     val summary = state.summary
     Column(
-        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).navigationBarsPadding().padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         state.checks?.let { CheckRow(it, state.viewedDriver?.reportedBestMs, state.viewedDriver?.reportedLapCount, state.viewedDriver?.reportedAvgMs, state.review?.savedTimes(state.viewedDriver!!)?.size ?: 0) }
         if (summary != null) {
@@ -440,15 +441,16 @@ private fun CheckChip(label: String, value: String, doc: String?, state: CheckSt
         CheckState.WARN -> "⚠" to kart.warning
         CheckState.NOT_AVAILABLE -> "–" to kart.textMuted
     }
-    KartCard(modifier.semantics { stateDescription = state.name }, contentPadding = PaddingValues(6.dp)) {
-        Text(label.uppercase(), style = MaterialTheme.typography.labelMedium, color = kart.textMuted, maxLines = 1)
+    KartCard(modifier.semantics { stateDescription = state.name }, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)) {
+        // Una línea: ✓ + etiqueta + valor. Solo si no cuadra se añade el valor del documento debajo.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(symbol, style = MaterialTheme.typography.titleMedium, color = color)
+            Text(symbol, style = MaterialTheme.typography.titleSmall, color = color)
+            Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = kart.textMuted, maxLines = 1)
             AutoSizeText(
                 text = value,
-                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = MonoFontFamily, fontSize = 16.sp),
+                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = MonoFontFamily, fontSize = 15.sp),
                 color = MaterialTheme.colorScheme.onSurface,
-                minSize = 11.sp,
+                minSize = 10.sp,
                 modifier = Modifier.weight(1f),
             )
         }

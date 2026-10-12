@@ -283,11 +283,11 @@
     <string name="import_cell_invalid">inválida · no se guarda</string>
     <string name="import_cell_empty">sin dato</string>
     <string name="import_suggestion_ignore">Ignorar</string>
-    <string name="import_summary">Se importarán %1$d pilotos y %2$d vueltas · %3$d celdas dudosas sin revisar · %4$d inválidas excluidas</string>
-    <string name="import_blocked_no_me">No se puede guardar: toca tu columna y pulsa «Soy yo».</string>
-    <string name="import_blocked_no_laps">No se puede guardar: no hay ninguna vuelta tuya válida (verde o ámbar).</string>
-    <string name="import_blocked_no_circuit">No se puede guardar: elige el circuito en «Datos de la tanda».</string>
-    <string name="import_blocked_no_session">No se puede guardar: elige la tanda existente en «Datos de la tanda».</string>
+    <string name="import_summary">%1$d pilotos · %2$d vueltas · %3$d dudosas sin revisar · %4$d inválidas</string>
+    <string name="import_blocked_no_me">No se puede guardar: pulsa «Soy yo» en tu columna.</string>
+    <string name="import_blocked_no_laps">No se puede guardar: ninguna vuelta tuya válida.</string>
+    <string name="import_blocked_no_circuit">No se puede guardar: elige el circuito en «Datos».</string>
+    <string name="import_blocked_no_session">No se puede guardar: elige la tanda en «Datos».</string>
     <string name="import_blocked_busy">Un momento…</string>
     <string name="import_doubts_title">Quedan celdas sin revisar</string>
     <string name="import_doubts_message">Hay %1$d celdas dudosas (ámbar), que se guardarán tal cual, y %2$d inválidas (rojas), que se excluirán. ¿Guardar igualmente?</string>
