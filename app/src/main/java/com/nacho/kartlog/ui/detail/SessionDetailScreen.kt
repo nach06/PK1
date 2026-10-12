@@ -73,7 +73,7 @@ fun SessionDetailScreen(
     // veía (las vueltas) y la tarjeta quedaría fuera de pantalla. Al aparecer se vuelve al principio.
     val hasTrackCard = trackState is TrackUiState.Ready
     androidx.compose.runtime.LaunchedEffect(hasTrackCard) {
-        if (hasTrackCard && lapListState.firstVisibleItemIndex == 1 && lapListState.firstVisibleItemScrollOffset == 0) lapListState.scrollToItem(0)
+        if (hasTrackCard) lapListState.scrollToItem(0) // al aparecer la tarjeta, siempre se ve entera desde arriba
     }
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current

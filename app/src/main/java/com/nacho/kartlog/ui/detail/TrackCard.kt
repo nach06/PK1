@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -127,20 +130,41 @@ internal fun TrackCard(track: TrackUiState.Ready, modifier: Modifier = Modifier)
     val best = matched?.minByOrNull { it.path.timeMs }
     val canCompare = single != null && best != null && best.storedNumber != single.storedNumber
     val canPace = canCompare && !compare
+    val screenHeightDp = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp
+    // El lienzo no pasa de ~30 % del alto de pantalla (≈ 40 % del alto útil): debajo han de verse varias vueltas sin bajar.
+    val canvasHeight = (screenHeightDp * 0.16f).coerceIn(110f, 160f).dp
     val mode = TrackColorMode.valueOf(modeName).let { if (it == TrackColorMode.PACE && !canPace) TrackColorMode.LAP else it }
 
-    KartCard(modifier.fillMaxWidth().testTag("track_card"), contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)) {
+    KartCard(modifier.fillMaxWidth().testTag("track_card"), contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)) {
+        // Cabecera compacta: título, modos de color (desplazables) y plegar. Una sola fila para ganar altura.
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { expanded = !expanded }.testTag("track_header"),
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("track_header"),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 stringResource(R.string.track_card_title).uppercase(),
                 style = MaterialTheme.typography.labelLarge,
                 color = kart.textMuted,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.clickable { expanded = !expanded }.padding(horizontal = 4.dp, vertical = 12.dp),
             )
-            Icon(if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, contentDescription = null, tint = kart.textMuted)
+            if (expanded) {
+                LazyRow(Modifier.weight(1f).padding(start = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item(key = "m-lap") { SmallChip(stringResource(R.string.track_mode_lap), mode == TrackColorMode.LAP, "track_mode_lap") { modeName = TrackColorMode.LAP.name } }
+                    item(key = "m-speed") { SmallChip(stringResource(R.string.track_mode_speed), mode == TrackColorMode.SPEED, "track_mode_speed") { modeName = TrackColorMode.SPEED.name } }
+                    if (canPace) item(key = "m-pace") { SmallChip(stringResource(R.string.track_mode_pace), mode == TrackColorMode.PACE, "track_mode_pace") { modeName = TrackColorMode.PACE.name } }
+                    if (canCompare) item(key = "compare") {
+                        SmallChip(stringResource(R.string.track_compare), compare, "track_compare") { compare = !compare; picked = null }
+                    }
+                }
+            } else {
+                Box(Modifier.weight(1f))
+            }
+            Icon(
+                if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                contentDescription = null,
+                tint = kart.textMuted,
+                modifier = Modifier.clickable { expanded = !expanded }.padding(8.dp),
+            )
         }
         if (!expanded) return@KartCard
 
@@ -153,30 +177,50 @@ internal fun TrackCard(track: TrackUiState.Ready, modifier: Modifier = Modifier)
             )
         }
 
-        TrackCanvas(
-            geometry = geometry,
-            scene = scene,
-            mode = mode,
-            selectionText = selectionText,
-            bestPath = best?.path,
-            picked = picked,
-            onPick = { picked = it },
-            modifier = Modifier.fillMaxWidth().height(200.dp),
-        )
-
-        // Lectura: punto tocado o descripción de lo que se ve.
-        Text(
-            text = infoText(geometry, scene, picked, selection),
-            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = MonoFontFamily),
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp).testTag("track_info"),
-        )
-        Legend(mode = mode, geometry = geometry, comparing = scene.reference != null, selected = single, best = best)
+        // Lienzo con la lectura (abajo) y la leyenda (arriba) superpuestas: no ocupan alto propio, así que al cambiar de
+        // modo o de vuelta nada de lo que hay debajo se mueve.
+        Box(Modifier.fillMaxWidth().height(canvasHeight)) {
+            TrackCanvas(
+                geometry = geometry,
+                scene = scene,
+                mode = mode,
+                selectionText = selectionText,
+                bestPath = best?.path,
+                picked = picked,
+                onPick = { picked = it },
+                modifier = Modifier.fillMaxSize(),
+            )
+            Text(
+                text = infoText(geometry, scene, picked, selection),
+                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = MonoFontFamily),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .background(kart.card.copy(alpha = 0.8f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .testTag("track_info"),
+            )
+            Box(Modifier.align(Alignment.TopStart).fillMaxWidth().height(LEGEND_SLOT_HEIGHT).testTag("track_legend_slot")) {
+                Legend(mode = mode, geometry = geometry, comparing = scene.reference != null, selected = single, best = best)
+            }
+        }
 
         if (matched != null) {
-            LazyRow(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Una sola fila desplazable; al elegir una vuelta, el chip elegido se trae a la vista.
+            val selectorState = rememberLazyListState()
+            LaunchedEffect(selectionText) {
+                val index = when (selection) {
+                    TrackSelection.All -> 0
+                    TrackSelection.Best -> 1
+                    TrackSelection.Last -> 2
+                    is TrackSelection.Lap -> 3 + matched.indexOfFirst { it.storedNumber == selection.number }.coerceAtLeast(0)
+                }
+                selectorState.animateScrollToItem(index)
+            }
+            LazyRow(Modifier.fillMaxWidth().padding(top = 4.dp).testTag("track_lap_selector"), state = selectorState, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item(key = "all") { SmallChip(stringResource(R.string.track_sel_all), selection == TrackSelection.All, "track_sel_all") { selectionText = TrackSelection.All.encode(); picked = null } }
                 item(key = "best") { SmallChip(stringResource(R.string.track_sel_best), selection == TrackSelection.Best, "track_sel_best") { selectionText = TrackSelection.Best.encode(); picked = null } }
                 item(key = "last") { SmallChip(stringResource(R.string.track_sel_last), selection == TrackSelection.Last, "track_sel_last") { selectionText = TrackSelection.Last.encode(); picked = null } }
@@ -187,14 +231,6 @@ internal fun TrackCard(track: TrackUiState.Ready, modifier: Modifier = Modifier)
                         "track_sel_${lap.storedNumber}",
                     ) { selectionText = TrackSelection.Lap(lap.storedNumber).encode(); picked = null }
                 }
-            }
-        }
-        LazyRow(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            item(key = "m-lap") { SmallChip(stringResource(R.string.track_mode_lap), mode == TrackColorMode.LAP, "track_mode_lap") { modeName = TrackColorMode.LAP.name } }
-            item(key = "m-speed") { SmallChip(stringResource(R.string.track_mode_speed), mode == TrackColorMode.SPEED, "track_mode_speed") { modeName = TrackColorMode.SPEED.name } }
-            if (canPace) item(key = "m-pace") { SmallChip(stringResource(R.string.track_mode_pace), mode == TrackColorMode.PACE, "track_mode_pace") { modeName = TrackColorMode.PACE.name } }
-            if (canCompare) item(key = "compare") {
-                SmallChip(stringResource(R.string.track_compare), compare, "track_compare") { compare = !compare; picked = null }
             }
         }
     }
@@ -256,12 +292,13 @@ private fun Legend(mode: TrackColorMode, geometry: TrackGeometry, comparing: Boo
         mode == TrackColorMode.PACE -> stringResource(R.string.track_legend_pace)
         else -> return
     }
-    Text(text, style = MaterialTheme.typography.bodyMedium, color = kart.textMuted, modifier = Modifier.padding(top = 4.dp).testTag("track_legend"))
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = kart.textMuted, modifier = Modifier.background(kart.card.copy(alpha = 0.8f)).padding(horizontal = 6.dp).testTag("track_legend"), maxLines = 1, overflow = TextOverflow.Ellipsis)
 }
 
 // ---------------------------------------------------------------- Lienzo
 
 private const val PAD_DP = 14f
+private val LEGEND_SLOT_HEIGHT = 24.dp
 
 @Composable
 private fun TrackCanvas(
