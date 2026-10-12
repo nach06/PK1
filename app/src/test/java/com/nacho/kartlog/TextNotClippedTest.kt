@@ -9,7 +9,9 @@ import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onRoot
@@ -48,7 +50,7 @@ class TextNotClippedTest(private val screen: String) {
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun screens(): Collection<Array<Any>> = listOf("Tandas", "Detalle", "Circuitos", "Análisis", "Ajustes", "Revisión").map { arrayOf<Any>(it) }
+        fun screens(): Collection<Array<Any>> = listOf("Tandas", "Detalle", "Detalle con trazado", "Circuitos", "Análisis", "Ajustes", "Revisión", "Rivales", "Rivales cara a cara", "Calibración", "Marcar meta").map { arrayOf<Any>(it) }
 
         const val FONT_SCALE = 1.3f
     }
@@ -106,6 +108,20 @@ class TextNotClippedTest(private val screen: String) {
                 repeat(8) { container.lapRepository.addManual(id, 58_000L + it * 137 + i * 1_000) }
             }
         }
+        // Sprint 8, D5: pantallas con datos propios (rivales y trazado GPS de ejemplo).
+        if (screen.startsWith("Rivales")) runBlocking { container.debugTools!!.seed() }
+        if (screen == "Calibración" || screen == "Marcar meta") {
+            // Estas pantallas piden el GPS: permiso concedido y una fuente de posiciones vacía (sin servicio en primer plano).
+            org.robolectric.Shadows.shadowOf(context as android.app.Application).grantPermissions(android.Manifest.permission.ACCESS_FINE_LOCATION)
+            container.trackingController = object : com.nacho.kartlog.data.tracking.TrackingController {
+                override fun start() = Unit
+                override fun stop() = Unit
+            }
+            container.locationSource = object : com.nacho.kartlog.domain.gps.LocationSource {
+                override fun fixes() = kotlinx.coroutines.flow.MutableSharedFlow<com.nacho.kartlog.domain.gps.GpsFix>(extraBufferCapacity = 4)
+            }
+        }
+        if (screen == "Detalle con trazado") runBlocking { container.debugTools!!.seedGpsSession() }
         compose.setContent {
             val base = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(base.density, fontScale = FONT_SCALE)) {
@@ -120,6 +136,34 @@ class TextNotClippedTest(private val screen: String) {
                 compose.onAllNodesWithTag("session_card").onFirst().performClick()
                 waitForTag("lap_list")
             }
+            "Detalle con trazado" -> {
+                waitForTag("session_card")
+                compose.onNodeWithText("Óvalo simulado", substring = true).performClick()
+                waitForTag("track_canvas")
+            }
+            "Rivales", "Rivales cara a cara" -> {
+                compose.onNodeWithText("Análisis").performClick()
+                waitForTag("open_rivals")
+                compose.onNodeWithTag("open_rivals").performClick()
+                waitForTag("rival_row_carlosruiz")
+                if (screen == "Rivales cara a cara") {
+                    compose.onNodeWithTag("rival_row_carlosruiz").performClick()
+                    waitForTag("h2h_card")
+                }
+            }
+            "Calibración" -> {
+                compose.onNodeWithText("Ajustes").performClick()
+                waitForTag("tool_fieldcal")
+                compose.onNodeWithTag("tool_fieldcal").performClick()
+                waitForTag("fieldcal_debug")
+            }
+            "Marcar meta" -> {
+                compose.onNodeWithText("Circuitos").performClick()
+                waitFor("Alonso")
+                compose.onAllNodesWithContentDescription("Más opciones").onFirst().performClick()
+                compose.onNodeWithText("Marcar meta").performClick()
+                waitForTag("debug_mark_sim")
+            }
             "Circuitos" -> { compose.onNodeWithText("Circuitos").performClick(); waitFor("Alonso") }
             "Análisis" -> { compose.onNodeWithText("Análisis").performClick(); compose.waitForIdle() }
             "Ajustes" -> { compose.onNodeWithText("Ajustes").performClick(); waitFor("Mi perfil") }
@@ -133,7 +177,7 @@ class TextNotClippedTest(private val screen: String) {
         Thread.sleep(300) // deja que acaben las animaciones de entrada
         compose.waitForIdle()
 
-        val root = compose.onRoot().fetchSemanticsNode()
+        val root = compose.onRoot(useUnmergedTree = true).fetchSemanticsNode()
         val width = root.boundsInRoot.right
         val offenders = ArrayList<String>()
         allNodes(root).forEach { node ->
