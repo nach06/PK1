@@ -54,7 +54,8 @@ class UiFlowTest {
         runBlocking { container.circuitRepository.add("Zuera", 1_000) }
         compose.setContent { KartLogTheme { KartNavHost(container) } }
 
-        // Histórico vacío.
+        // Histórico vacío (la primera emisión de Room llega de forma asíncrona).
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Aún no hay tandas").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Aún no hay tandas").assertIsDisplayed()
         compose.onAllNodesWithText("NUEVA TANDA").onFirst().performClick()
 

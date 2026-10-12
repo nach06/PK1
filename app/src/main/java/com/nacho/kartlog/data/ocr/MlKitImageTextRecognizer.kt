@@ -58,7 +58,8 @@ class MlKitImageTextRecognizer(private val context: Context) : ImageTextRecogniz
         } else {
             0f
         }
-        return OcrBox(text, rect.left.toFloat(), rect.top.toFloat(), rect.right.toFloat(), rect.bottom.toFloat(), angle, confidence)
+        // Una confianza 0 significa «sin dato» (no «segurísimo de que está mal»): si no, todas las celdas saldrían ámbar.
+        return OcrBox(text, rect.left.toFloat(), rect.top.toFloat(), rect.right.toFloat(), rect.bottom.toFloat(), angle, confidence.takeIf { it > 0f } ?: 1f)
     }
 
     /** Solo debug: cajas y texto reconstruido en Logcat y un JSON con las cajas, para ajustar el layout con datos reales. */

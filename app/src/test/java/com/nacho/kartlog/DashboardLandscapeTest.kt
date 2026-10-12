@@ -143,6 +143,8 @@ class DashboardLandscapeTest {
         compose.onNodeWithTag("fab_main").performClick()
         compose.onNodeWithTag("fab_track").performClick()
         waitFor("EMPEZAR")
+        // El circuito llega de Room de forma asíncrona: hasta entonces EMPEZAR está desactivado y pulsarlo no hace nada.
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Óvalo simulado", substring = true, ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
         if (type != null) compose.onNodeWithText(type).performScrollTo().performClick()
         compose.onAllNodesWithText("EMPEZAR")[0].performClick()
         waitForTag("dash_current")

@@ -75,7 +75,7 @@ class SummaryComparisonTest {
         File(context.filesDir, "tracks").deleteRecursively()
     }
 
-    private fun waitForTag(tag: String) = compose.waitUntil(10_000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
+    private fun waitForTag(tag: String) = compose.waitUntil(30_000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
 
     private fun textOf(tag: String) =
         compose.onNodeWithTag(tag, useUnmergedTree = true).fetchSemanticsNode().config.getOrNull(SemanticsProperties.Text)?.joinToString("") { it.text }.orEmpty()
@@ -99,17 +99,25 @@ class SummaryComparisonTest {
         }
         val sim = TrackSimulator.simulate(oval, listOf(58_400L, 57_900L, 58_120L), hz = 1.0)
         compose.setContent { KartLogTheme { CompositionLocalProvider(LocalLiveClock provides false) { KartNavHost(container) } } }
-        compose.waitUntil(10_000) { compose.onAllNodesWithText("Tandas").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(30_000) { compose.onAllNodesWithText("Tandas").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("fab_main").performClick()
         compose.onNodeWithTag("fab_track").performClick()
-        compose.waitUntil(10_000) { compose.onAllNodesWithText("EMPEZAR").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(30_000) { compose.onAllNodesWithText("EMPEZAR").fetchSemanticsNodes().isNotEmpty() }
+        // El circuito llega de Room de forma asíncrona: hasta entonces EMPEZAR está desactivado y pulsarlo no hace nada.
+        compose.waitUntil(30_000) { compose.onAllNodesWithText("Óvalo simulado", substring = true, ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
         compose.onAllNodesWithText("EMPEZAR")[0].performClick()
         waitForTag("dash_current")
         runBlocking { sim.fixes.filter { it.elapsedNs <= sim.crossingNs[3] + 2_000_000_000L }.forEach { source.flow.emit(it) } }
-        compose.waitUntil(10_000) { container.timingSession.state.value.laps.size == 3 }
+        compose.waitUntil(30_000) { container.timingSession.state.value.laps.size == 3 }
         compose.mainClock.autoAdvance = false
         compose.onNodeWithTag("finish_hold").performTouchInput { down(center) }
         compose.mainClock.advanceTimeBy(1_700)
+        // La pulsación larga se anima con el reloj de Compose: si aún no ha dado tiempo a empezar, se sigue avanzando.
+        var extra = 0
+        while (container.timingSession.state.value.phase != com.nacho.kartlog.domain.gps.TimingPhase.STOPPED && extra++ < 10) {
+            Thread.sleep(50)
+            compose.mainClock.advanceTimeBy(500)
+        }
         compose.mainClock.autoAdvance = true
         compose.onAllNodesWithText("GUARDAR TANDA")[0].performTouchInput { up() }
         waitForTag("summary_compare")

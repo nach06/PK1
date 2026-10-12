@@ -95,6 +95,8 @@ class DashboardClockTest {
         compose.onNodeWithTag("fab_main").performClick()
         compose.onNodeWithTag("fab_track").performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("EMPEZAR").fetchSemanticsNodes().isNotEmpty() }
+        // El circuito llega de Room de forma asíncrona: hasta entonces EMPEZAR está desactivado y pulsarlo no hace nada.
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Óvalo simulado", substring = true, ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("EMPEZAR").performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithTag("dash_current").fetchSemanticsNodes().isNotEmpty() }
         // A partir de aquí el reloj en vivo (bucle de 50 ms) está activo: el tiempo de Compose se avanza a mano.

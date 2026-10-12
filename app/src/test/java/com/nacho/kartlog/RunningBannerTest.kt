@@ -97,6 +97,8 @@ class RunningBannerTest {
         compose.onNodeWithTag("fab_main").performClick()
         compose.onNodeWithTag("fab_track").performClick()
         waitFor("EMPEZAR")
+        // El circuito llega de Room de forma asíncrona: hasta entonces EMPEZAR está desactivado y pulsarlo no hace nada.
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Óvalo simulado", substring = true, ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
         // A7: la ficha del tipo por defecto aparece seleccionada, y sin kart (valor «–») se puede empezar igualmente.
         compose.onNodeWithText("Libre").assertIsSelected()
         compose.onNodeWithText("Carrera").assertIsNotSelected()
