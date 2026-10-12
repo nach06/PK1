@@ -324,7 +324,7 @@ private fun HeaderCard(
         session.trackTempC?.let { add(stringResource(R.string.format_temp_track, it.toInt())) }
     }.joinToString(" · ")
 
-    KartCard(modifier = modifier.fillMaxWidth(), contentPadding = PaddingValues(12.dp)) {
+    KartCard(modifier = modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
         if (!compact) {
             Text(
                 text = line1,
@@ -365,7 +365,7 @@ private fun HeaderCard(
                 onClick = onToggleChart,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 56.dp),
+                    .heightIn(min = 44.dp),
             ) {
                 Text(
                     text = stringResource(R.string.chart_title).uppercase(),

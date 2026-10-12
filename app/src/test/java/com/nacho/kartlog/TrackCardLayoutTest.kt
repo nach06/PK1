@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.unit.dp
@@ -126,5 +127,23 @@ class TrackCardLayoutTest {
         val row = compose.onNodeWithTag("track_lap_selector").getBoundsInRoot()
         val chip = compose.onNodeWithTag("track_sel_7").getBoundsInRoot()
         assertTrue("el chip está dentro de la única fila del selector", chip.top >= row.top && chip.bottom <= row.bottom + 0.5.dp && chip.right <= row.right)
+    }
+
+    /** A4 (Sprint 8): con barra de teclado plegada y un móvil real (808 dp menos barras del sistema ≈ 736), tarjeta + ≥ 3 vueltas enteras. */
+    @Test
+    @Config(sdk = [35], qualifiers = "w393dp-h736dp-xxhdpi")
+    fun threeFullLapsAreVisibleBelowTheCardWithTheKeyboardBar_onA736dpScreen() {
+        open()
+        compose.waitForIdle()
+        compose.onNodeWithTag("track_canvas").assertIsDisplayed()
+        val bar = compose.onNodeWithText("ABRIR TECLADO", ignoreCase = true)
+        bar.assertIsDisplayed()
+        val full = compose.onAllNodesWithTag("lap_row").fetchSemanticsNodes().indices.count { i ->
+            val node = compose.onAllNodesWithTag("lap_row")[i]
+            val clipped = node.getBoundsInRoot()
+            val unclipped = node.getUnclippedBoundsInRoot()
+            (clipped.bottom - clipped.top) >= (unclipped.bottom - unclipped.top) - 1.dp
+        }
+        assertTrue("vueltas enteras visibles a 736 dp: $full", full >= 3)
     }
 }

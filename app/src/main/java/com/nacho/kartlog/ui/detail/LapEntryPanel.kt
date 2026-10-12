@@ -81,7 +81,7 @@ fun LapEntryPanel(
             .border(BorderStroke(1.dp, kart.cardBorder), shape),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = if (expanded) 12.dp else 6.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (expanded) RecentLapsStrip(recentLaps.take(2))
@@ -97,12 +97,15 @@ fun LapEntryPanel(
                         color = if (isEditing) kart.warning else kart.textMuted,
                         maxLines = 1,
                     )
-                    AutoSizeText(
-                        text = timeText,
-                        style = if (expanded) KartTextStyles.timeEntry else KartTextStyles.timeEntry.copy(fontSize = 32.sp),
-                        color = timeColor,
-                        minSize = 24.sp,
-                    )
+                    // Plegado y sin dígitos: solo la etiqueta (el tiempo en blanco no aporta y ocupa 40 dp de alto útil).
+                    if (expanded || hasDigits) {
+                        AutoSizeText(
+                            text = timeText,
+                            style = if (expanded) KartTextStyles.timeEntry else KartTextStyles.timeEntry.copy(fontSize = 32.sp),
+                            color = timeColor,
+                            minSize = 24.sp,
+                        )
+                    }
                 }
                 if (expanded) {
                     IconButton(onClick = onToggle, modifier = Modifier.size(56.dp)) {
@@ -115,7 +118,7 @@ fun LapEntryPanel(
                 } else {
                     Button(
                         onClick = onToggle,
-                        modifier = Modifier.heightIn(min = 56.dp),
+                        modifier = Modifier.heightIn(min = 48.dp),
                         shape = MaterialTheme.shapes.medium,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary,

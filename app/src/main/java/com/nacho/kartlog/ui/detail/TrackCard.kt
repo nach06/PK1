@@ -132,13 +132,13 @@ internal fun TrackCard(track: TrackUiState.Ready, modifier: Modifier = Modifier)
     val canPace = canCompare && !compare
     val screenHeightDp = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp
     // El lienzo no pasa de ~30 % del alto de pantalla (≈ 40 % del alto útil): debajo han de verse varias vueltas sin bajar.
-    val canvasHeight = (screenHeightDp * 0.16f).coerceIn(110f, 160f).dp
+    val canvasHeight = (screenHeightDp * 0.13f).coerceIn(90f, 150f).dp
     val mode = TrackColorMode.valueOf(modeName).let { if (it == TrackColorMode.PACE && !canPace) TrackColorMode.LAP else it }
 
     KartCard(modifier.fillMaxWidth().testTag("track_card"), contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)) {
         // Cabecera compacta: título, modos de color (desplazables) y plegar. Una sola fila para ganar altura.
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("track_header"),
+            Modifier.fillMaxWidth().heightIn(min = 44.dp).testTag("track_header"),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -179,7 +179,14 @@ internal fun TrackCard(track: TrackUiState.Ready, modifier: Modifier = Modifier)
 
         // Lienzo con la lectura (abajo) y la leyenda (arriba) superpuestas: no ocupan alto propio, así que al cambiar de
         // modo o de vuelta nada de lo que hay debajo se mueve.
-        Box(Modifier.fillMaxWidth().height(canvasHeight)) {
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // Alto según la forma del trazado: si es muy ancho, el lienzo se aplana y el óvalo llena el ancho en vez de quedar pequeño
+        // en un lienzo alto; nunca pasa de [canvasHeight] (deja sitio a las vueltas de debajo).
+        val bounds = geometry.bounds
+        val ratio = if (bounds.width > 1f) bounds.height / bounds.width else 1f
+        val fitted = ((maxWidth.value - 2 * PAD_DP) * ratio + 2 * PAD_DP).dp
+        val height = fitted.coerceIn(84.dp, canvasHeight)
+        Box(Modifier.fillMaxWidth().height(height)) {
             TrackCanvas(
                 geometry = geometry,
                 scene = scene,
@@ -206,6 +213,7 @@ internal fun TrackCard(track: TrackUiState.Ready, modifier: Modifier = Modifier)
             Box(Modifier.align(Alignment.TopStart).fillMaxWidth().height(LEGEND_SLOT_HEIGHT).testTag("track_legend_slot")) {
                 Legend(mode = mode, geometry = geometry, comparing = scene.reference != null, selected = single, best = best)
             }
+        }
         }
 
         if (matched != null) {
