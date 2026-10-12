@@ -164,6 +164,8 @@ fun RunningDashboard(
     prefs: DashboardPrefs = DashboardPrefs(),
     alert: LapAlert? = null,
     battery: BatteryStatus? = null,
+    /** Solo en builds de depuración: atajo de un toque equivalente a la pulsación larga (para probar sin gestos en el emulador). */
+    onDebugFinish: (() -> Unit)? = null,
 ) {
     val palette = DashPalette.of(prefs.dayMode)
     val live = LocalLiveClock.current
@@ -298,6 +300,22 @@ fun RunningDashboard(
                 }
                 Spacer(Modifier.height(12.dp))
                 footer()
+            }
+        }
+        if (onDebugFinish != null) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .heightIn(min = 48.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(palette.warning)
+                    .clickable(onClick = onDebugFinish)
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .testTag("debug_finish"),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(stringResource(R.string.debug_finish_tap).uppercase(), style = MaterialTheme.typography.labelLarge, color = palette.onAccent, maxLines = 1)
             }
         }
         if (alert != null) LapAlertOverlay(alert, palette)

@@ -295,6 +295,7 @@
     <string name="import_doubts_review">Revisar</string>
     <string name="import_sheet_photo">Foto de la hoja</string>
     <string name="import_who_suggested">☆ Sugerida: la que elegiste la última vez. Si es la tuya, pulsa «Soy yo».</string>
+    <string name="debug_finish_tap">Terminar (debug)</string>
     <string name="import_who_pick">¿Cuál eres tú? Toca tu columna y pulsa «Soy yo».</string>
     <string name="label_duration">Duración</string>
     <string name="format_duration_value">%1$d min</string>

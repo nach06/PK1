@@ -259,6 +259,7 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
                     viewModel = viewModel(factory = container.dashboardViewModelFactory),
                     timingEvents = container.timingSession.events,
                     feedbackEnabled = feedback,
+                    debugShortcuts = container.debugTools != null,
                     onBack = { navController.popBackStack() },
                     onMarkFinish = { navController.navigate(Routes.finish(it)) },
                     onSaved = { id ->

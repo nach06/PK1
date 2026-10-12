@@ -96,6 +96,8 @@ fun DashboardScreen(
     onBack: () -> Unit,
     onMarkFinish: (Long) -> Unit,
     onSaved: (Long) -> Unit,
+    /** Atajos de depuración (solo builds debug): botones de un toque donde la versión real pide gestos. */
+    debugShortcuts: Boolean = false,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -141,6 +143,7 @@ fun DashboardScreen(
                 prefs = state.prefs,
                 alert = alert,
                 battery = battery,
+                onDebugFinish = if (debugShortcuts) viewModel::finish else null,
                 modifier = Modifier.fillMaxSize(),
             )
         }
