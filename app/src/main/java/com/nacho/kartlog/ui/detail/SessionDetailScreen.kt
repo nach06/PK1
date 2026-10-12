@@ -236,6 +236,7 @@ fun SessionDetailScreen(
                         item(key = "classification") {
                             ClassificationCard(
                                 participants = state.participants,
+                                myLapTimesMs = state.laps.map { it.timeMs },
                                 modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 8.dp),
                             )
                         }

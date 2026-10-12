@@ -29,6 +29,19 @@ object Analytics {
         return timesMs.filter { it * CLEAN_DENOMINATOR <= best * CLEAN_NUMERATOR }
     }
 
+    /**
+     * Regla única de redondeo de la app: las medias se redondean al milisegundo más cercano (`Math.round`). La hoja oficial de la pista
+     * **trunca** (suelo), así que su media puede salir 1 ms por debajo de la nuestra con las mismas vueltas.
+     */
+    fun averageMs(timesMs: List<Long>): Long? =
+        if (timesMs.isEmpty()) null else Math.round(timesMs.sum().toDouble() / timesMs.size)
+
+    /** Media oficial de la hoja que difiere exactamente 1 ms de la nuestra (truncado frente a redondeo): se enseña sin alarma. */
+    fun officialAverageNote(officialMs: Long?, ownLapTimesMs: List<Long>): Long? {
+        val own = averageMs(ownLapTimesMs) ?: return null
+        return officialMs?.takeIf { kotlin.math.abs(it - own) == 1L }
+    }
+
     fun cleanAverageMs(timesMs: List<Long>): Long? {
         val clean = cleanLaps(timesMs)
         if (clean.isEmpty()) return null

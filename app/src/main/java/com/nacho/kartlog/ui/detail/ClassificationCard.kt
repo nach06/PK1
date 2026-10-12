@@ -37,7 +37,7 @@ import com.nacho.kartlog.ui.theme.kartColors
  * diferencia entre mejores vueltas respecto al líder (el de mejor vuelta).
  */
 @Composable
-fun ClassificationCard(participants: List<Participant>, modifier: Modifier = Modifier) {
+fun ClassificationCard(participants: List<Participant>, modifier: Modifier = Modifier, myLapTimesMs: List<Long> = emptyList()) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val kart = MaterialTheme.kartColors
     val leaderBest = participants.mapNotNull { it.bestMs }.minOrNull()
@@ -59,6 +59,7 @@ fun ClassificationCard(participants: List<Participant>, modifier: Modifier = Mod
         if (expanded) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 RankingRow(
+                    note = null,
                     pos = stringResource(R.string.col_pos),
                     kartLabel = null,
                     driver = stringResource(R.string.col_driver),
@@ -73,7 +74,9 @@ fun ClassificationCard(participants: List<Participant>, modifier: Modifier = Mod
                     } else {
                         "—"
                     }
+                    val official = if (p.isMe) com.nacho.kartlog.domain.analytics.Analytics.officialAverageNote(p.avgMs, myLapTimesMs) else null
                     RankingRow(
+                        note = official?.let { stringResource(R.string.official_average, LapTime.format(it)) },
                         pos = p.position?.toString() ?: "—",
                         kartLabel = p.kartNumber?.let { "K$it" },
                         driver = (p.name ?: "—") + if (p.isMe) " · " + stringResource(R.string.you) else "",
@@ -104,7 +107,7 @@ internal fun contrastRatio(a: Color, b: Color): Double {
 }
 
 @Composable
-private fun RankingRow(pos: String, kartLabel: String?, driver: String, best: String, gap: String, header: Boolean, highlighted: Boolean) {
+private fun RankingRow(note: String?, pos: String, kartLabel: String?, driver: String, best: String, gap: String, header: Boolean, highlighted: Boolean) {
     val kart = MaterialTheme.kartColors
     val base = if (header) MaterialTheme.typography.labelMedium else MaterialTheme.typography.bodyMedium
     val color = when {
@@ -125,7 +128,10 @@ private fun RankingRow(pos: String, kartLabel: String?, driver: String, best: St
             Text(pos, style = base, color = color, maxLines = 1)
             if (kartLabel != null) Text(kartLabel, style = MaterialTheme.typography.labelMedium, color = color, maxLines = 1)
         }
-        Text(driver, style = base, color = color, modifier = Modifier.weight(1f).padding(end = 4.dp), maxLines = 3, overflow = TextOverflow.Ellipsis)
+        Column(Modifier.weight(1f).padding(end = 4.dp)) {
+            Text(driver, style = base, color = color, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            if (note != null) Text(note, style = MaterialTheme.typography.labelMedium, color = color, maxLines = 2, modifier = Modifier.testTag("official_avg_note"))
+        }
         Text(best, style = base.copy(fontFamily = MonoFontFamily), color = color, maxLines = 1, softWrap = false)
         Text(
             gap,

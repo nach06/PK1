@@ -279,4 +279,13 @@ class AnalyticsTest {
         assertFalse(b.hasGpsLaps)
         assertEquals(0, b.stintCount)
     }
+
+    @Test
+    fun oneRoundingRule_roundsHalfUp_andOfficialNoteOnlyForOneMillisecond() {
+        assertEquals(81_158L, Analytics.averageMs(listOf(80_000L, 82_315L)))
+        assertEquals(81_157L, Analytics.officialAverageNote(81_157, listOf(80_000L, 82_315L)))
+        assertEquals(null, Analytics.officialAverageNote(81_158, listOf(80_000L, 82_315L))) // igual: nada que enseñar
+        assertEquals(null, Analytics.officialAverageNote(81_100, listOf(80_000L, 82_315L))) // otra definición de media: sin nota
+        assertEquals(null, Analytics.officialAverageNote(81_157, emptyList()))
+    }
 }

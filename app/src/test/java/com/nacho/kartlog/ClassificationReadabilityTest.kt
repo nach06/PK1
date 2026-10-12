@@ -105,4 +105,30 @@ class ClassificationReadabilityTest {
         compose.onNodeWithText("Nacho Rodriguez", substring = true).assertExists()
         compose.onNodeWithText("K28").assertExists()
     }
+
+    /** A6 (Sprint 8): la media oficial (truncada) que difiere 1 ms de la nuestra (redondeada) se enseña sin alarma. */
+    @Test
+    fun officialTruncatedAverage_isShownWhenItDiffersByOneMillisecond() {
+        val container = AppContainer(context)
+        runBlocking {
+            val circuit = container.circuitRepository.add("GP3", null)
+            container.importRepository.importSession(
+                ImportRequest(
+                    newSession = NewSession(circuit, 1_760_000_000_000, SessionType.RACE, 28, null, null, null, TrackCondition.DRY, ""),
+                    existingSessionId = null,
+                    myLapTimesMs = listOf(80_000L, 82_315L), // media 81 157,5 → la app 81 158, la hoja (suelo) 81 157
+                    me = ParticipantImport(5, "Nacho", 28, 80_000, 81_157, 2),
+                    others = listOf(ParticipantImport(1, "Diego", 12, 76_000, 78_000, 10)),
+                ),
+            )
+        }
+        compose.setContent { KartLogTheme { KartNavHost(container) } }
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("GP3", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        compose.onAllNodesWithText("GP3", substring = true)[0].performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("lap_list").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("lap_list").performScrollToNode(hasTestTag("classification"))
+        compose.onNodeWithTag("classification").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("official_avg_note").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Media oficial 1:21.157", substring = true).assertExists()
+    }
 }
