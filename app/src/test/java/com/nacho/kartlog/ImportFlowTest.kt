@@ -230,8 +230,8 @@ class ImportFlowTest {
         compose.onNodeWithTag("debug_share_dump").performClick()
         val dumpDir = File(context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS), "")
         val deadline = System.currentTimeMillis() + 8_000
-        while ((dumpDir.listFiles { f -> f.name.startsWith("ocr-dump-") }?.isEmpty() != false) && System.currentTimeMillis() < deadline) { Thread.sleep(100); compose.waitForIdle() }
-        val dump = dumpDir.listFiles { f -> f.name.startsWith("ocr-dump-") }!!.single()
+        while ((dumpDir.listFiles { f -> f.name.startsWith("ocr-dump-") && f.length() > 0 }?.isEmpty() != false) && System.currentTimeMillis() < deadline) { Thread.sleep(100); compose.waitForIdle() }
+        val dump = dumpDir.listFiles { f -> f.name.startsWith("ocr-dump-") && f.length() > 0 }!!.single()
         assertEquals(boxes.size, com.nacho.kartlog.domain.importing.OcrDump.fromJson(dump.readText()).boxes.size)
 
         // Revisión: la tuya (Nacho) ya elegida por el ajuste; los estados por celda.
