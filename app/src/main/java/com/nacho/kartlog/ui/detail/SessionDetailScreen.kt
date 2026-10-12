@@ -68,6 +68,7 @@ fun SessionDetailScreen(
     viewModel: SessionDetailViewModel,
     onBack: () -> Unit,
     debugShortcuts: Boolean = false,
+    onReplay: (() -> Unit)? = null,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val trackState by viewModel.track.collectAsStateWithLifecycle()
@@ -122,6 +123,11 @@ fun SessionDetailScreen(
                                         }
                                     }
                                 },
+                            ),
+                            MenuAction(
+                                label = stringResource(R.string.action_replay),
+                                enabled = trackState is TrackUiState.Ready && onReplay != null,
+                                onClick = { onReplay?.invoke() },
                             ),
                             MenuAction(
                                 label = stringResource(R.string.action_export_gpx),

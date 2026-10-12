@@ -365,6 +365,8 @@
     <string name="preride_mount_ok">Móvil fijado.</string>
     <string name="preride_mount_warn">Fija el móvil al volante o al soporte y márcalo.</string>
     <string name="preride_mount_confirm">El móvil está bien fijado</string>
+    <string name="action_replay">Ensayo en casa (reproducir)</string>
+    <string name="replay_not_saved">Ensayo en casa: esta tanda reproducida no se guarda.</string>
     <string name="more_below">Hay más contenido abajo</string>
     <string name="debug_jump_end">Ir al final (debug)</string>
     <string name="debug_finish_tap">Terminar (debug)</string>

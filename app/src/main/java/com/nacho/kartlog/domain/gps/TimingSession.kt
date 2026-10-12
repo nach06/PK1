@@ -29,6 +29,8 @@ data class GpsSessionSetup(
     val type: SessionType = SessionType.FREE,
     /** Hora (epoch ms) a la que se pulsó EMPEZAR: es la fecha de la tanda, no la de guardarla. */
     val startedAtMs: Long = 0L,
+    /** Ensayo en casa (reproducción de una tanda guardada): se puede ver todo el flujo, pero no se guarda. */
+    val rehearsal: Boolean = false,
 )
 
 enum class TimingPhase {

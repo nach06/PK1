@@ -406,8 +406,11 @@ private fun SummaryContent(state: DashboardUiState, onSave: () -> Unit, onDiscar
         PrimaryButton(
             text = stringResource(R.string.track_save).uppercase(),
             onClick = onSave,
-            enabled = !state.saving && (summary?.lapCount ?: 0) > 0,
+            enabled = !state.saving && (summary?.lapCount ?: 0) > 0 && state.timing.setup?.rehearsal != true,
         )
+        if (state.timing.setup?.rehearsal == true) {
+            Text(stringResource(R.string.replay_not_saved), style = MaterialTheme.typography.bodyLarge, color = kart.warning, modifier = Modifier.testTag("rehearsal_notice"))
+        }
         SecondaryButton(stringResource(R.string.track_discard).uppercase(), onDiscard, color = kart.warning)
     }
 }

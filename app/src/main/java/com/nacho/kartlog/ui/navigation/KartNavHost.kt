@@ -118,6 +118,7 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
     }
 
     val timing by container.timingSession.state.collectAsState()
+    val replayScope = androidx.compose.runtime.rememberCoroutineScope()
 
     // Contenido recibido con «Compartir → KartLog»: abre la pantalla de importación (que lo recoge del buzón).
     val shared by container.importInbox.content.collectAsState()
@@ -311,6 +312,11 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
                     ),
                     onBack = { navController.popBackStack() },
                     debugShortcuts = container.debugTools != null,
+                    onReplay = {
+                        replayScope.launch {
+                            if (container.startReplay(sessionId)) navController.navigate(Routes.TRACK) { launchSingleTop = true }
+                        }
+                    },
                 )
             }
         }

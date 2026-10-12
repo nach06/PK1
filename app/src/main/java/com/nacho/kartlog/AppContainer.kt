@@ -175,6 +175,28 @@ class AppContainer(context: Context) {
         }
     }
 
+    /**
+     * Ensayo en casa (Sprint 8, B6): reproduce una tanda guardada como si fuera GPS en vivo ([speed]× más rápido; los tiempos son los
+     * reales del trazado). Devuelve `false` si la tanda no tiene trazado, meta o ya hay una tanda en marcha.
+     */
+    var replaySpeed: Double = 4.0
+
+    suspend fun startReplay(sessionId: Long, speed: Double = replaySpeed): Boolean {
+        val detail = sessionRepository.observeDetail(sessionId).first() ?: return false
+        val finish = detail.circuit.finishLine ?: return false
+        val fixes = trackStore.load(sessionId)
+        if (fixes.size < 3) return false
+        val setup = com.nacho.kartlog.domain.gps.GpsSessionSetup(
+            circuitId = detail.circuit.id, finish = finish, kartNumber = detail.session.kartNumber, type = detail.session.type,
+            startedAtMs = wallClockMs(), rehearsal = true,
+        )
+        val source = com.nacho.kartlog.domain.gps.ReplayLocationSource(fixes, speed)
+        locationSource = source
+        if (!timingSession.start(setup, source)) return false
+        trackingController.start()
+        return true
+    }
+
     /** Estado del móvil para «Antes de salir»; los tests lo sustituyen. */
     var deviceSnapshot: () -> com.nacho.kartlog.domain.DeviceSnapshot = com.nacho.kartlog.data.DeviceSnapshotReader(context.applicationContext)::read
 
