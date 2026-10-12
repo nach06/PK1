@@ -66,6 +66,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.nacho.kartlog.R
 import com.nacho.kartlog.domain.gps.GpsHealth
+import com.nacho.kartlog.domain.gps.LiveDeltaTracker
+import com.nacho.kartlog.domain.gps.ReferenceSource
 import com.nacho.kartlog.domain.gps.TimingPhase
 import com.nacho.kartlog.domain.gps.TimingState
 import com.nacho.kartlog.domain.model.SessionType
@@ -183,7 +185,17 @@ fun RunningDashboard(
     }
     val currentMs = timing.currentLapMs(nowNs)
     val signalLost = timing.lastFixArrivalNs?.let { (nowNs - it) / 1_000_000L > SIGNAL_LOST_MS } ?: false
-    val delta = timing.deltaMs
+    // Delta en vuelta: contra la vuelta de referencia (mejor de la tanda o, al principio, la del circuito), refrescado varias veces por
+    // segundo. Sin referencia se conserva el delta de siempre (última vuelta contra la mejor anterior) con la etiqueta «sin referencia».
+    val deltaTracker = remember { LiveDeltaTracker() }
+    val liveDelta = remember(timing, nowNs) { deltaTracker.update(timing, nowNs) }
+    val hasReference = timing.reference != null
+    val delta = if (hasReference) liveDelta else timing.deltaMs
+    val deltaCaption = when {
+        !hasReference -> stringResource(R.string.track_delta_no_ref)
+        timing.referenceSource == ReferenceSource.CIRCUIT -> stringResource(R.string.track_delta_vs_circuit)
+        else -> stringResource(R.string.track_delta_vs_best)
+    }
     val deltaColor = when {
         delta == null -> palette.muted
         delta <= 0 -> palette.good
@@ -218,7 +230,7 @@ fun RunningDashboard(
             if (timing.pitPending) PitBanner(palette) else DeltaBar(delta, palette, Modifier.fillMaxWidth().height(24.dp))
         }
         val deltaBlock: @Composable (Modifier) -> Unit = { m ->
-            DashValue(stringResource(R.string.track_delta_short), delta?.let(LapTime::formatDelta) ?: stringResource(R.string.value_unset), deltaColor, palette, m.testTag("dash_delta"), size = if (landscape) 48.sp else 44.sp)
+            DashValue(stringResource(R.string.track_delta_short), delta?.let(LapTime::formatDelta) ?: stringResource(R.string.value_unset), deltaColor, palette, m.testTag("dash_delta"), size = if (landscape) 48.sp else 44.sp, caption = deltaCaption)
         }
         val lastBest: @Composable (Modifier) -> Unit = { m ->
             Column(m, verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -468,9 +480,12 @@ private fun PitButton(timing: TimingState, onPit: (String?) -> Unit, palette: Da
 }
 
 @Composable
-private fun DashValue(label: String, value: String, color: Color, palette: DashPalette, modifier: Modifier = Modifier, size: androidx.compose.ui.unit.TextUnit = 44.sp) {
+private fun DashValue(label: String, value: String, color: Color, palette: DashPalette, modifier: Modifier = Modifier, size: androidx.compose.ui.unit.TextUnit = 44.sp, caption: String? = null) {
     Column(modifier) {
-        Text(label.uppercase(), style = MaterialTheme.typography.labelMedium, color = palette.muted, maxLines = 1)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(label.uppercase(), style = MaterialTheme.typography.labelMedium, color = palette.muted, maxLines = 1)
+            if (caption != null) Text(caption.uppercase(), style = MaterialTheme.typography.labelMedium, color = palette.muted, maxLines = 1, modifier = Modifier.testTag("dash_delta_caption"))
+        }
         AutoSizeText(
             text = value,
             style = TextStyle(fontFamily = MonoFontFamily, fontWeight = FontWeight.Bold, fontSize = size, lineHeight = 1.1.em),

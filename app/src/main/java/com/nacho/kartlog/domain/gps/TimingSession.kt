@@ -73,6 +73,11 @@ data class TimingState(
     val error: String? = null,
     /** Hora (epoch ms) a la que se paró la tanda; `null` mientras sigue en marcha. */
     val stoppedAtMs: Long? = null,
+    /** Vuelta de referencia del delta en vuelta: la mejor vuelta GPS de la tanda o, si aún no hay, la mejor del circuito con trazado. */
+    val reference: ReferenceProfile? = null,
+    val referenceSource: ReferenceSource? = null,
+    /** Posición y velocidad en el último fix (para el delta en vuelta). */
+    val lapPosition: LapPosition? = null,
 ) {
     /** Alguna vuelta se midió con un hueco de fixes grande: su tiempo es menos fiable. */
     val hasUnreliableLap: Boolean get() = lapReliable.any { !it }
@@ -155,12 +160,36 @@ class TimingSession(
     private val fixes = ArrayList<GpsFix>()
     private val recentArrivals = ArrayDeque<Long>()
 
+    // Geometría de la vuelta en curso (delta en vuelta): puntos desde el último cruce en el sistema local de la meta.
+    private var frame: LocalFrame? = null
+    private val lapPts = ArrayList<RefPoint>()
+    private var lapMaxGapNs = 0L
+    private var prevFix: GpsFix? = null
+    private var prevXY: XY? = null
+
+    private fun resetGeometry(finish: com.nacho.kartlog.domain.model.FinishLine?) {
+        frame = finish?.let { LocalFrame(it.lat, it.lon) }
+        lapPts.clear()
+        lapMaxGapNs = 0L
+        prevFix = null
+        prevXY = null
+    }
+
+    /**
+     * Ofrece la mejor vuelta del circuito con trazado como referencia desde la primera vuelta. Solo se usa si la tanda
+     * aún no tiene vuelta propia de referencia.
+     */
+    fun offerReference(profile: ReferenceProfile) {
+        _state.update { if (it.reference == null) it.copy(reference = profile, referenceSource = ReferenceSource.CIRCUIT) else it }
+    }
+
     /** Empieza a cronometrar. Si ya hay una tanda (en marcha o parada sin guardar) no hace nada y devuelve `false`. */
     fun start(setup: GpsSessionSetup, source: LocationSource, config: GateConfig = GateConfig()): Boolean {
         if (_state.value.phase != TimingPhase.IDLE) return false
         fixes.clear()
         recentArrivals.clear()
         detector = GateDetector(setup.finish, config)
+        resetGeometry(setup.finish)
         _state.value = TimingState(phase = TimingPhase.RUNNING, setup = setup, playbackSpeed = source.playbackSpeed)
         startDraft(setup)
         job = scope.launch {
@@ -206,6 +235,7 @@ class TimingSession(
         fixes.clear()
         recentArrivals.clear()
         detector = GateDetector(draft.setup.finish)
+        resetGeometry(draft.setup.finish)
         _state.value = TimingState(phase = TimingPhase.RUNNING, setup = draft.setup)
         restoring = true
         val pits = draft.pits.sortedBy { it.atElapsedNs }.toMutableList()
@@ -239,6 +269,42 @@ class TimingSession(
 
         val event = detector?.feed(fix)
         var pitCompleted: TimingEvent.PitCompleted? = null
+
+        // Geometría de la vuelta: posición/velocidad del fix y, al cerrar una vuelta válida, su perfil como candidata a referencia.
+        var position: LapPosition? = null
+        var candidate: ReferenceProfile? = null
+        frame?.let { f ->
+            val p = f.toXY(fix.lat, fix.lon)
+            val before = prevFix
+            val beforeXY = prevXY
+            if (before != null && beforeXY != null) {
+                val dt = (fix.elapsedNs - before.elapsedNs) / 1e9
+                if (dt > 0) position = LapPosition(p.x, p.y, (p.x - beforeXY.x) / dt, (p.y - beforeXY.y) / dt)
+                lapMaxGapNs = maxOf(lapMaxGapNs, fix.elapsedNs - before.elapsedNs)
+            }
+            if (event != null && before != null && beforeXY != null) {
+                val span = (fix.elapsedNs - before.elapsedNs).toDouble()
+                val t = if (span <= 0.0) 0.0 else ((event.crossing.elapsedNs - before.elapsedNs) / span).coerceIn(0.0, 1.0)
+                val cx = beforeXY.x + t * (p.x - beforeXY.x)
+                val cy = beforeXY.y + t * (p.y - beforeXY.y)
+                val prior = _state.value
+                if (event.lapTimeMs != null && lapPts.isNotEmpty() && !prior.pitPending &&
+                    prior.lastCrossingReliable && event.crossing.reliable && lapMaxGapNs <= REFERENCE_MAX_GAP_NS
+                ) {
+                    lapPts += RefPoint(cx, cy, event.lapTimeMs.toDouble())
+                    candidate = ReferenceProfile.from(lapPts)
+                }
+                lapPts.clear()
+                lapMaxGapNs = 0L
+                lapPts += RefPoint(cx, cy, 0.0)
+                lapPts += RefPoint(p.x, p.y, (fix.elapsedNs - event.crossing.elapsedNs) / 1e6)
+            } else if (event == null) {
+                _state.value.currentLapStartNs?.let { start -> lapPts += RefPoint(p.x, p.y, (fix.elapsedNs - start) / 1e6) }
+            }
+            prevFix = fix
+            prevXY = p
+        }
+
         _state.update { s ->
             var next = s.copy(
                 lastFixElapsedNs = fix.elapsedNs,
@@ -246,9 +312,17 @@ class TimingSession(
                 accuracyM = fix.accuracyM,
                 speedMps = fix.speedMps,
                 rateHz = rate,
+                lapPosition = position ?: s.lapPosition,
             )
             if (event != null) {
                 next = next.copy(currentLapStartNs = event.crossing.elapsedNs, lastCrossingReliable = event.crossing.reliable)
+                // La mejor vuelta GPS de la tanda pasa a ser la referencia (la del circuito solo vale hasta que haya una propia).
+                candidate?.let { c ->
+                    val current = s.reference
+                    if (current == null || s.referenceSource != ReferenceSource.SESSION || c.lapTimeMs < current.lapTimeMs) {
+                        next = next.copy(reference = c, referenceSource = ReferenceSource.SESSION)
+                    }
+                }
                 if (event.lapTimeMs != null && s.pitPending) {
                     // Parada en boxes: este «giro» no es una vuelta sino el tiempo en boxes; el stint siguiente empieza aquí.
                     val pitMs = event.lapTimeMs
@@ -340,6 +414,7 @@ class TimingSession(
             draftOps = null
         }
         detector = null
+        resetGeometry(null)
         fixes.clear()
         recentArrivals.clear()
         _state.value = TimingState()
@@ -347,6 +422,9 @@ class TimingSession(
 
     companion object {
         private const val RATE_WINDOW_NS = 5_000_000_000L
+
+        /** Una vuelta con un hueco de fixes mayor que esto no sirve como referencia. */
+        private const val REFERENCE_MAX_GAP_NS = 3_000_000_000L
 
         /** Cada cuánto se vuelcan las posiciones a disco. */
         const val DRAFT_INTERVAL_MS = 30_000L

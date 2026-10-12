@@ -8,6 +8,7 @@ import com.nacho.kartlog.domain.gps.GpsSessionSaver
 import com.nacho.kartlog.domain.gps.GpsSessionSetup
 import com.nacho.kartlog.domain.gps.LocationSource
 import com.nacho.kartlog.domain.gps.TimingPhase
+import com.nacho.kartlog.domain.gps.ReferenceProvider
 import com.nacho.kartlog.domain.gps.TimingSession
 import com.nacho.kartlog.domain.gps.TimingState
 import com.nacho.kartlog.domain.model.Circuit
@@ -91,6 +92,7 @@ class DashboardViewModel(
     private val locationSource: () -> LocationSource,
     private val userSettings: UserSettings = InMemoryUserSettings(),
     private val analytics: AnalyticsSource? = null,
+    private val referenceProvider: ReferenceProvider? = null,
     private val now: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
 
@@ -176,7 +178,13 @@ class DashboardViewModel(
             type = state.type,
             startedAtMs = now(),
         )
-        if (timingSession.start(setup, locationSource())) startTracking()
+        if (timingSession.start(setup, locationSource())) {
+            startTracking()
+            // Referencia del delta desde la primera vuelta: la mejor vuelta del circuito con trazado (la de esta tanda la sustituye en cuanto exista).
+            referenceProvider?.let { provider ->
+                viewModelScope.launch { runCatching { provider.bestFor(circuit.id, finish) }.getOrNull()?.let(timingSession::offerReference) }
+            }
+        }
     }
 
     /** Fin de la pulsación larga: para el cronómetro (las vueltas quedan en memoria hasta guardar o descartar). */

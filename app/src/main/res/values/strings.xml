@@ -428,6 +428,9 @@
     <string name="track_leave_stay">Seguir en pista</string>
     <string name="track_leave_exit">Salir sin terminar</string>
     <string name="track_delta_short">Delta</string>
+    <string name="track_delta_no_ref">sin referencia</string>
+    <string name="track_delta_vs_best">vs mejor</string>
+    <string name="track_delta_vs_circuit">vs circuito</string>
     <string name="track_unreliable_short">⚠ vuelta con hueco de GPS</string>
     <string name="track_battery_low">Batería %1$d %% · conecta el cargador</string>
     <string name="track_day_mode">Modo día (sol)</string>

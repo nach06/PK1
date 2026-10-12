@@ -141,6 +141,7 @@ class AppContainer(context: Context) {
                 locationSource = { locationSource },
                 userSettings = userSettings,
                 analytics = analyticsSource,
+                referenceProvider = com.nacho.kartlog.data.gps.CircuitReferenceLoader(sessionRepository, lapRepository, trackStore),
                 now = { wallClockMs() },
             )
         }
