@@ -100,7 +100,7 @@ class CalibrationFlowTest {
         compose.waitUntil(5_000) { compose.onAllNodesWithText("MARCAR").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("MARCAR").performClick()
 
-        waitFor("Rumbo de paso")
+        waitFor("Rumbo de paso", substring = true)
         compose.onNodeWithText("GUARDAR").performClick()
         // Tras guardar se ofrece verificar; TERMINAR vuelve a Circuitos con la meta guardada.
         waitFor("Meta guardada")

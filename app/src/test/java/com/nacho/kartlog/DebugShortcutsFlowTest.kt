@@ -124,7 +124,7 @@ class DebugShortcutsFlowTest {
 
         // Un toque: pase simulado + marcado. Salen el rumbo, el ajuste y GUARDAR.
         compose.onNodeWithTag("debug_mark_sim").performClick()
-        compose.waitUntil(10_000) { compose.onAllNodesWithText("Rumbo de paso", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Rumbo de paso", substring = true, ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
         // Sin desplazarse: el ajuste (desplazar ±, ancho) y GUARDAR están dentro de la pantalla.
         assertInsideScreen("shift_stepper", "width_stepper", "calibration_save")
         compose.onNodeWithText("GUARDAR").performClick()

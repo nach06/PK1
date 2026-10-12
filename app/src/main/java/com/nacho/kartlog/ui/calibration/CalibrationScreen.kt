@@ -114,13 +114,16 @@ internal fun CalibrationContent(
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp).testTag("calibration_body"),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(state.circuitName, style = MaterialTheme.typography.titleLarge, maxLines = 1)
-            Text(
-                stringResource(if (state.verifying) R.string.calibration_verify_instructions else R.string.calibration_instructions),
-                style = MaterialTheme.typography.bodyLarge,
-                color = kart.textMuted,
-            )
-            GpsStatusLine(state)
+            if (!state.hasPendingLine) Text(state.circuitName, style = MaterialTheme.typography.titleLarge, maxLines = 1)
+            // Con una meta pendiente de ajustar las instrucciones sobran y quitan alto al ajuste.
+            if (!state.hasPendingLine) {
+                Text(
+                    stringResource(if (state.verifying) R.string.calibration_verify_instructions else R.string.calibration_instructions),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = kart.textMuted,
+                )
+            }
+            if (!state.hasPendingLine) GpsStatusLine(state)
             if (actions.onDebugMark != null || actions.onDebugVerify != null) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     actions.onDebugMark?.let { Box(Modifier.weight(1f)) { SecondaryButton(stringResource(R.string.debug_mark_sim), it, modifier = Modifier.testTag("debug_mark_sim")) } }
@@ -136,7 +139,7 @@ internal fun CalibrationContent(
                     trace = state.trace,
                     finish = state.displayLine,
                     confirmed = state.result != null || state.editingSaved || state.saved,
-                    modifier = Modifier.fillMaxWidth().aspectRatio(if (compactPlot) 2.4f else 1.4f).testTag("calibration_plot"),
+                    modifier = Modifier.fillMaxWidth().aspectRatio(if (compactPlot) 3.6f else 1.4f).testTag("calibration_plot"),
                 )
             }
 
@@ -210,27 +213,36 @@ private fun PendingLineBody(state: CalibrationUiState, actions: CalibrationActio
             modifier = Modifier.testTag("calibration_reversed"),
         )
     }
-    KartCard(Modifier.fillMaxWidth().testTag("calibration_values")) {
-        ValueRow(stringResource(R.string.calibration_lat), String.format(Locale.ROOT, "%.6f°", line.lat))
-        ValueRow(stringResource(R.string.calibration_lon), String.format(Locale.ROOT, "%.6f°", line.lon))
-        ValueRow(stringResource(R.string.calibration_bearing), String.format(Locale.ROOT, "%.1f°", line.bearingDeg))
-        ValueRow(stringResource(R.string.calibration_gate), "${line.gateWidthM} m")
-        state.result?.let { ValueRow(stringResource(R.string.calibration_accuracy), String.format(Locale.ROOT, "±%.0f m", it.accuracyM)) }
+    // Datos de la meta en dos líneas compactas (antes cinco filas): el ajuste y GUARDAR deben caber sin desplazar.
+    KartCard(Modifier.fillMaxWidth().testTag("calibration_values"), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+        Text(
+            String.format(Locale.ROOT, "%.6f°, %.6f°", line.lat, line.lon),
+            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = MonoFontFamily),
+            maxLines = 1,
+        )
+        Text(
+            stringResource(R.string.calibration_bearing) + String.format(Locale.ROOT, " %.1f° · ", line.bearingDeg) + stringResource(R.string.calibration_gate) + " ${line.gateWidthM} m" +
+                (state.result?.let { String.format(Locale.ROOT, " · ±%.0f m", it.accuracyM) } ?: ""),
+            style = MaterialTheme.typography.bodyMedium,
+            color = kart.textMuted,
+        )
     }
-    KartCard(Modifier.fillMaxWidth()) {
+    KartCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
         BigStepper(
             label = stringResource(R.string.calibration_shift),
             valueText = String.format(Locale.ROOT, "%+d m", state.shiftM),
             onDecrement = actions.onShiftBackward,
             onIncrement = actions.onShiftForward,
             modifier = Modifier.testTag("shift_stepper"),
+            compact = true,
         )
         BigStepper(
             label = stringResource(R.string.calibration_gate),
             valueText = "${state.gateWidthM} m",
             onDecrement = actions.onNarrow,
             onIncrement = actions.onWiden,
-            modifier = Modifier.padding(top = 16.dp).testTag("width_stepper"),
+            modifier = Modifier.padding(top = 8.dp).testTag("width_stepper"),
+            compact = true,
         )
     }
 }

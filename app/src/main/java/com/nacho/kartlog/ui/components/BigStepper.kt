@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -29,7 +30,29 @@ fun BigStepper(
     onDecrement: () -> Unit,
     onIncrement: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Una sola fila (etiqueta, −, valor, +) de 56 dp: para pantallas con poco alto. */
+    compact: Boolean = false,
 ) {
+    if (compact) {
+        Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.kartColors.textMuted,
+                modifier = Modifier.weight(1f),
+            )
+            StepperButton(text = "−", description = stringResource(R.string.stepper_decrease), onClick = onDecrement, height = 56.dp)
+            Text(
+                text = valueText,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.width(76.dp).semantics { contentDescription = "$label $valueText" },
+            )
+            StepperButton(text = "+", description = stringResource(R.string.stepper_increase), onClick = onIncrement, height = 56.dp)
+        }
+        return
+    }
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = label.uppercase(),
@@ -57,11 +80,11 @@ fun BigStepper(
 }
 
 @Composable
-private fun StepperButton(text: String, description: String, onClick: () -> Unit) {
+private fun StepperButton(text: String, description: String, onClick: () -> Unit, height: androidx.compose.ui.unit.Dp = 64.dp) {
     OutlinedButton(
         onClick = onClick,
         modifier = Modifier
-            .size(width = 72.dp, height = 64.dp)
+            .size(width = 72.dp, height = height)
             .semantics { contentDescription = description },
         shape = MaterialTheme.shapes.medium,
         border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
