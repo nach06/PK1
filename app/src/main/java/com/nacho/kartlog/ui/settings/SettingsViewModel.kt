@@ -55,6 +55,7 @@ class SettingsViewModel(
     private val importInbox: ImportInbox? = null,
     private val importRepository: ImportRepository? = null,
     private val onSimulationReady: ((LocationSource) -> Unit)? = null,
+    private val onEnduranceReady: ((com.nacho.kartlog.debug.EnduranceSimulation) -> Unit)? = null,
     private val backup: BackupService? = null,
     private val restartApp: () -> Unit = {},
     private val now: () -> Long = System::currentTimeMillis,
@@ -241,6 +242,19 @@ class SettingsViewModel(
             _uiState.update {
                 it.copy(isBusy = false, openDashboard = source != null, message = if (source == null) SettingsMessage.FAILED else it.message)
             }
+        }
+    }
+
+    /** Solo debug: arranca una resistencia simulada con 2 paradas automáticas y abre el Dashboard. */
+    fun simulateEndurance() {
+        val tools = debugTools ?: return
+        val callback = onEnduranceReady ?: return
+        if (_uiState.value.isBusy) return
+        _uiState.update { it.copy(isBusy = true) }
+        viewModelScope.launch {
+            val sim = runCatching { tools.prepareEnduranceSimulation() }.getOrNull()
+            if (sim != null) callback(sim)
+            _uiState.update { it.copy(isBusy = false, openDashboard = sim != null, message = if (sim == null) SettingsMessage.FAILED else it.message) }
         }
     }
 

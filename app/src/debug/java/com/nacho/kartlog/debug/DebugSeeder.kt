@@ -147,6 +147,22 @@ class DebugSeeder(
 
     override fun latestBackupOpener(): (() -> java.io.InputStream?)? = backupFolder?.latest()
 
+    override suspend fun prepareEnduranceSimulation(): EnduranceSimulation {
+        val oval = OvalTrack()
+        val id = ensureCircuit(SIMULATED_CIRCUIT, oval.perimeterM.toInt())
+        circuits.setFinishLine(id, oval.finishLine)
+        val random = Random(9)
+        val lapTimes = List(12) { 58_000L + random.nextInt(-900, 900) }
+        val sim = TrackSimulator.simulate(oval, lapTimes, hz = 1.0, lateralNoiseM = 1.5, alongNoiseM = 0.8)
+        return EnduranceSimulation(
+            source = ReplayLocationSource(sim.fixes, speedFactor = SIMULATION_SPEED),
+            circuitId = id,
+            finish = oval.finishLine,
+            pitAfterLaps = listOf(3, 6),
+            drivers = listOf("Piloto B", "Piloto C"),
+        )
+    }
+
     override suspend fun ensureCircuit(name: String, lengthM: Int): Long =
         circuits.observeAll().first().firstOrNull { it.name.equals(name, ignoreCase = true) }?.id ?: circuits.add(name, lengthM)
 

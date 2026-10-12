@@ -15,6 +15,15 @@ enum class TextSample(val assetName: String) {
 /** Qué hay en `assets/muestras/` de esta build (para entender por qué «no hay muestras»). */
 data class SampleDiagnosis(val entries: List<String>, val imageCount: Int, val expectedDir: String, val projectDir: String)
 
+/** Una tanda de resistencia lista para simular: origen de posiciones, circuito con meta y guion de paradas. */
+class EnduranceSimulation(
+    val source: LocationSource,
+    val circuitId: Long,
+    val finish: com.nacho.kartlog.domain.model.FinishLine,
+    val pitAfterLaps: List<Int>,
+    val drivers: List<String>,
+)
+
 interface DebugTools {
     /** Crea el circuito [name] si no existe y devuelve su id (para que una importación de muestra pueda guardarse sin teclear). */
     suspend fun ensureCircuit(name: String, lengthM: Int): Long
@@ -27,6 +36,9 @@ interface DebugTools {
 
     /** Abre la copia guardada con [saveBackupCopy] más reciente, o `null` si no hay ninguna. */
     fun latestBackupOpener(): (() -> java.io.InputStream?)?
+
+    /** Prepara una resistencia simulada (óvalo, 12 vueltas aceleradas) con 2 paradas en boxes automáticas. */
+    suspend fun prepareEnduranceSimulation(): EnduranceSimulation
 
     /** Diagnóstico de la carpeta de muestras. */
     fun sampleDiagnosis(): SampleDiagnosis

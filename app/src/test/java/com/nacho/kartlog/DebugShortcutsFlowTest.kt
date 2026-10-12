@@ -167,4 +167,44 @@ class DebugShortcutsFlowTest {
         while (restarts == 0 && System.currentTimeMillis() < deadline) { Thread.sleep(100); compose.waitForIdle() }
         assertEquals("se reinicia tras restaurar", 1, restarts)
     }
+
+    @Test
+    fun b5_enduranceSimulation_startsFromSettingsWithOneClick() {
+        val container = container()
+        compose.setContent { KartLogTheme { CompositionLocalProvider(LocalLiveClock provides false) { KartNavHost(container) } } }
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Tandas", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Ajustes").performClick()
+        compose.onNodeWithTag("debug_header").performClick()
+        waitForTag("debug_endurance")
+        compose.onNodeWithTag("debug_endurance").performClick()
+        // El Dashboard se abre ya en marcha, en resistencia (Stint 1), sin pasar por «Nueva tanda».
+        waitForTag("stint_label")
+        assertEquals(SessionType.ENDURANCE, container.timingSession.state.value.setup?.type)
+        assertEquals(TimingPhase.RUNNING, container.timingSession.state.value.phase)
+        container.timingSession.stop()
+    }
+
+    @Test
+    fun b5_theScriptAsksForTwoPitStops_andTheRunEndsWithThreeStints() {
+        val container = container()
+        val oval = OvalTrack()
+        val source = ControlledSource()
+        val circuitId = runBlocking { container.circuitRepository.add("Óvalo simulado", 780) }
+        val sim = com.nacho.kartlog.domain.gps.TrackSimulator.simulate(oval, List(12) { 58_000L }, hz = 1.0)
+        container.startEnduranceSimulation(
+            com.nacho.kartlog.debug.EnduranceSimulation(source, circuitId, oval.finishLine, listOf(3, 6), listOf("Piloto B", "Piloto C")),
+        )
+        runBlocking { sim.fixes.forEach { source.flow.emit(it); kotlinx.coroutines.delay(2) } }
+        val deadline = System.currentTimeMillis() + 10_000
+        while (container.timingSession.state.value.stints.size < 3 && System.currentTimeMillis() < deadline) Thread.sleep(50)
+        val stints = container.timingSession.state.value.stints
+        assertEquals("tres stints tras dos paradas", 3, stints.size)
+        assertEquals(listOf(null, "Piloto B", "Piloto C"), stints.map { it.driverName })
+        container.timingSession.stop()
+    }
+
+    private class ControlledSource : LocationSource {
+        val flow = MutableSharedFlow<GpsFix>(extraBufferCapacity = 5_000)
+        override fun fixes() = flow
+    }
 }

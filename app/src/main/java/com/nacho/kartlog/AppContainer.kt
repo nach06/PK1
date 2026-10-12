@@ -19,6 +19,8 @@ import com.nacho.kartlog.domain.gps.LocationSource
 import com.nacho.kartlog.domain.gps.TimingSession
 import com.nacho.kartlog.ui.dashboard.DashboardViewModel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
@@ -171,8 +173,24 @@ class AppContainer(context: Context) {
     /** Tras restaurar una copia la app se reinicia para abrir la BD nueva; los tests lo sustituyen. */
     var restartApp: () -> Unit = { com.nacho.kartlog.ui.util.restartApp(context) }
 
+    /** Solo debug: arranca una resistencia simulada y pide las paradas del guion cuando toca (sin tocar nada en pantalla). */
+    internal fun startEnduranceSimulation(sim: com.nacho.kartlog.debug.EnduranceSimulation) {
+        locationSource = sim.source
+        val setup = com.nacho.kartlog.domain.gps.GpsSessionSetup(
+            circuitId = sim.circuitId, finish = sim.finish, kartNumber = 28, type = com.nacho.kartlog.domain.model.SessionType.ENDURANCE, startedAtMs = wallClockMs(),
+        )
+        if (!timingSession.start(setup, sim.source)) return
+        trackingController.start()
+        val script = com.nacho.kartlog.domain.gps.PitScript(sim.pitAfterLaps, sim.drivers)
+        appScope.launch {
+            timingSession.state.takeWhile { it.phase == com.nacho.kartlog.domain.gps.TimingPhase.RUNNING }.collect { s ->
+                script.due(s.laps.size, s.started, s.pitPending)?.let { timingSession.requestPit(it) }
+            }
+        }
+    }
+
     val settingsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
-        initializer { SettingsViewModel(debugTools, SessionsCsvExporter(sessionRepository, lapRepository), userSettings, importInbox, importRepository, onSimulationReady = { locationSource = it }, backup = backupService, restartApp = { restartApp() }) }
+        initializer { SettingsViewModel(debugTools, SessionsCsvExporter(sessionRepository, lapRepository), userSettings, importInbox, importRepository, onSimulationReady = { locationSource = it }, onEnduranceReady = ::startEnduranceSimulation, backup = backupService, restartApp = { restartApp() }) }
     }
 
     val sessionListViewModelFactory: ViewModelProvider.Factory = viewModelFactory {

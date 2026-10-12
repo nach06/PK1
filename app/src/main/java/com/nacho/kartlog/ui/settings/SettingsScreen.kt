@@ -515,6 +515,7 @@ private fun debugButtons(viewModel: SettingsViewModel, state: SettingsUiState, p
     val idle = !state.isBusy
     return listOf(
         DebugButton(stringResource(R.string.settings_simulate_track), "debug_simulate", viewModel::simulateTrackSession, idle),
+        DebugButton(stringResource(R.string.settings_simulate_endurance), "debug_endurance", viewModel::simulateEndurance, idle),
         DebugButton(stringResource(R.string.settings_test_ocr), "debug_ocr_sample", viewModel::testOcrWithSample, idle),
         DebugButton(stringResource(R.string.settings_pick_image), "debug_pick_image", pickImage, idle),
         DebugButton(stringResource(R.string.settings_import_sample_a), "debug_text_a", { viewModel.importTextSample(TextSample.A) }, idle),
