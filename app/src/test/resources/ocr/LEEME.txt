@@ -1,2 +1,2 @@
-Volcados de OCR (JSON de OcrDump) que recorre OcrDumpsPipelineTest: cualquier *.json de esta carpeta se prueba solo.
+Volcados de OCR (JSON de OcrDump) que recorre OcrDumpsPipelineTest: cualquier fichero .json de esta carpeta se prueba solo.
 Los reales se generan con «Dump OCR (debug)» en la revisión de importación (ver OCR_MUESTRAS.md en la raíz del repositorio).
