@@ -165,6 +165,13 @@ class ImportFlowTest {
         compose.onNodeWithTag("fab_import").performClick()
         waitForTag("import_main")
         compose.onNodeWithTag("import_main").assertIsDisplayed()
+        // A7: el botón está pegado a la explicación, no al borde inferior.
+        val hint = compose.onNodeWithTag("import_entry_hint").fetchSemanticsNode().boundsInRoot
+        val button = compose.onNodeWithTag("import_main").fetchSemanticsNode().boundsInRoot
+        val screenH = compose.onRoot().fetchSemanticsNode().boundsInRoot.height
+        val density = context.resources.displayMetrics.density
+        assertTrue("botón a ${(button.top - hint.bottom) / density} dp del texto", button.top - hint.bottom <= 48f * density)
+        assertTrue("botón en la mitad superior: ${button.bottom} de $screenH", button.bottom <= screenH * 0.5f)
 
         // Un solo botón principal; sus tres vías están en una hoja inferior.
         compose.onNodeWithTag("import_main").performClick()

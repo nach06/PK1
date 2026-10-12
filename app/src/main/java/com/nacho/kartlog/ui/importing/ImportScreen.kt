@@ -341,15 +341,16 @@ private fun EntryContent(state: ImportUiState, ocrAvailable: Boolean, onBack: ()
         topBar = { KartTopBar(title = stringResource(R.string.import_title), onBack = onBack) },
     ) { padding ->
         Column(
+            // Texto y botón juntos, arriba (no centrados ni pegados al borde inferior): el botón queda justo bajo la explicación.
             modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 stringResource(R.string.import_entry_hint),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.kartColors.textMuted,
-                modifier = Modifier.padding(bottom = 24.dp),
+                modifier = Modifier.padding(top = 16.dp, bottom = 20.dp).testTag("import_entry_hint"),
             )
             state.error?.let { ErrorText(it, Modifier.padding(bottom = 16.dp)) }
             if (!ocrAvailable) {
