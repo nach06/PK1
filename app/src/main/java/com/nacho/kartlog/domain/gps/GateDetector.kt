@@ -13,6 +13,13 @@ data class GateConfig(
     val maxAccuracyM: Float = 15f,
     /** Si entre los dos fixes del cruce pasó más de esto, el tiempo es poco fiable (se marca, no se descarta). */
     val maxReliableGapNs: Long = 2_500_000_000L,
+    /**
+     * Retardo (ms) con el que el proveedor de posición entrega cada posición respecto al instante real (los proveedores «fusionados»
+     * filtran y publican con retraso). Un retardo **constante** no cambia los tiempos de vuelta (desplaza igual las dos pasadas);
+     * solo corre el instante absoluto del cruce. Con el valor aquí puesto se adelanta el cruce interpolado ese tiempo (−500…+500 ms,
+     * 0 por defecto). Solo es una ayuda de depuración para alinear el cruce con lo que se ve en pista.
+     */
+    val delayCompensationMs: Long = 0,
 )
 
 /** Un cruce válido de la meta, con el instante interpolado en el reloj monótono. */
@@ -49,8 +56,15 @@ data class GateEvent(
  * 4. Guardas: precisión de los fixes ([GateConfig.maxAccuracyM]), vuelta mínima/anti-rebote y fixes perdidos.
  *
  * **Error esperado.** Un error de posición *a lo largo de la marcha* de ε metros desplaza el cruce ε / v segundos
- * (a 20 m/s, 3 m = 150 ms); un error *lateral* no cambia la distancia a la línea y no afecta al tiempo. Con ruido
- * independiente en los dos fixes el error del cruce queda acotado por `max(|ε₁|, |ε₂|) / v`.
+ * (a 20 m/s, 3 m = 150 ms); un error *lateral* no cambia la distancia a la línea y no afecta al tiempo (mientras siga dentro de
+ * la puerta). Con ruido independiente en los dos fixes el error del cruce queda acotado por `max(|ε₁|, |ε₂|) / v`; como cada vuelta
+ * se mide entre dos cruces con errores independientes, el error del tiempo de vuelta es ≈ √2 veces el del cruce.
+ *
+ * **Retardo del proveedor fusionado.** Si cada posición llega con un retardo *constante* D, los dos cruces de una vuelta se
+ * corren D y el **tiempo de vuelta no cambia**; solo se mueve el instante absoluto del cruce (+D) y, por tanto, la hora de
+ * inicio de la tanda y el instante en que el Dashboard cree que has pasado por la línea. Un retardo que *varía* entre pasadas
+ * (el filtro del proveedor reacciona distinto en frenada que en recta) sí afecta al tiempo: ΔD de 100 ms = 100 ms de error.
+ * [GateConfig.delayCompensationMs] resta un retardo conocido al cruce (ajuste de depuración).
  */
 class GateDetector(
     finish: FinishLine,
@@ -90,7 +104,7 @@ class GateDetector(
 
         if (before.accuracyM > config.maxAccuracyM || fix.accuracyM > config.maxAccuracyM) return null
 
-        val crossNs = before.elapsedNs + Math.round(t * (fix.elapsedNs - before.elapsedNs))
+        val crossNs = before.elapsedNs + Math.round(t * (fix.elapsedNs - before.elapsedNs)) - config.delayCompensationMs * 1_000_000L
         val last = lastCrossingNs
         if (last != null && (crossNs - last) / 1_000_000L < minLapMs()) return null // rebote o corte
 

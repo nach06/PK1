@@ -45,6 +45,7 @@ import com.nacho.kartlog.BuildConfig
 import com.nacho.kartlog.debug.TextSample
 import com.nacho.kartlog.R
 import com.nacho.kartlog.domain.settings.DashboardOrientation
+import com.nacho.kartlog.ui.components.BigStepper
 import com.nacho.kartlog.ui.components.KartCard
 import com.nacho.kartlog.ui.components.KartTopBar
 import com.nacho.kartlog.ui.components.MoreBelowHint
@@ -162,6 +163,14 @@ fun SettingsScreen(
                                     if (pair.size == 1) Box(Modifier.weight(1f))
                                 }
                             }
+                            val gpsDelay by viewModel.gpsDelayMs.collectAsStateWithLifecycle()
+                            BigStepper(
+                                label = stringResource(R.string.settings_gps_delay),
+                                valueText = String.format(java.util.Locale.ROOT, "%+d ms", gpsDelay),
+                                onDecrement = { viewModel.adjustGpsDelay(-50) },
+                                onIncrement = { viewModel.adjustGpsDelay(50) },
+                                modifier = Modifier.testTag("gps_delay_stepper"),
+                            )
                             state.debugBackupPath?.let {
                                 Text(
                                     stringResource(R.string.settings_debug_backup_saved, it),

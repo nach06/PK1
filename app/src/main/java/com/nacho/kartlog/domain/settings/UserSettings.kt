@@ -15,6 +15,11 @@ interface UserSettings {
 
     fun setDriverName(name: String)
 
+    /** Solo depuración: compensación del retardo del GPS (ms, −500…+500, 0 por defecto) que se resta al instante interpolado del cruce. */
+    val gpsDelayMs: StateFlow<Int>
+
+    fun setGpsDelayMs(value: Int)
+
     /** Última columna marcada con «Soy yo» al importar (`nombre|kart`): se sugiere la próxima vez si no hay nombre guardado. */
     val lastImportColumn: StateFlow<String>
 

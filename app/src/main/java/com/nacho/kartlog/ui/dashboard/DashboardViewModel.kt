@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.nacho.kartlog.domain.analytics.Analytics
 import com.nacho.kartlog.domain.gps.GpsRecording
 import com.nacho.kartlog.domain.gps.GpsSessionSaver
+import com.nacho.kartlog.domain.gps.GateConfig
 import com.nacho.kartlog.domain.gps.GpsSessionSetup
 import com.nacho.kartlog.domain.gps.LocationSource
 import com.nacho.kartlog.domain.gps.TimingPhase
@@ -178,7 +179,7 @@ class DashboardViewModel(
             type = state.type,
             startedAtMs = now(),
         )
-        if (timingSession.start(setup, locationSource())) {
+        if (timingSession.start(setup, locationSource(), GateConfig(delayCompensationMs = userSettings.gpsDelayMs.value.toLong()))) {
             startTracking()
             // Referencia del delta desde la primera vuelta: la mejor vuelta del circuito con trazado (la de esta tanda la sustituye en cuanto exista).
             referenceProvider?.let { provider ->

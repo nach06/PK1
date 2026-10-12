@@ -109,6 +109,8 @@ class SettingsViewModel(
     fun setDashboardOrientation(value: DashboardOrientation) = userSettings.setDashboardOrientation(value)
     val vibrationOnly: StateFlow<Boolean> = userSettings.vibrationOnly
     fun setVibrationOnly(enabled: Boolean) = userSettings.setVibrationOnly(enabled)
+    val gpsDelayMs: StateFlow<Int> = userSettings.gpsDelayMs
+    fun adjustGpsDelay(deltaMs: Int) = userSettings.setGpsDelayMs(userSettings.gpsDelayMs.value + deltaMs)
     val autoBackup: StateFlow<Boolean> = userSettings.autoBackup
     fun setAutoBackup(enabled: Boolean) = userSettings.setAutoBackup(enabled)
     val lastAutoBackupMs: StateFlow<Long> = userSettings.lastAutoBackupMs

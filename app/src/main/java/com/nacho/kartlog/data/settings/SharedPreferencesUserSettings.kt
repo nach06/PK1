@@ -21,6 +21,15 @@ class SharedPreferencesUserSettings(context: Context) : UserSettings {
         prefs.edit().putString(KEY_DRIVER_NAME, name).apply()
     }
 
+    private val _gpsDelayMs = MutableStateFlow(prefs.getInt(KEY_GPS_DELAY_MS, 0).coerceIn(-500, 500))
+    override val gpsDelayMs: StateFlow<Int> = _gpsDelayMs.asStateFlow()
+
+    override fun setGpsDelayMs(value: Int) {
+        val clamped = value.coerceIn(-500, 500)
+        _gpsDelayMs.value = clamped
+        prefs.edit().putInt(KEY_GPS_DELAY_MS, clamped).apply()
+    }
+
     private val _lastImportColumn = MutableStateFlow(prefs.getString(KEY_LAST_IMPORT_COLUMN, "").orEmpty())
     override val lastImportColumn: StateFlow<String> = _lastImportColumn.asStateFlow()
 
@@ -122,6 +131,7 @@ class SharedPreferencesUserSettings(context: Context) : UserSettings {
         const val KEY_SAVE_IMPORT_PHOTO = "save_import_photo"
         const val FILE = "kartlog_settings"
         const val KEY_DRIVER_NAME = "driver_name"
+        const val KEY_GPS_DELAY_MS = "gps_delay_ms"
         const val KEY_LAST_IMPORT_COLUMN = "last_import_column"
         const val KEY_LAP_FEEDBACK = "lap_feedback"
         const val KEY_ORIENTATION = "dashboard_orientation"

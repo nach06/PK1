@@ -9,6 +9,10 @@ class InMemoryUserSettings(driverName: String = "") : UserSettings {
     override val driverName: StateFlow<String> = driver
     override fun setDriverName(name: String) { driver.value = name }
 
+    private val gpsDelay = MutableStateFlow(0)
+    override val gpsDelayMs: StateFlow<Int> = gpsDelay
+    override fun setGpsDelayMs(value: Int) { gpsDelay.value = value.coerceIn(-500, 500) }
+
     private val lastColumn = MutableStateFlow("")
     override val lastImportColumn: StateFlow<String> = lastColumn
     override fun setLastImportColumn(value: String) { lastColumn.value = value }

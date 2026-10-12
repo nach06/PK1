@@ -250,4 +250,23 @@ class DebugShortcutsFlowTest {
         compose.onNodeWithTag("debug_jump_end").performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithTag("more_below").fetchSemanticsNodes().isEmpty() }
     }
+
+    @Test
+    fun e1_gpsDelayStepper_movesInStepsOf50_andIsClampedTo500() {
+        val container = container()
+        compose.setContent { KartLogTheme { KartNavHost(container) } }
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Tandas", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Ajustes").performClick()
+        compose.onNodeWithTag("debug_header").performClick()
+        waitForTag("gps_delay_stepper")
+        val plus = { compose.onNode(androidx.compose.ui.test.hasText("+") and androidx.compose.ui.test.hasAnyAncestor(androidx.compose.ui.test.hasTestTag("gps_delay_stepper"))) }
+        val minus = { compose.onNode(androidx.compose.ui.test.hasText("−") and androidx.compose.ui.test.hasAnyAncestor(androidx.compose.ui.test.hasTestTag("gps_delay_stepper"))) }
+        repeat(3) { plus().performClick() }
+        assertEquals(150, container.userSettings.gpsDelayMs.value)
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("+150 ms", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        repeat(12) { plus().performClick() }
+        assertEquals("tope en +500", 500, container.userSettings.gpsDelayMs.value)
+        repeat(30) { minus().performClick() }
+        assertEquals("tope en −500", -500, container.userSettings.gpsDelayMs.value)
+    }
 }

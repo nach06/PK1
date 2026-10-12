@@ -239,4 +239,57 @@ class GateDetectorTest {
         assertEquals(1, detector.lapsCompleted)
         assertFalse(max(0, 0) > 0)
     }
+
+    // ---------------------------------------------------------------- Sprint 7, E1: ruido a lo largo / lateral y retardo del proveedor
+
+    private fun crossingsOf(fixes: List<GpsFix>, config: GateConfig = GateConfig()): List<Long> {
+        val detector = GateDetector(track.finishLine, config)
+        return fixes.mapNotNull { detector.feed(it)?.crossing?.elapsedNs }
+    }
+
+    @Test
+    fun lateralNoiseDoesNotMoveTheCrossing_butAlongTrackNoiseDoes() {
+        val laps = List(10) { 58_000L }
+        val clean = TrackSimulator.simulate(track, laps, hz = 1.0)
+        val truth = clean.crossingNs
+        val lateral = crossingsOf(TrackSimulator.simulate(track, laps, hz = 1.0, lateralNoiseM = 3.0).fixes)
+        val along = crossingsOf(TrackSimulator.simulate(track, laps, hz = 1.0, alongNoiseM = 3.0).fixes)
+        val lateralErr = lateral.indices.maxOf { abs(lateral[it] - truth[it]) } / 1e6
+        val alongErr = along.indices.map { (along[it] - truth[it]) / 1e6 }
+        val speed = track.perimeterM / 58.0
+        // Lateral (σ = 3 m): el cruce no se mueve (< 30 ms). A lo largo (σ = 3 m a ~13 m/s): decenas de ms a ~0,3 s.
+        assertTrue("error lateral máx $lateralErr ms", lateralErr < 30.0)
+        val rms = kotlin.math.sqrt(alongErr.map { it * it }.average())
+        assertTrue("error a lo largo RMS $rms ms (σ/v = ${3.0 / speed * 1000} ms)", rms in 20.0..(3.0 / speed * 1000 * 1.5))
+    }
+
+    @Test
+    fun aConstantProviderDelayShiftsTheCrossingButNotTheLapTimes_andTheCompensationUndoesIt() {
+        val laps = listOf(58_400L, 57_900L, 58_120L, 59_300L)
+        val sim = TrackSimulator.simulate(track, laps, hz = 1.0)
+        val delayMs = 300L
+        // El proveedor entrega cada posición con 300 ms de retraso: el mismo punto llega con un sello 300 ms posterior.
+        val delayed = sim.fixes.map { it.copy(elapsedNs = it.elapsedNs + delayMs * 1_000_000L) }
+        val truth = sim.crossingNs
+        val late = crossingsOf(delayed)
+        late.indices.forEach { assertEquals("el cruce llega ${delayMs} ms tarde", delayMs.toDouble(), (late[it] - truth[it]) / 1e6, 30.0) }
+        val lapTimes = late.zipWithNext { a, b -> (b - a) / 1_000_000L }
+        lapTimes.forEachIndexed { i, ms -> assertEquals("V${i + 1} no cambia con un retardo constante", laps[i].toDouble(), ms.toDouble(), 20.0) }
+
+        val compensated = crossingsOf(delayed, GateConfig(delayCompensationMs = delayMs))
+        compensated.indices.forEach { assertEquals("con la compensación vuelve a su sitio", 0.0, (compensated[it] - truth[it]) / 1e6, 30.0) }
+        val negative = crossingsOf(sim.fixes, GateConfig(delayCompensationMs = -200))
+        assertEquals("compensación negativa retrasa el cruce", 200.0, (negative[0] - truth[0]) / 1e6, 30.0)
+    }
+
+    @Test
+    fun aDelayThatVariesBetweenPasses_doesChangeTheLapTime() {
+        val laps = listOf(58_000L, 58_000L)
+        val sim = TrackSimulator.simulate(track, laps, hz = 1.0)
+        // El 3.er cruce llega con 100 ms más de retardo que los otros dos (el filtro del proveedor reaccionó distinto).
+        val fixes = sim.fixes.map { if (it.elapsedNs >= sim.crossingNs[2] - 1_000_000_000L) it.copy(elapsedNs = it.elapsedNs + 100_000_000L) else it }
+        val crossings = crossingsOf(fixes)
+        val second = (crossings[2] - crossings[1]) / 1_000_000L
+        assertEquals("100 ms de retardo variable = 100 ms de error en la vuelta", 58_100.0, second.toDouble(), 30.0)
+    }
 }
