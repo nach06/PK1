@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -69,8 +69,27 @@ class DraftRecoveryFlowTest {
 
     private fun draftFiles() = listOf("draft.partial.json", "draft.partial.csv").map { File(context.filesDir, "tracks/$it") }
 
-    private fun waitFor(text: String, ignoreCase: Boolean = true) = compose.waitUntil(10_000) {
-        compose.onAllNodesWithText(text, ignoreCase = ignoreCase).fetchSemanticsNodes().isNotEmpty()
+    private fun waitFor(text: String, ignoreCase: Boolean = true, frozenClock: Boolean = false) {
+        fun present() = compose.onAllNodesWithText(text, ignoreCase = ignoreCase).fetchSemanticsNodes().isNotEmpty()
+        if (!frozenClock) return compose.waitUntil(10_000) { present() }
+        val started = System.currentTimeMillis()
+        var frames = 0
+        var goneAtFrame = if (draftFiles().none { it.exists() }) 0 else -1
+        while (!present()) {
+            if (goneAtFrame < 0 && draftFiles().none { it.exists() }) goneAtFrame = frames
+            check(System.currentTimeMillis() < started + 30_000) {
+                val texts = ArrayList<String>()
+                fun walk(n: androidx.compose.ui.semantics.SemanticsNode) {
+                    n.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)?.forEach { texts += it.text }
+                    n.children.forEach(::walk)
+                }
+                walk(compose.onRoot().fetchSemanticsNode())
+                "no apareció «$text» tras $frames fotogramas / ${System.currentTimeMillis() - started} ms; pantalla=$texts; borrador=${draftFiles().map { it.exists() }} desaparecidoEnFotograma=$goneAtFrame"
+            }
+            compose.mainClock.advanceTimeByFrame()
+            frames++
+            Thread.sleep(10)
+        }
     }
 
     /** Deja en disco lo que habría quedado tras morir la app: la preparación y todas las posiciones. */
@@ -162,18 +181,16 @@ class DraftRecoveryFlowTest {
             store.begin(GpsSessionSetup(circuitId, oval.finishLine, kartNumber = 9, type = SessionType.RACE, startedAtMs = startedAt))
             store.append(sim.fixes.take(30)) // menos de una vuelta
         }
+        // Causa del intermitente (reproducida con la CPU saturada): el aviso es un Snackbar de duración Long y su temporizador corre en el
+        // reloj virtual de Compose, que `waitUntil` adelanta ~1,6× más rápido que el real. Con la máquina cargada el aviso aparecía y se
+        // retiraba (10 s virtuales) entre dos comprobaciones y el test no lo veía. Se congela el reloj y se avanza fotograma a fotograma,
+        // comprobando tras cada uno: el aviso no puede pasar sin ser observado.
+        val writtenBeforeOpening = draftFiles().map { it.exists() }
+        check(writtenBeforeOpening.all { it }) { "el borrador no llegó a escribirse antes de abrir la app: $writtenBeforeOpening" }
+        compose.mainClock.autoAdvance = false
         content(container)
-
-        try {
-            waitFor("Tanda interrumpida sin vueltas: descartada")
-        } catch (e: androidx.compose.ui.test.ComposeTimeoutException) {
-            val texts = compose.onRoot().fetchSemanticsNode().let { root ->
-                fun walk(n: androidx.compose.ui.semantics.SemanticsNode): List<String> =
-                    (n.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)?.map { it.text }.orEmpty()) + n.children.flatMap(::walk)
-                walk(root)
-            }
-            throw AssertionError("DIAG textos=$texts draftFiles=${draftFiles().map { it.exists() }} fase=${container.timingSession.state.value.phase}", e)
-        }
+        waitFor("Tanda interrumpida sin vueltas: descartada", frozenClock = true)
+        compose.mainClock.autoAdvance = true
         assertTrue(compose.onAllNodesWithText("Tanda interrumpida").fetchSemanticsNodes().isEmpty())
         assertTrue(compose.onAllNodesWithText("Tanda terminada", substring = true).fetchSemanticsNodes().isEmpty())
         val deadline = System.currentTimeMillis() + 8_000
