@@ -234,6 +234,7 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
                     onImport = { navController.navigate(Routes.IMPORT) { launchSingleTop = true } },
                     onTrack = { navController.navigate(Routes.TRACK) { launchSingleTop = true } },
                     onOpenSession = { navController.navigate(Routes.detail(it)) },
+                    debugShortcuts = container.debugTools != null,
                 )
             }
             composable(Routes.ANALYSIS) {

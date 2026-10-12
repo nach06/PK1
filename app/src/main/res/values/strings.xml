@@ -165,6 +165,10 @@
     <string name="filter_empty_title">Sin resultados</string>
     <string name="filter_empty_message">Ninguna tanda coincide con los filtros.</string>
     <string name="filter_clear">Quitar filtros</string>
+    <string name="search_action">Buscar</string>
+    <string name="search_hint">Circuito, notas, título o kart</string>
+    <string name="search_close">Cerrar búsqueda</string>
+    <string name="search_debug_sample">Buscar «%1$s» (debug)</string>
 
     <!-- Análisis -->
     <string name="analysis_no_sessions">Aún no hay tandas. Crea una para ver el análisis.</string>

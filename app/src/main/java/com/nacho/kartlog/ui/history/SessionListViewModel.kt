@@ -68,5 +68,8 @@ class SessionListViewModel(
 
     fun setSort(sort: SessionSort) = change { it.copy(sort = sort) }
 
-    fun clearFilters() = change { it.copy(circuitId = null, type = null) }
+    fun clearFilters() = change { it.copy(circuitId = null, type = null, query = "") }
+
+    /** Búsqueda de texto: se aplica al escribir y no se guarda con los demás filtros. */
+    fun setQuery(query: String) = filters.update { it.copy(query = query) }
 }

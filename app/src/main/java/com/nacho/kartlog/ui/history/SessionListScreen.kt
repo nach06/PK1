@@ -67,10 +67,12 @@ fun SessionListScreen(
     onImport: () -> Unit,
     onTrack: () -> Unit,
     onOpenSession: (Long) -> Unit,
+    debugShortcuts: Boolean = false,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showCircuitPicker by rememberSaveable { mutableStateOf(false) }
     var fabExpanded by rememberSaveable { mutableStateOf(false) }
+    var searchOpen by rememberSaveable { mutableStateOf(false) }
     // Estado de scroll explícito y fuera de las ramas de carga/vacío: se guarda con la entrada de la pila y
     // la lista vuelve a la misma posición al regresar del Detalle.
     val listState = rememberLazyListState()
@@ -86,6 +88,7 @@ fun SessionListScreen(
                 actions = {
                     KartOverflowMenu(
                         actions = listOf(
+                            MenuAction(label = stringResource(R.string.search_action), onClick = { searchOpen = true }),
                             MenuAction(label = stringResource(R.string.import_menu), onClick = onImport),
                             MenuAction(label = stringResource(R.string.action_on_track), onClick = onTrack),
                             MenuAction(
@@ -116,6 +119,9 @@ fun SessionListScreen(
                     onImport = onImport,
                     onOpenSession = onOpenSession,
                     onCircuitClick = { showCircuitPicker = true },
+                    searchOpen = searchOpen,
+                    onCloseSearch = { searchOpen = false; viewModel.setQuery("") },
+                    debugShortcuts = debugShortcuts,
                     viewModel = viewModel,
                 )
             }
@@ -184,6 +190,9 @@ private fun SessionListBody(
     onImport: () -> Unit,
     onOpenSession: (Long) -> Unit,
     onCircuitClick: () -> Unit,
+    searchOpen: Boolean,
+    onCloseSearch: () -> Unit,
+    debugShortcuts: Boolean,
     viewModel: SessionListViewModel,
 ) {
     when {
@@ -198,6 +207,14 @@ private fun SessionListBody(
             
         )
         else -> Column(Modifier.fillMaxSize()) {
+            if (searchOpen || state.filters.query.isNotEmpty()) {
+                SearchRow(
+                    query = state.filters.query,
+                    onQuery = viewModel::setQuery,
+                    onClose = onCloseSearch,
+                    debugSample = if (debugShortcuts) state.items.filterIsInstance<SessionListItem.Entry>().firstOrNull()?.stats?.summary?.circuit?.name else null,
+                )
+            }
             FilterRow(
                 compact = compact,
                 state = state,
@@ -233,6 +250,30 @@ private fun SessionListBody(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/** Campo de búsqueda de texto (D3) con ✕ para cerrarla; en debug, un atajo que rellena la consulta sin teclear. */
+@Composable
+private fun SearchRow(query: String, onQuery: (String) -> Unit, onClose: () -> Unit, debugSample: String?) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+        androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.material3.OutlinedTextField(
+                value = query,
+                onValueChange = onQuery,
+                placeholder = { Text(stringResource(R.string.search_hint)) },
+                singleLine = true,
+                modifier = Modifier.weight(1f).testTag("search_field"),
+            )
+            androidx.compose.material3.TextButton(onClick = onClose, modifier = Modifier.testTag("search_close")) {
+                Text("✕", style = MaterialTheme.typography.titleMedium)
+            }
+        }
+        if (debugSample != null && query.isEmpty()) {
+            androidx.compose.material3.TextButton(onClick = { onQuery(debugSample) }, modifier = Modifier.testTag("debug_search")) {
+                Text(stringResource(R.string.search_debug_sample, debugSample), maxLines = 1)
             }
         }
     }
