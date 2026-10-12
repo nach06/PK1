@@ -25,7 +25,7 @@ class DeviceSnapshotReader(private val context: Context) {
         return DeviceSnapshot(
             batteryPercent = if (level < 0) 100 else level * 100 / scale.coerceAtLeast(1),
             charging = charging,
-            locationEnabled = location?.isLocationEnabled ?: true,
+            locationEnabled = location?.let { androidx.core.location.LocationManagerCompat.isLocationEnabled(it) } ?: true,
             locationPermission = GpsPermissions.hasRequired(context),
             brightness = brightness,
             powerSaveOn = power?.isPowerSaveMode ?: false,

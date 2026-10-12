@@ -129,12 +129,13 @@ class NewSessionViewModel(
                     )
                 }
             }
-        } else
-        // Preselecciona el circuito de la última tanda creada; sin tandas, no preselecciona nada.
-        viewModelScope.launch {
-            val (sorted, used) = orderedCircuits.first()
-            val last = sorted.firstOrNull { it.id in used } ?: return@launch
-            form.update { if (it.circuitId == null) it.copy(circuitId = last.id) else it }
+        } else {
+            // Preselecciona el circuito de la última tanda creada; sin tandas, no preselecciona nada.
+            viewModelScope.launch {
+                val (sorted, used) = orderedCircuits.first()
+                val last = sorted.firstOrNull { it.id in used } ?: return@launch
+                form.update { if (it.circuitId == null) it.copy(circuitId = last.id) else it }
+            }
         }
     }
 

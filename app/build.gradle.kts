@@ -59,6 +59,9 @@ android {
         unitTests {
             isIncludeAndroidResources = true
             all { test ->
+                // 460 tests de Robolectric/Compose en una sola JVM: con el máximo por defecto (512 MB) el recolector de basura frena las
+                // pasadas completas y aparecen esperas agotadas intermitentes en tests que en solitario pasan siempre.
+                test.maxHeapSize = "2g"
                 // Opcional: usar jars de Android de Robolectric ya descargados (entornos sin acceso a Maven en runtime).
                 System.getenv("ROBOLECTRIC_DEPS_DIR")?.let { dir ->
                     test.systemProperty("robolectric.offline", "true")

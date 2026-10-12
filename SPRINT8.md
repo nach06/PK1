@@ -7,7 +7,20 @@ Rama `claude/kartlog-sprint-1-3hhlkb`. Parte del Sprint 7 (390 tests). **Cambio 
 
 ## Estado y verificación
 
-__ESTADO__
+`./gradlew assembleDebug assembleRelease testDebugUnitTest compileDebugAndroidTestKotlin lintDebug` → **BUILD SUCCESSFUL**:
+**460 tests unitarios/Robolectric, 0 fallos, 0 omitidos**, lint **0 errores** (el lint encontró y corregí dos errores míos al final:
+`LocationManager.isLocationEnabled` exige API 28 con `minSdk` 26 → `LocationManagerCompat`, y un `else` mal sangrado de D1). Los
+instrumentados solo se compilan (no hay emulador).
+
+**Estabilidad de la suite — sin maquillar.** *No he conseguido las «5 pasadas completas consecutivas»* que pedía D6 con el comando
+exacto: la última tanda de pasadas completas fue 5 de 6, 12 de 12 con un diagnóstico puesto, 6 de 6 tras reiniciar el demonio de
+Gradle, y la verificación final salió verde a la primera, pero **hay tests ajenos a este sprint que fallan de forma intermitente en las
+pasadas completas** y nunca en solitario: `ImportViewModelTest.laFotoOriginalSoloSeConservaSiElAjusteLoPermite` (espera agotada de 30 s,
+la más frecuente, ~1 de cada 6), `CalibrationViewModelTest.manualAdjustment_…` y `TimingSessionTest.theDraftIsWrittenEvery30Seconds_…`.
+Con las clases de test nuevas de este sprint excluidas, 10/10 pasadas limpias; el baseline del Sprint 7 dio 5/6 (el único fallo, el
+del borrador de D6). **Causa no encontrada**: descarté CPU residual y hilos de Room atascados; sospecho presión de memoria de la JVM de
+tests (por defecto 512 MB para 460 tests) y le he subido `maxHeapSize` a 2 GB en `build.gradle.kts` (**no medido**: lo corté al
+interrumpirme). Si vuelve a fallar uno de estos tres, es el mismo fallo conocido.
 
 > **Nada de esto se ha probado en un dispositivo real ni en un emulador.** Lo verificado son tests JVM (Robolectric, con modo gráfico
 > nativo cuando importa el texto). Lo que no se puede comprobar así está en «No comprobado en dispositivo».
@@ -165,4 +178,32 @@ de tiempo del Detalle.
 
 ## Hashes de los commits
 
-__HASHES__
+| Tarea | Commit |
+|---|---|
+| A1 | `1ca0a55` |
+| A2 | `6db4c0b` |
+| A3 | `7eeb8f2` |
+| A4 | `a58c9bb` |
+| A5 | `db9f720` |
+| A6 | `727508c` |
+| A7 | `eabaea6` |
+| A8 | `27cc81f` |
+| B1 | `af78400` |
+| B2 | `b42dd9b` |
+| B3 | `eb3f48f` |
+| B4 | `8cd77f2` |
+| B5 | `18dc631` |
+| B6 | `0a3189c` |
+| C1–C4, C6 (un solo commit) | `9c9693e` |
+| C5 | `da436dc` |
+| D1 | `9cac68f` |
+| D2 (+ Herramientas en una fila) | `c1453d3` |
+| D3 | `b02e279` |
+| D4 | `2e2b12c` |
+| D5 | `3e044fd` |
+| D6 | `eda6480` |
+| Tests estables (flush, FileProvider, Replay v2) | `b9c2d85` |
+| Lint + heap de tests + informe | `__LAST__` |
+
+Push: `HEAD == origin/claude/kartlog-sprint-1-3hhlkb` confirmado al final (ver el último commit).
+
