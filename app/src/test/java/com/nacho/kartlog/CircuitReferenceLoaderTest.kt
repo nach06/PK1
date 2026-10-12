@@ -34,7 +34,7 @@ class CircuitReferenceLoaderTest {
 
     @After
     fun tearDown() {
-        Thread.sleep(300)
+        awaitRoomClosed()
         context.deleteDatabase(KartLogDatabase.NAME)
         File(context.filesDir, "tracks").deleteRecursively()
     }

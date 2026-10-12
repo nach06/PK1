@@ -51,7 +51,7 @@ class GpsAccuracyDetailTest {
     @After
     fun tearDown() {
         vm?.viewModelScope?.cancel()
-        Thread.sleep(300)
+        awaitRoomClosed()
         context.deleteDatabase(KartLogDatabase.NAME)
     }
 

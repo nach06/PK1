@@ -46,7 +46,7 @@ class ListScrollTest {
     fun tearDown() {
         runCatching { compose.waitForIdle() }
         compose.activityRule.scenario.close()
-        Thread.sleep(300) // deja terminar las consultas Room en vuelo antes de borrar la BD
+        awaitRoomClosed()
         context.deleteDatabase(KartLogDatabase.NAME)
     }
 

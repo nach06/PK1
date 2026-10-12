@@ -22,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -63,6 +64,32 @@ import com.nacho.kartlog.ui.settings.SettingsViewModel
 /** Inyección manual de dependencias (sin Hilt/Dagger). Se crea una vez en [KartLogApp]. */
 class AppContainer(context: Context) {
     internal val database: KartLogDatabase = KartLogDatabase.create(context)
+
+    init {
+        live += java.lang.ref.WeakReference(this)
+    }
+
+    /**
+     * Para los tests: cancela el trabajo en segundo plano y cierra la base de verdad (la llamada vuelve cuando Room ya no tiene nada
+     * en vuelo), así se puede borrar el fichero sin dormir «a ver si terminan las consultas».
+     */
+    suspend fun closeAndAwait(timeoutMs: Long = 5_000) {
+        appScope.cancel()
+        kotlinx.coroutines.withTimeout(timeoutMs) { kotlinx.coroutines.withContext(Dispatchers.IO) { database.close() } }
+        check(!database.isOpen) { "la base debería estar cerrada" }
+    }
+
+    companion object {
+        private val live = java.util.concurrent.ConcurrentLinkedQueue<java.lang.ref.WeakReference<AppContainer>>()
+
+        /** Para los tests: cierra y espera todos los contenedores creados en el proceso de test. */
+        suspend fun closeAllAndAwait() {
+            while (true) {
+                val container = live.poll()?.get() ?: if (live.isEmpty()) return else continue
+                runCatching { container.closeAndAwait() }
+            }
+        }
+    }
 
     val circuitRepository: CircuitRepository = CircuitRepositoryImpl(database.circuitDao())
     /** Trazados GPS (`filesDir/tracks/{sessionId}.csv`); se borran junto con su tanda. */

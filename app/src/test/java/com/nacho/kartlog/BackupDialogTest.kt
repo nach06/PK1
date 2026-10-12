@@ -52,7 +52,7 @@ class BackupDialogTest {
     @After
     fun tearDown() {
         vm?.viewModelScope?.cancel()
-        Thread.sleep(300)
+        awaitRoomClosed()
         db.close()
         context.deleteDatabase(KartLogDatabase.NAME)
     }

@@ -61,7 +61,7 @@ class InLapDeltaFlowTest {
     fun tearDown() {
         runCatching { compose.waitForIdle() }
         compose.activityRule.scenario.close()
-        Thread.sleep(300)
+        awaitRoomClosed()
         context.deleteDatabase(KartLogDatabase.NAME)
         File(context.filesDir, "tracks").deleteRecursively()
     }
@@ -79,6 +79,9 @@ class InLapDeltaFlowTest {
             override fun stop() = Unit
         }
         val source = ControlledSource()
+        // Reloj manual: cada posición «llega» en su propio instante (si no, 30 s de posiciones caen en milisegundos reales y el suavizado no converge).
+        var clockNs = 0L
+        container.nanoClock = { clockNs }
         val circuitId = runBlocking { container.circuitRepository.add("Óvalo simulado", 780) }
         container.timingSession.start(GpsSessionSetup(circuitId, oval.finishLine, kartNumber = 1, type = SessionType.FREE, startedAtMs = 1L), source)
         val sim = TrackSimulator.simulate(oval, listOf(58_000L, 57_000L, 58_000L), hz = 1.0)
@@ -91,6 +94,7 @@ class InLapDeltaFlowTest {
         var emitted = 0
         fun emitWhile(condition: (GpsFix) -> Boolean) {
             while (emitted < sim.fixes.size && condition(sim.fixes[emitted])) {
+                clockNs = sim.fixes[emitted].elapsedNs
                 runBlocking { source.flow.emit(sim.fixes[emitted]) }
                 emitted++
             }

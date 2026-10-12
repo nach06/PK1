@@ -50,7 +50,7 @@ class ListFilterPersistenceTest {
     fun tearDown() {
         runCatching { compose.waitForIdle() }
         compose.activityRule.scenario.close()
-        Thread.sleep(300)
+        awaitRoomClosed()
         context.deleteDatabase(KartLogDatabase.NAME)
         context.getSharedPreferences("kartlog_settings", Context.MODE_PRIVATE).edit().clear().commit()
     }

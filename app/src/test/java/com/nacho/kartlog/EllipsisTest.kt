@@ -50,7 +50,7 @@ class EllipsisTest {
     fun tearDown() {
         runCatching { compose.waitForIdle() }
         compose.activityRule.scenario.close()
-        Thread.sleep(300)
+        awaitRoomClosed()
         context.deleteDatabase(KartLogDatabase.NAME)
     }
 
