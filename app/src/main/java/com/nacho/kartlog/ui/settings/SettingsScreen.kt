@@ -75,6 +75,7 @@ fun SettingsScreen(
         SettingsMessage.RESTORE_IO -> stringResource(R.string.restore_io)
         SettingsMessage.RIVALS_CLEARED -> stringResource(R.string.settings_rivals_cleared)
         SettingsMessage.SAMPLES_MISSING -> stringResource(R.string.settings_samples_missing)
+        SettingsMessage.NO_DEBUG_BACKUP -> stringResource(R.string.settings_debug_backup_none)
         null -> null
     }
     val context = LocalContext.current
@@ -159,6 +160,14 @@ fun SettingsScreen(
                                     }
                                     if (pair.size == 1) Box(Modifier.weight(1f))
                                 }
+                            }
+                            state.debugBackupPath?.let {
+                                Text(
+                                    stringResource(R.string.settings_debug_backup_saved, it),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.kartColors.textMuted,
+                                    modifier = Modifier.testTag("debug_note"),
+                                )
                             }
                         }
                     }
@@ -511,6 +520,8 @@ private fun debugButtons(viewModel: SettingsViewModel, state: SettingsUiState, p
         DebugButton(stringResource(R.string.settings_import_sample_a), "debug_text_a", { viewModel.importTextSample(TextSample.A) }, idle),
         DebugButton(stringResource(R.string.settings_import_sample_a_me), "debug_text_a_me", { viewModel.importTextSample(TextSample.A, asMe = "Nacho", circuit = "GP3") }, idle),
         DebugButton(stringResource(R.string.settings_import_sample_b), "debug_text_b", { viewModel.importTextSample(TextSample.B) }, idle),
+        DebugButton(stringResource(R.string.settings_debug_backup_save), "debug_backup_save", viewModel::exportBackupToDownloads, idle),
+        DebugButton(stringResource(R.string.settings_debug_backup_restore), "debug_backup_restore", viewModel::restoreLatestDebugBackup, idle),
         DebugButton(stringResource(R.string.settings_seed_gps), "debug_seed_gps", viewModel::seedGpsSession, idle),
         DebugButton(stringResource(R.string.settings_seed), "debug_seed", viewModel::seedDebugData, idle),
         DebugButton(stringResource(R.string.settings_to_end), "debug_to_end", onEnd),

@@ -34,6 +34,7 @@ class DebugSeeder(
     private val laps: LapRepository,
     private val samples: SampleImages,
     private val trackStore: TrackStore,
+    private val backupFolder: DebugBackupFolder? = null,
     private val zone: ZoneId = ZoneId.systemDefault(),
     private val today: () -> LocalDate = { LocalDate.now() },
 ) : DebugTools {
@@ -141,6 +142,10 @@ class DebugSeeder(
         trackStore.save(sessionId, sim.fixes)
         return sessionId
     }
+
+    override suspend fun saveBackupCopy(file: java.io.File): String? = withContext(Dispatchers.IO) { backupFolder?.save(file) }
+
+    override fun latestBackupOpener(): (() -> java.io.InputStream?)? = backupFolder?.latest()
 
     override suspend fun ensureCircuit(name: String, lengthM: Int): Long =
         circuits.observeAll().first().firstOrNull { it.name.equals(name, ignoreCase = true) }?.id ?: circuits.add(name, lengthM)

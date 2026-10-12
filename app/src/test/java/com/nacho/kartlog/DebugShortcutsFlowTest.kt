@@ -136,4 +136,35 @@ class DebugShortcutsFlowTest {
         compose.onNodeWithTag("debug_verify_sim").performClick()
         waitForTag("verification_values")
     }
+
+    @Test
+    fun b4_exportAndRestoreLatestBackup_withoutAnyFilePicker() {
+        val container = container()
+        var restarts = 0
+        container.restartApp = { restarts++ }
+        runBlocking { container.circuitRepository.add("Zuera", 1_100) }
+        compose.setContent { KartLogTheme { KartNavHost(container) } }
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Tandas", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Ajustes").performClick()
+        compose.onNodeWithTag("debug_header").performClick()
+
+        // Sin copia todavía: lo dice, no abre ningún selector.
+        waitForTag("debug_backup_restore")
+        compose.onNodeWithTag("debug_backup_restore").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("No hay ninguna copia debug", substring = true).fetchSemanticsNodes().isNotEmpty() }
+
+        // Exportar: aparece la ruta donde quedó (visible en pantalla) y el fichero existe.
+        compose.onNodeWithTag("debug_backup_save").performClick()
+        waitForTag("debug_note")
+        val dir = java.io.File(context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS), "")
+        assertTrue("hay un .zip de copia en ${dir.path}", dir.listFiles { f -> f.name.startsWith("kartlog-debug-backup-") && f.name.endsWith(".zip") }!!.isNotEmpty())
+
+        // Restaurar la última: pide la confirmación habitual y reinicia.
+        compose.onNodeWithTag("debug_backup_restore").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("restore_confirm").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("restore_confirm").performClick()
+        val deadline = System.currentTimeMillis() + 10_000
+        while (restarts == 0 && System.currentTimeMillis() < deadline) { Thread.sleep(100); compose.waitForIdle() }
+        assertEquals("se reinicia tras restaurar", 1, restarts)
+    }
 }

@@ -19,6 +19,15 @@ interface DebugTools {
     /** Crea el circuito [name] si no existe y devuelve su id (para que una importación de muestra pueda guardarse sin teclear). */
     suspend fun ensureCircuit(name: String, lengthM: Int): Long
 
+    /**
+     * Guarda una copia (.zip) donde se ve sin selector de ficheros: `Android/data/<app>/files/Download/` (siempre) y, en Android 10+,
+     * también en `Descargas/` (mejor esfuerzo). Devuelve la ruta legible o `null` si falla.
+     */
+    suspend fun saveBackupCopy(file: java.io.File): String?
+
+    /** Abre la copia guardada con [saveBackupCopy] más reciente, o `null` si no hay ninguna. */
+    fun latestBackupOpener(): (() -> java.io.InputStream?)?
+
     /** Diagnóstico de la carpeta de muestras. */
     fun sampleDiagnosis(): SampleDiagnosis
 

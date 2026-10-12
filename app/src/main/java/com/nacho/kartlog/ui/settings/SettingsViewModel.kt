@@ -26,7 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class SettingsMessage { SEEDED, GPS_SEEDED, WIPED, FAILED, NOTHING_TO_EXPORT, SAMPLES_MISSING, RIVALS_CLEARED, BACKUP_FAILED, RESTORE_INVALID, RESTORE_NEWER, RESTORE_IO }
+enum class SettingsMessage { SEEDED, GPS_SEEDED, WIPED, FAILED, NOTHING_TO_EXPORT, SAMPLES_MISSING, RIVALS_CLEARED, BACKUP_FAILED, RESTORE_INVALID, RESTORE_NEWER, RESTORE_IO, NO_DEBUG_BACKUP }
 
 /** Fichero CSV listo para compartir. */
 data class ShareFile(val fileName: String, val content: String)
@@ -44,6 +44,8 @@ data class SettingsUiState(
     val openDashboard: Boolean = false,
     /** Copia elegida para restaurar, ya validada, pendiente de confirmar (sustituye TODO). */
     val pendingRestore: BackupInfo? = null,
+    /** Solo debug: dónde quedó la última copia guardada sin selector (ruta legible, se enseña bajo los botones). */
+    val debugBackupPath: String? = null,
 )
 
 class SettingsViewModel(
@@ -137,6 +139,26 @@ class SettingsViewModel(
             _uiState.update { it.copy(isBusy = false, message = if (result.isFailure) SettingsMessage.BACKUP_FAILED else it.message) }
             result.getOrNull()?.let { backupChannel.send(it) }
         }
+    }
+
+    /** Solo debug: crea la copia y la deja en Descargas / almacenamiento de la app, sin selector ni hoja de compartir. */
+    fun exportBackupToDownloads() {
+        val service = backup ?: return
+        val tools = debugTools ?: return
+        if (_uiState.value.isBusy) return
+        _uiState.update { it.copy(isBusy = true) }
+        viewModelScope.launch {
+            val path = runCatching { tools.saveBackupCopy(service.export()) }.getOrNull()
+            _uiState.update {
+                it.copy(isBusy = false, debugBackupPath = path ?: it.debugBackupPath, message = if (path == null) SettingsMessage.BACKUP_FAILED else it.message)
+            }
+        }
+    }
+
+    /** Solo debug: restaura la última copia guardada con [exportBackupToDownloads] (pide la confirmación habitual). */
+    fun restoreLatestDebugBackup() {
+        val open = debugTools?.latestBackupOpener()
+        if (open == null) _uiState.update { it.copy(message = SettingsMessage.NO_DEBUG_BACKUP) } else prepareRestore(open)
     }
 
     /** Valida la copia elegida y, si es buena, pide confirmación antes de sustituir nada. */

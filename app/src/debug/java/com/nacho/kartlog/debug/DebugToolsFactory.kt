@@ -16,5 +16,5 @@ object DebugToolsFactory {
         sessions: SessionRepository,
         laps: LapRepository,
         tracks: TrackStore,
-    ): DebugTools = DebugSeeder(database, circuits, sessions, laps, SampleImages(context), tracks)
+    ): DebugTools = DebugSeeder(database, circuits, sessions, laps, SampleImages(context), tracks, DebugBackupFolder(context))
 }
