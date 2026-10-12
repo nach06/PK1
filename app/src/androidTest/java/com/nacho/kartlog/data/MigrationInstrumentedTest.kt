@@ -14,7 +14,11 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Migración v1 → v2 en un dispositivo/emulador (los esquemas salen de `app/schemas`, ver build.gradle.kts). */
+/**
+ * Migraciones en un dispositivo/emulador real (los esquemas salen de `app/schemas`, ver build.gradle.kts). Para ejecutarlas:
+ * `./gradlew :app:connectedDebugAndroidTest --tests "com.nacho.kartlog.data.MigrationInstrumentedTest"` con un emulador o móvil
+ * conectado (en JVM, sin dispositivo, las equivalentes son `MigrationTest` y `MigrationSampleDbTest` de `src/test`).
+ */
 @RunWith(AndroidJUnit4::class)
 class MigrationInstrumentedTest {
     @get:Rule
@@ -72,5 +76,26 @@ class MigrationInstrumentedTest {
         }
         val db = helper.runMigrationsAndValidate("migration-instrumented-5", 5, true, MIGRATION_4_5)
         db.query("SELECT signalScore FROM sessions WHERE id = 10").use { assertTrue(it.moveToFirst()); assertTrue(it.isNull(0)) }
+    }
+
+    /** La cadena completa 1 → 5 con el constructor de producción (`KartLogDatabase.create`), que es el que usa la app al actualizarse. */
+    @Test
+    fun productionBuilder_migratesAVersion1DatabaseToTheCurrentOne_keepingLaps() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        context.deleteDatabase(KartLogDatabase.NAME)
+        helper.createDatabase(KartLogDatabase.NAME, 1).apply {
+            execSQL("INSERT INTO circuits (id, name, lengthMeters) VALUES (1, 'Zuera', 1100)")
+            execSQL("INSERT INTO sessions (id, circuitId, dateTime, type, trackCondition, notes) VALUES (10, 1, 1760000000000, 'FREE', 'DRY', '')")
+            execSQL("INSERT INTO laps (sessionId, number, timeMs, source) VALUES (10, 1, 58400, 'MANUAL')")
+            close()
+        }
+        val db = KartLogDatabase.create(context)
+        try {
+            db.openHelper.writableDatabase.query("SELECT COUNT(*) FROM laps").use { assertTrue(it.moveToFirst()); assertEquals(1, it.getInt(0)) }
+            assertEquals(KartLogDatabase.VERSION, db.openHelper.writableDatabase.version)
+        } finally {
+            db.close()
+            context.deleteDatabase(KartLogDatabase.NAME)
+        }
     }
 }
