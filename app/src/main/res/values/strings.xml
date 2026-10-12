@@ -120,6 +120,13 @@
     <string name="settings_import_sample_a">Importar muestra de texto A</string>
     <string name="settings_import_sample_b">Importar muestra de texto B</string>
     <string name="settings_test_ocr">Probar importación con muestra A/B (imagen)</string>
+    <string name="settings_pick_image">Elegir imagen del almacenamiento</string>
+    <string name="settings_to_end">Ir al final de Ajustes</string>
+    <string name="settings_samples_diag_title">No se encuentran muestras</string>
+    <string name="settings_samples_diag_count">En assets/muestras/ hay %1$d entradas, %2$d son imágenes:</string>
+    <string name="settings_samples_diag_empty">(la carpeta no existe o está vacía en esta build)</string>
+    <string name="settings_samples_diag_expected">Esta build se compiló desde: %1$s</string>
+    <string name="settings_samples_diag_hint">Si tus imágenes están en otra carpeta, Android Studio abrió otro proyecto Gradle. Usa «Elegir imagen del almacenamiento» o copia las imágenes a la ruta de arriba y vuelve a compilar.</string>
     <string name="settings_samples_missing">Añade muestras en app/src/debug/assets/muestras/</string>
     <string name="settings_wipe">Borrar todos los datos</string>
     <string name="settings_wipe_title_1">¿Borrar todos los datos?</string>

@@ -38,6 +38,8 @@ data class SettingsUiState(
     val debugToolsAvailable: Boolean = false,
     /** Muestras entre las que elegir para «Probar OCR» (solo si hay más de una). */
     val sampleChoices: List<String> = emptyList(),
+    /** Diagnóstico de la carpeta de muestras cuando falta (se enseña en un diálogo). */
+    val sampleDiagnosis: com.nacho.kartlog.debug.SampleDiagnosis? = null,
     /** El simulador está listo: la pantalla debe abrir el Dashboard en pista. */
     val openDashboard: Boolean = false,
     /** Copia elegida para restaurar, ya validada, pendiente de confirmar (sustituye TODO). */
@@ -190,7 +192,7 @@ class SettingsViewModel(
         val tools = debugTools ?: return
         val names = tools.sampleNames()
         when {
-            names.isEmpty() -> _uiState.update { it.copy(message = SettingsMessage.SAMPLES_MISSING) }
+            names.isEmpty() -> _uiState.update { it.copy(message = SettingsMessage.SAMPLES_MISSING, sampleDiagnosis = tools.sampleDiagnosis()) }
             names.size == 1 -> runSample(names.single())
             else -> _uiState.update { it.copy(sampleChoices = names) }
         }
@@ -230,6 +232,11 @@ class SettingsViewModel(
             if (text == null) _uiState.update { it.copy(message = SettingsMessage.FAILED) } else importInbox?.put(SharedContent.Text(text))
         }
     }
+
+    fun dismissSampleDiagnosis() = _uiState.update { it.copy(sampleDiagnosis = null) }
+
+    /** Solo debug: una imagen elegida del almacenamiento (selector del sistema) entra por el flujo real de importar. */
+    fun importPickedImage(uri: String) { importInbox?.put(SharedContent.Image(uri)) }
 
     fun dismissSampleChoices() = _uiState.update { it.copy(sampleChoices = emptyList()) }
 

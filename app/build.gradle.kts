@@ -38,7 +38,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Ruta del proyecto Gradle que compiló esta build: sirve para diagnosticar «no encuentra las muestras» (¿otro directorio?).
+            buildConfigField("String", "PROJECT_DIR", "\"${rootProject.projectDir.absolutePath.replace("\\", "/")}\"")
+        }
         release {
+            buildConfigField("String", "PROJECT_DIR", "\"\"")
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }

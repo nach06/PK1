@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
@@ -95,5 +96,34 @@ class DebugSamplesFlowTest {
             .forEach { waitFor(it) }
         compose.onNodeWithTag("debug_header").performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Simular tanda en pista", ignoreCase = true).fetchSemanticsNodes().isEmpty() }
+    }
+
+    @Test
+    fun missingSamples_showADiagnosisWithTheExactContentsAndTheBuildFolder() {
+        val container = AppContainer(context)
+        compose.setContent { KartLogTheme { KartNavHost(container) } }
+        waitFor("Tandas")
+        compose.onNodeWithText("Ajustes").performClick()
+        compose.onNodeWithTag("debug_header").performClick()
+        waitForTag("debug_ocr_sample")
+        compose.onNodeWithTag("debug_ocr_sample").performClick()
+        // En los tests solo está LEEME.txt (ninguna imagen): el diálogo lo dice con el nombre exacto y la ruta de la build.
+        waitForTag("samples_diag")
+        waitFor("LEEME.txt", substring = true)
+        waitFor("app/src/debug/assets/muestras", substring = true)
+        waitFor("0 son imágenes", substring = true)
+    }
+
+    @Test
+    fun debugPanelIsATwoColumnGridThatFitsWithoutScrolling() {
+        val container = AppContainer(context)
+        compose.setContent { KartLogTheme { KartNavHost(container) } }
+        waitFor("Tandas")
+        compose.onNodeWithText("Ajustes").performClick()
+        compose.onNodeWithTag("debug_header").performClick()
+        waitForTag("debug_wipe")
+        val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        compose.onAllNodes(androidx.compose.ui.test.hasTestTag("debug_simulate") or androidx.compose.ui.test.hasTestTag("debug_wipe") or androidx.compose.ui.test.hasTestTag("debug_to_end"))
+            .fetchSemanticsNodes().forEach { check(it.boundsInRoot.bottom <= root.bottom && it.boundsInRoot.top >= 0f) { "botón de Depuración fuera de pantalla: ${it.boundsInRoot}" } }
     }
 }

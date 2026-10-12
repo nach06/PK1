@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -83,6 +85,11 @@ fun SettingsScreen(
     val pickBackup = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         uri?.let { viewModel.prepareRestore { context.contentResolver.openInputStream(it) } }
     }
+    val scroll = androidx.compose.foundation.rememberScrollState()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val pickSampleImage = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        uri?.let { viewModel.importPickedImage(it.toString()) }
+    }
     val versionName = remember(context) {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
     }
@@ -110,7 +117,7 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scroll)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -134,47 +141,25 @@ fun SettingsScreen(
                         )
                     }
                     if (debugExpanded) {
-                        Column(
-                            modifier = Modifier.padding(top = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            SecondaryButton(
-                                text = stringResource(R.string.settings_simulate_track),
-                                onClick = viewModel::simulateTrackSession,
-                                enabled = !state.isBusy,
-                            )
-                            SecondaryButton(
-                                text = stringResource(R.string.settings_test_ocr),
-                                onClick = viewModel::testOcrWithSample,
-                                enabled = !state.isBusy,
-                            )
-                            SecondaryButton(
-                                text = stringResource(R.string.settings_import_sample_a),
-                                onClick = { viewModel.importTextSample(TextSample.A) },
-                                enabled = !state.isBusy,
-                            )
-                            SecondaryButton(
-                                text = stringResource(R.string.settings_import_sample_b),
-                                onClick = { viewModel.importTextSample(TextSample.B) },
-                                enabled = !state.isBusy,
-                            )
-                            SecondaryButton(
-                                text = stringResource(R.string.settings_seed_gps),
-                                onClick = viewModel::seedGpsSession,
-                                enabled = !state.isBusy,
-                                modifier = Modifier.testTag("debug_seed_gps"),
-                            )
-                            SecondaryButton(
-                                text = stringResource(R.string.settings_seed),
-                                onClick = viewModel::seedDebugData,
-                                enabled = !state.isBusy,
-                            )
-                            SecondaryButton(
-                                text = stringResource(R.string.settings_wipe),
-                                onClick = { wipeStep = 1 },
-                                enabled = !state.isBusy,
-                                color = MaterialTheme.kartColors.warning,
-                            )
+                        // Rejilla de 2 columnas: todo cabe a la vista sin desplazarse (el emulador de pruebas solo admite clic).
+                        val buttons = debugButtons(viewModel, state, pickImage = { pickSampleImage.launch(arrayOf("image/*")) }, onWipe = { wipeStep = 1 }, onEnd = { scope.launch { scroll.animateScrollTo(scroll.maxValue) } })
+                        Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            buttons.chunked(2).forEach { pair ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    pair.forEach { b ->
+                                        Box(Modifier.weight(1f)) {
+                                            SecondaryButton(
+                                                text = b.label,
+                                                onClick = b.onClick,
+                                                enabled = b.enabled,
+                                                color = if (b.warn) MaterialTheme.kartColors.warning else MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.testTag(b.tag),
+                                            )
+                                        }
+                                    }
+                                    if (pair.size == 1) Box(Modifier.weight(1f))
+                                }
+                            }
                         }
                     }
                 }
@@ -405,6 +390,32 @@ fun SettingsScreen(
         )
     }
 
+    state.sampleDiagnosis?.let { d ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissSampleDiagnosis,
+            containerColor = MaterialTheme.kartColors.card,
+            title = { Text(stringResource(R.string.settings_samples_diag_title), style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState()).testTag("samples_diag")) {
+                    Text(stringResource(R.string.settings_samples_diag_count, d.entries.size, d.imageCount), style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        if (d.entries.isEmpty()) stringResource(R.string.settings_samples_diag_empty) else d.entries.joinToString("\n") { "• $it" },
+                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = com.nacho.kartlog.ui.theme.MonoFontFamily),
+                        color = MaterialTheme.kartColors.textMuted,
+                        modifier = Modifier.padding(vertical = 8.dp),
+                    )
+                    Text(stringResource(R.string.settings_samples_diag_expected, d.expectedDir), style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.settings_samples_diag_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.kartColors.warning, modifier = Modifier.padding(top = 8.dp))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissSampleDiagnosis, modifier = Modifier.heightIn(min = 56.dp)) {
+                    Text(stringResource(R.string.action_accept).uppercase(), style = MaterialTheme.typography.titleSmall)
+                }
+            },
+        )
+    }
+
     if (state.sampleChoices.isNotEmpty()) {
         AlertDialog(
             onDismissRequest = viewModel::dismissSampleChoices,
@@ -485,4 +496,23 @@ private fun SettingSwitchRow(title: String, hint: String, checked: Boolean, onCh
         }
         androidx.compose.material3.Switch(checked = checked, onCheckedChange = onChange, modifier = Modifier.testTag(tag))
     }
+}
+
+private data class DebugButton(val label: String, val tag: String, val onClick: () -> Unit, val enabled: Boolean = true, val warn: Boolean = false)
+
+/** Botones de la sección Depuración (solo builds debug), en el orden en que se enseñan. */
+@Composable
+private fun debugButtons(viewModel: SettingsViewModel, state: SettingsUiState, pickImage: () -> Unit, onWipe: () -> Unit, onEnd: () -> Unit): List<DebugButton> {
+    val idle = !state.isBusy
+    return listOf(
+        DebugButton(stringResource(R.string.settings_simulate_track), "debug_simulate", viewModel::simulateTrackSession, idle),
+        DebugButton(stringResource(R.string.settings_test_ocr), "debug_ocr_sample", viewModel::testOcrWithSample, idle),
+        DebugButton(stringResource(R.string.settings_pick_image), "debug_pick_image", pickImage, idle),
+        DebugButton(stringResource(R.string.settings_import_sample_a), "debug_text_a", { viewModel.importTextSample(TextSample.A) }, idle),
+        DebugButton(stringResource(R.string.settings_import_sample_b), "debug_text_b", { viewModel.importTextSample(TextSample.B) }, idle),
+        DebugButton(stringResource(R.string.settings_seed_gps), "debug_seed_gps", viewModel::seedGpsSession, idle),
+        DebugButton(stringResource(R.string.settings_seed), "debug_seed", viewModel::seedDebugData, idle),
+        DebugButton(stringResource(R.string.settings_to_end), "debug_to_end", onEnd),
+        DebugButton(stringResource(R.string.settings_wipe), "debug_wipe", onWipe, idle, warn = true),
+    )
 }

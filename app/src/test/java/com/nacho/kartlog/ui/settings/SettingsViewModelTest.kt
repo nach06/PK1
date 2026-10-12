@@ -58,6 +58,7 @@ class SettingsViewModelTest {
         override suspend fun seed() = 0
         override suspend fun wipeAll() = Unit
         override suspend fun seedGpsSession() = 0L
+        override fun sampleDiagnosis() = com.nacho.kartlog.debug.SampleDiagnosis(listOf("LEEME.txt"), 0, "/proyecto/app/src/debug/assets/muestras", "/proyecto")
         override fun sampleNames() = samples
         override suspend fun loadTextSample(sample: com.nacho.kartlog.debug.TextSample): String? = "TEXTO ${sample.name}"
         override suspend fun prepareSimulation(): com.nacho.kartlog.domain.gps.LocationSource =

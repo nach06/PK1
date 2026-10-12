@@ -12,7 +12,13 @@ enum class TextSample(val assetName: String) {
     B("muestra_b_asupark.txt"),
 }
 
+/** Qué hay en `assets/muestras/` de esta build (para entender por qué «no hay muestras»). */
+data class SampleDiagnosis(val entries: List<String>, val imageCount: Int, val expectedDir: String, val projectDir: String)
+
 interface DebugTools {
+    /** Diagnóstico de la carpeta de muestras. */
+    fun sampleDiagnosis(): SampleDiagnosis
+
     /** Inserta circuitos, tandas y vueltas de ejemplo. Devuelve el nº de tandas creadas. */
     suspend fun seed(): Int
 

@@ -146,6 +146,8 @@ class DebugSeeder(
 
     override fun sampleNames(): List<String> = samples.names()
 
+    override fun sampleDiagnosis(): SampleDiagnosis = samples.diagnosis()
+
     override suspend fun prepareSample(name: String): String? = samples.prepare(name)
 
     override suspend fun prepareSimulation(): LocationSource {
