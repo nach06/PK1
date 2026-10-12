@@ -207,4 +207,47 @@ class DebugShortcutsFlowTest {
         val flow = MutableSharedFlow<GpsFix>(extraBufferCapacity = 5_000)
         override fun fixes() = flow
     }
+
+    @Test
+    fun b6_moreBelowHint_inSettings_goesAwayAtTheEnd() {
+        val container = container()
+        compose.setContent { KartLogTheme { KartNavHost(container) } }
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Tandas", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Ajustes").performClick()
+        compose.onNodeWithTag("debug_header").performClick()
+        waitForTag("more_below")
+        compose.onNodeWithTag("debug_to_end").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("more_below").fetchSemanticsNodes().isEmpty() }
+    }
+
+    @Test
+    fun b6_moreBelowHint_inDetail_withDebugJumpToTheEnd() {
+        val container = container()
+        runBlocking {
+            val circuit = container.circuitRepository.add("Zuera", 1_100)
+            val id = container.sessionRepository.create(
+                com.nacho.kartlog.domain.model.NewSession(circuit, 1_760_000_000_000, SessionType.FREE, 7, null, null, null, com.nacho.kartlog.domain.model.TrackCondition.DRY, ""),
+            )
+            repeat(30) { container.lapRepository.addManual(id, 58_000L + it) }
+        }
+        compose.setContent { KartLogTheme { KartNavHost(container) } }
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Zuera", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        compose.onAllNodesWithText("Zuera", substring = true)[0].performClick()
+        waitForTag("more_below")
+        waitForTag("debug_jump_end")
+        compose.onNodeWithTag("debug_jump_end").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("more_below").fetchSemanticsNodes().isEmpty() }
+    }
+
+    @Test
+    fun b6_moreBelowHint_inReview_withDebugJumpToTheEnd() {
+        val container = container()
+        val text = (1..40).joinToString("\n") { "$it\t1:${10 + it % 40}.${100 + it}" }
+        compose.setContent { KartLogTheme { KartNavHost(container) } }
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Tandas", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
+        container.importInbox.put(com.nacho.kartlog.domain.importing.SharedContent.Text(text))
+        waitForTag("more_below")
+        compose.onNodeWithTag("debug_jump_end").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("more_below").fetchSemanticsNodes().isEmpty() }
+    }
 }

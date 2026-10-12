@@ -79,6 +79,7 @@ fun ImportScreen(
     ocrAvailable: Boolean,
     onBack: () -> Unit,
     onSaved: (sessionId: Long) -> Unit,
+    debugShortcuts: Boolean = false,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -136,6 +137,7 @@ fun ImportScreen(
             viewModel = viewModel,
             onBack = viewModel::backToEntry,
             onEditMeta = { showMeta = true },
+            debugShortcuts = debugShortcuts,
         )
     }
 

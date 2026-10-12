@@ -49,6 +49,7 @@ import com.nacho.kartlog.domain.util.LapTime
 import com.nacho.kartlog.ui.components.KartCard
 import com.nacho.kartlog.ui.components.KartOverflowMenu
 import com.nacho.kartlog.ui.components.KartTopBar
+import com.nacho.kartlog.ui.components.MoreBelowHint
 import com.nacho.kartlog.ui.components.MenuAction
 import com.nacho.kartlog.ui.components.StatBadge
 import com.nacho.kartlog.ui.components.TimeLineChart
@@ -65,6 +66,7 @@ import kotlinx.coroutines.launch
 fun SessionDetailScreen(
     viewModel: SessionDetailViewModel,
     onBack: () -> Unit,
+    debugShortcuts: Boolean = false,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val trackState by viewModel.track.collectAsStateWithLifecycle()
@@ -174,6 +176,7 @@ fun SessionDetailScreen(
                 )
                 },
                 list = {
+                Box(Modifier.fillMaxSize()) {
                 LazyColumn(
                     state = lapListState,
                     modifier = Modifier.fillMaxSize().testTag("lap_list"),
@@ -237,6 +240,12 @@ fun SessionDetailScreen(
                             )
                         }
                     }
+                }
+                MoreBelowHint(
+                    visible = lapListState.canScrollForward,
+                    modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter),
+                    onDebugJump = if (debugShortcuts) ({ scope.launch { lapListState.animateScrollToItem(lapListState.layoutInfo.totalItemsCount - 1) } }) else null,
+                )
                 }
                 },
                 panel = {

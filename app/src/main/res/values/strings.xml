@@ -303,6 +303,8 @@
     <string name="import_who_suggested">☆ Sugerida: la que elegiste la última vez. Si es la tuya, pulsa «Soy yo».</string>
     <string name="debug_mark_sim">Marcar meta (simulada)</string>
     <string name="debug_verify_sim">Verificar (simulada)</string>
+    <string name="more_below">Hay más contenido abajo</string>
+    <string name="debug_jump_end">Ir al final (debug)</string>
     <string name="debug_finish_tap">Terminar (debug)</string>
     <string name="import_who_pick">¿Cuál eres tú? Toca tu columna y pulsa «Soy yo».</string>
     <string name="label_duration">Duración</string>

@@ -110,10 +110,13 @@ class DashboardLandscapeTest {
         return out.first()
     }
 
-    /** Etiquetas de los únicos elementos pulsables del Dashboard en marcha (la pulsación larga no es un «clic»). */
+    /**
+     * Etiquetas de los únicos elementos pulsables del Dashboard en marcha (la pulsación larga no es un «clic»). El atajo
+     * `debug_finish` (Sprint 7, solo builds debug) no cuenta: la versión real sigue sin botones de un toque.
+     */
     private fun clickableTags(): List<String> =
         compose.onAllNodes(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(SemanticsActions.OnClick), useUnmergedTree = true)
-            .fetchSemanticsNodes().mapNotNull { it.config.getOrNull(SemanticsProperties.TestTag) }
+            .fetchSemanticsNodes().mapNotNull { it.config.getOrNull(SemanticsProperties.TestTag) }.filter { it != "debug_finish" }
 
     private fun until(condition: () -> Boolean) {
         val deadline = System.currentTimeMillis() + 10_000

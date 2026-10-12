@@ -23,6 +23,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,6 +46,7 @@ import com.nacho.kartlog.domain.importing.ReviewDriver
 import com.nacho.kartlog.domain.util.LapTime
 import com.nacho.kartlog.ui.components.AutoSizeText
 import com.nacho.kartlog.ui.components.KartCard
+import com.nacho.kartlog.ui.components.MoreBelowHint
 import com.nacho.kartlog.ui.components.KartTopBar
 import com.nacho.kartlog.ui.components.PrimaryButton
 import com.nacho.kartlog.ui.components.SecondaryButton
@@ -60,7 +62,7 @@ import com.nacho.kartlog.ui.util.labelRes
  * botón GUARDAR con el resumen y, si está desactivado, la razón.
  */
 @Composable
-internal fun ReviewContent(state: ImportUiState, viewModel: ImportViewModel, onBack: () -> Unit, onEditMeta: () -> Unit) {
+internal fun ReviewContent(state: ImportUiState, viewModel: ImportViewModel, onBack: () -> Unit, onEditMeta: () -> Unit, debugShortcuts: Boolean = false) {
     val review = state.review
     val viewed = state.viewedDriver
     Scaffold(
@@ -114,6 +116,7 @@ internal fun ReviewContent(state: ImportUiState, viewModel: ImportViewModel, onB
                         onConfirm = viewModel::confirmLap,
                         onDelete = viewModel::deleteLap,
                         onAdd = viewModel::addLap,
+                        debugShortcuts = debugShortcuts,
                     )
                 }
             }
@@ -262,9 +265,13 @@ private fun LapTable(
     onConfirm: (Int) -> Unit,
     onDelete: (Int) -> Unit,
     onAdd: () -> Unit,
+    debugShortcuts: Boolean = false,
 ) {
     val rows = review.rows(driver.key)
-    LazyColumn(modifier.testTag("lap_table")) {
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    Box(modifier) {
+    LazyColumn(Modifier.fillMaxSize().testTag("lap_table"), state = listState) {
         items(rows, key = { "${driver.key}-${it.first.number}" }) { (cell, status) ->
             ReviewLapRow(
                 cell = cell,
@@ -281,6 +288,12 @@ private fun LapTable(
                 Text(stringResource(R.string.import_add_lap).uppercase(), style = MaterialTheme.typography.labelLarge)
             }
         }
+    }
+    MoreBelowHint(
+        visible = listState.canScrollForward,
+        modifier = Modifier.align(Alignment.BottomCenter),
+        onDebugJump = if (debugShortcuts) ({ scope.launch { listState.animateScrollToItem(listState.layoutInfo.totalItemsCount - 1) } }) else null,
+    )
     }
 }
 

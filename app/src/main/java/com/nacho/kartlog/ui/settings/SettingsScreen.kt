@@ -47,6 +47,7 @@ import com.nacho.kartlog.R
 import com.nacho.kartlog.domain.settings.DashboardOrientation
 import com.nacho.kartlog.ui.components.KartCard
 import com.nacho.kartlog.ui.components.KartTopBar
+import com.nacho.kartlog.ui.components.MoreBelowHint
 import com.nacho.kartlog.ui.components.SecondaryButton
 import com.nacho.kartlog.ui.theme.kartColors
 import com.nacho.kartlog.ui.util.shareCsv
@@ -114,10 +115,10 @@ fun SettingsScreen(
         topBar = { KartTopBar(title = stringResource(R.string.nav_settings), onBack = onBack) },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .verticalScroll(scroll)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -346,6 +347,8 @@ fun SettingsScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+        MoreBelowHint(scroll.canScrollForward, Modifier.align(Alignment.BottomCenter))
         }
     }
 

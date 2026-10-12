@@ -275,6 +275,7 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
                 ImportScreen(
                     viewModel = viewModel(factory = container.importViewModelFactory),
                     ocrAvailable = container.imageTextRecognizer != null,
+                    debugShortcuts = container.debugTools != null,
                     onBack = { navController.popBackStack() },
                     onSaved = { id ->
                         navController.navigate(Routes.detail(id)) {
@@ -295,6 +296,7 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
                         factory = container.sessionDetailViewModelFactory(sessionId),
                     ),
                     onBack = { navController.popBackStack() },
+                    debugShortcuts = container.debugTools != null,
                 )
             }
         }
