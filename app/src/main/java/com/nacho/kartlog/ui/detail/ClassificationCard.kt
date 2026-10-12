@@ -60,6 +60,7 @@ fun ClassificationCard(participants: List<Participant>, modifier: Modifier = Mod
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 RankingRow(
                     pos = stringResource(R.string.col_pos),
+                    kartLabel = null,
                     driver = stringResource(R.string.col_driver),
                     best = stringResource(R.string.badge_best).uppercase(),
                     gap = stringResource(R.string.col_gap),
@@ -74,8 +75,8 @@ fun ClassificationCard(participants: List<Participant>, modifier: Modifier = Mod
                     }
                     RankingRow(
                         pos = p.position?.toString() ?: "—",
-                        driver = (p.name ?: "—") + (p.kartNumber?.let { " ($it)" } ?: "") +
-                            if (p.isMe) " · " + stringResource(R.string.you) else "",
+                        kartLabel = p.kartNumber?.let { "K$it" },
+                        driver = (p.name ?: "—") + if (p.isMe) " · " + stringResource(R.string.you) else "",
                         best = p.bestMs?.let(LapTime::format) ?: "—",
                         gap = gap,
                         header = false,
@@ -87,31 +88,50 @@ fun ClassificationCard(participants: List<Participant>, modifier: Modifier = Mod
     }
 }
 
+/** Colores de la fila propia: texto claro sobre un rojo oscuro (contraste ≥ 4,5:1, comprobado en test). */
+internal object RankingColors {
+    val highlightBackground = Color(0xFFB71C00)
+    val highlightText = Color(0xFFF5F5F5)
+}
+
+/** Relación de contraste WCAG entre dos colores opacos (1…21). */
+internal fun contrastRatio(a: Color, b: Color): Double {
+    fun lin(c: Float): Double = if (c <= 0.03928f) c / 12.92 else Math.pow(((c + 0.055) / 1.055), 2.4)
+    fun lum(c: Color) = 0.2126 * lin(c.red) + 0.7152 * lin(c.green) + 0.0722 * lin(c.blue)
+    val l1 = lum(a)
+    val l2 = lum(b)
+    return (maxOf(l1, l2) + 0.05) / (minOf(l1, l2) + 0.05)
+}
+
 @Composable
-private fun RankingRow(pos: String, driver: String, best: String, gap: String, header: Boolean, highlighted: Boolean) {
+private fun RankingRow(pos: String, kartLabel: String?, driver: String, best: String, gap: String, header: Boolean, highlighted: Boolean) {
     val kart = MaterialTheme.kartColors
-    val base = if (header) MaterialTheme.typography.labelMedium else MaterialTheme.typography.bodyLarge
+    val base = if (header) MaterialTheme.typography.labelMedium else MaterialTheme.typography.bodyMedium
     val color = when {
         header -> kart.textMuted
-        highlighted -> MaterialTheme.colorScheme.primary
+        highlighted -> RankingColors.highlightText
         else -> MaterialTheme.colorScheme.onSurface
     }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (highlighted) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent)
+            .background(if (highlighted) RankingColors.highlightBackground else Color.Transparent)
+            .testTag(if (highlighted) "ranking_me" else "ranking_row")
             .heightIn(min = 36.dp)
             .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(pos, style = base, color = color, modifier = Modifier.width(32.dp), maxLines = 1)
-        Text(driver, style = base, color = color, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Column(Modifier.width(36.dp)) {
+            Text(pos, style = base, color = color, maxLines = 1)
+            if (kartLabel != null) Text(kartLabel, style = MaterialTheme.typography.labelMedium, color = color, maxLines = 1)
+        }
+        Text(driver, style = base, color = color, modifier = Modifier.weight(1f).padding(end = 4.dp), maxLines = 3, overflow = TextOverflow.Ellipsis)
         Text(best, style = base.copy(fontFamily = MonoFontFamily), color = color, maxLines = 1, softWrap = false)
         Text(
             gap,
             style = base.copy(fontFamily = MonoFontFamily),
-            color = if (header) color else kart.textMuted,
-            modifier = Modifier.width(76.dp).padding(start = 8.dp),
+            color = if (header || highlighted) color else kart.textMuted,
+            modifier = Modifier.width(64.dp).padding(start = 4.dp),
             maxLines = 1,
             softWrap = false,
         )
