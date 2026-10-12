@@ -122,7 +122,19 @@ class SharedPreferencesUserSettings(context: Context) : UserSettings {
         prefs.edit().putLong(KEY_LAST_AUTO_BACKUP, epochMs).apply()
     }
 
+    private val _aliases = MutableStateFlow(decodeAliases(prefs.getString(KEY_DRIVER_ALIASES, "").orEmpty()))
+    override val driverAliases: StateFlow<Map<String, String>> = _aliases.asStateFlow()
+
+    override fun setDriverAliases(aliases: Map<String, String>) {
+        _aliases.value = aliases
+        prefs.edit().putString(KEY_DRIVER_ALIASES, aliases.entries.joinToString(";") { "${it.key}=${it.value}" }).apply()
+    }
+
+    private fun decodeAliases(raw: String): Map<String, String> =
+        raw.split(';').mapNotNull { pair -> pair.split('=').takeIf { it.size == 2 && it[0].isNotEmpty() && it[1].isNotEmpty() }?.let { it[0] to it[1] } }.toMap()
+
     private companion object {
+        const val KEY_DRIVER_ALIASES = "driver_aliases"
         const val KEY_AUTO_BACKUP = "auto_backup"
         const val KEY_LAST_AUTO_BACKUP = "last_auto_backup"
         const val KEY_FILTER_CIRCUIT = "list_filter_circuit"

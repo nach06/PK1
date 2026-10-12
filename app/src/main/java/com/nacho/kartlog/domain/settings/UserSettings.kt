@@ -69,4 +69,9 @@ interface UserSettings {
     val lastAutoBackupMs: StateFlow<Long>
 
     fun setLastAutoBackupMs(epochMs: Long)
+
+    /** «Unir pilotos» (Sprint 8, C6): nombres de rival ya normalizados que el usuario ha declarado como el mismo piloto (alias → principal). */
+    val driverAliases: StateFlow<Map<String, String>>
+
+    fun setDriverAliases(aliases: Map<String, String>)
 }

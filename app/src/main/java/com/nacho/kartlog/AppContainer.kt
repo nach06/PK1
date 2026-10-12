@@ -137,6 +137,10 @@ class AppContainer(context: Context) {
         initializer { AnalysisViewModel(analyticsSource, analysisSelection) }
     }
 
+    val rivalsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
+        initializer { com.nacho.kartlog.ui.rivals.RivalsViewModel(analyticsSource, participantRepository, userSettings) }
+    }
+
     /** Herramientas de depuración: `null` en release. */
     val debugTools: DebugTools? =
         DebugToolsFactory.create(context, database, circuitRepository, sessionRepository, lapRepository, trackStore)

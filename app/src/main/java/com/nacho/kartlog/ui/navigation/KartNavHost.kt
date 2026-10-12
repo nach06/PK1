@@ -78,6 +78,11 @@ object Routes {
     const val FINISH = "circuits/{$CIRCUIT_ID}/finish"
     const val FIELD_CAL = "settings/fieldcal"
     const val PRERIDE = "settings/preride"
+    const val RIVALS = "analysis/rivals"
+    const val RIVAL_KEY = "rivalKey"
+    const val RIVAL = "analysis/rivals/{$RIVAL_KEY}"
+
+    fun rival(key: String) = "analysis/rivals/$key"
 
     fun finish(circuitId: Long) = "circuits/$circuitId/finish"
     const val SESSION_ID = "sessionId"
@@ -218,7 +223,24 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
                 )
             }
             composable(Routes.ANALYSIS) {
-                AnalysisScreen(viewModel = viewModel(factory = container.analysisViewModelFactory))
+                AnalysisScreen(
+                    viewModel = viewModel(factory = container.analysisViewModelFactory),
+                    onOpenRivals = { navController.navigate(Routes.RIVALS) { launchSingleTop = true } },
+                )
+            }
+            composable(Routes.RIVALS) {
+                com.nacho.kartlog.ui.rivals.RivalsScreen(
+                    viewModel = viewModel(factory = container.rivalsViewModelFactory),
+                    onBack = { navController.popBackStack() },
+                    onOpenRival = { navController.navigate(Routes.rival(it)) },
+                )
+            }
+            composable(Routes.RIVAL, arguments = listOf(androidx.navigation.navArgument(Routes.RIVAL_KEY) { type = androidx.navigation.NavType.StringType })) { entry ->
+                com.nacho.kartlog.ui.rivals.RivalDetailScreen(
+                    viewModel = viewModel(factory = container.rivalsViewModelFactory),
+                    rivalKey = entry.arguments?.getString(Routes.RIVAL_KEY).orEmpty(),
+                    onBack = { navController.popBackStack() },
+                )
             }
             composable(Routes.CIRCUITS) {
                 CircuitsScreen(

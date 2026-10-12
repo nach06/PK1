@@ -597,4 +597,38 @@
     <string name="analysis_trend_improving">Cada vez más regular: %1$s s por tanda</string>
     <string name="analysis_trend_stable">Consistencia estable (%1$s s por tanda)</string>
     <string name="analysis_trend_worsening">Menos regular que antes: %1$s s por tanda</string>
+    <!-- Rivales (Sprint 8, C) -->
+    <string name="rivals_title">Rivales</string>
+    <string name="rivals_open">Rivales y condiciones</string>
+    <string name="rivals_empty">Aún no hay rivales: aparecen al importar la clasificación de una tanda.</string>
+    <string name="rivals_row_summary">%1$s · mejor %2$s</string>
+    <string name="rivals_pace_faster">Tu ritmo: %1$s más rápido de media</string>
+    <string name="rivals_pace_slower">Tu ritmo: %1$s más lento de media</string>
+    <string name="rivals_pace_none">Sin media comparable</string>
+    <string name="rivals_merge">Unir pilotos</string>
+    <string name="rivals_merge_hint">Toca dos pilotos que sean la misma persona.</string>
+    <string name="rivals_merge_cancel">Cancelar</string>
+    <string name="rivals_merge_title">¿Unir pilotos?</string>
+    <string name="rivals_merge_body">«%1$s» y «%2$s» se contarán como un solo piloto. Se puede deshacer.</string>
+    <string name="rivals_merge_confirm">Unir</string>
+    <string name="rivals_merge_clear">Deshacer uniones</string>
+    <string name="rivals_conditions_title">Condiciones y ritmo</string>
+    <string name="rivals_conditions_need">Hacen falta al menos %1$d tandas con media limpia para ver el efecto de las condiciones (tienes %2$d).</string>
+    <string name="rivals_cond_track">Temperatura de pista</string>
+    <string name="rivals_cond_ambient">Temperatura ambiente</string>
+    <string name="rivals_cond_ballast">Lastre</string>
+    <string name="rivals_cond_none">sin relación clara</string>
+    <string name="rivals_cond_slower">más lento cuanto mayor es</string>
+    <string name="rivals_cond_faster">más rápido cuanto mayor es</string>
+    <string name="rivals_cond_line">r = %1$s · %2$d tandas · %3$s</string>
+    <string name="rivals_cond_caveat">Es una correlación, no una causa: otros factores (kart, rivales, ánimo) también cuentan.</string>
+    <string name="rival_detail_sessions">Tandas juntos</string>
+    <string name="rival_detail_best">Su mejor vuelta</string>
+    <string name="rival_h2h_best">Mejor vuelta: %1$d ganadas · %2$d perdidas</string>
+    <string name="rival_h2h_avg">Media limpia: %1$d ganadas · %2$d perdidas</string>
+    <string name="rival_h2h_streak">Mejor racha ganando: %1$d</string>
+    <string name="rival_diff_title">Diferencia de media por tanda</string>
+    <string name="rival_diff_caption">Izquierda: vas más rápido · Derecha: vas más lento</string>
+    <string name="rival_not_found">Este piloto ya no está en los datos.</string>
+    <string name="analysis_kart_few_samples">Pocas muestras: menos de %1$d tandas con este kart; no es concluyente.</string>
 </resources>

@@ -8,7 +8,9 @@ import com.nacho.kartlog.domain.gps.OvalTrack
 import com.nacho.kartlog.domain.gps.ReplayLocationSource
 import com.nacho.kartlog.domain.gps.TrackSimulator
 import com.nacho.kartlog.domain.model.LapSource
+import com.nacho.kartlog.domain.model.ImportRequest
 import com.nacho.kartlog.domain.model.NewSession
+import com.nacho.kartlog.domain.model.ParticipantImport
 import com.nacho.kartlog.domain.model.SessionType
 import com.nacho.kartlog.domain.model.TrackCondition
 import com.nacho.kartlog.domain.repository.CircuitRepository
@@ -77,6 +79,7 @@ class DebugSeeder(
     override suspend fun seed(): Int {
         val random = Random(42)
         val ids = tracks.map { circuits.add(it.name, it.lengthMeters) }
+        val withLaps = mutableListOf<Triple<Long, Int, Plan>>()
         plans.forEachIndexed { index, plan ->
             val track = tracks[plan.track]
             val date = today().minusDays(plan.daysAgo.toLong())
@@ -105,8 +108,33 @@ class DebugSeeder(
             repeat(plan.laps) { lap ->
                 laps.addManual(sessionId, lapTime(random, track.baseMs, conditionFactor, lap, plan.laps))
             }
+            if (plan.laps > 0) withLaps += Triple(sessionId, index, plan)
         }
+        seedRivals(withLaps)
         return plans.size
+    }
+
+    /** Rivales de ejemplo en las tandas con vueltas (Sprint 8, C): «C. Ruiz» es el mismo piloto que «Carlos Ruiz» para probar «Unir pilotos». */
+    private suspend fun seedRivals(sessionsWithLaps: List<Triple<Long, Int, Plan>>) {
+        val random = Random(99)
+        val dao = database.importDao()
+        sessionsWithLaps.forEach { (sessionId, index, plan) ->
+            val track = tracks[plan.track]
+            val factor = when (plan.condition) { TrackCondition.WET -> 1.06; TrackCondition.DAMP -> 1.03; else -> 1.0 }
+            val rivals = buildList {
+                add((if (index == 1 || index == 3) "C. Ruiz" else "Carlos Ruiz") to 0.995)
+                if (index % 2 == 0) add("Lucía Pérez" to 1.012)
+                if (index in 5..8) add("Marc Soler" to 0.985)
+            }
+            val others = rivals.mapIndexed { i, r ->
+                val times = List(minOf(plan.laps, 8)) { lap ->
+                    val noise = 1.0 + (random.nextDouble() - 0.5) * 0.012
+                    Math.round(track.baseMs * factor * r.second * noise * (if (lap == 0) 1.05 else 1.0))
+                }
+                ParticipantImport(position = i + 2, name = r.first, kartNumber = 20 + i, bestMs = times.min(), avgMs = times.drop(1).average().toLong(), lapCount = times.size, lapTimesMs = times)
+            }
+            dao.importSession(ImportRequest(null, sessionId, emptyList(), null, others))
+        }
     }
 
     /** Tiempo de una vuelta: salida de boxes lenta, mejora progresiva, ruido y algún error. */

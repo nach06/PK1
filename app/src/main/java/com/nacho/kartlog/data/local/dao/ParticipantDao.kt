@@ -11,6 +11,12 @@ interface ParticipantDao {
     @Query("SELECT * FROM participants WHERE sessionId = :sessionId ORDER BY position IS NULL, position, id")
     fun observeBySession(sessionId: Long): Flow<List<ParticipantEntity>>
 
+    @Query("SELECT * FROM participants")
+    fun observeAll(): Flow<List<ParticipantEntity>>
+
+    @Query("SELECT * FROM participant_laps ORDER BY participantId, number")
+    fun observeAllLaps(): Flow<List<ParticipantLapEntity>>
+
     @Query("SELECT * FROM participant_laps WHERE participantId = :participantId ORDER BY number")
     suspend fun lapsOf(participantId: Long): List<ParticipantLapEntity>
 }

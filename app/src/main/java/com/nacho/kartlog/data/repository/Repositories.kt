@@ -120,6 +120,12 @@ class StintRepositoryImpl(private val dao: StintDao) : StintRepository {
 class ParticipantRepositoryImpl(private val dao: ParticipantDao) : ParticipantRepository {
     override fun observeBySession(sessionId: Long): Flow<List<Participant>> =
         dao.observeBySession(sessionId).map { list -> list.map { it.toDomain() } }
+
+    override fun observeAllWithLaps(): Flow<List<com.nacho.kartlog.domain.analytics.RivalEntry>> =
+        kotlinx.coroutines.flow.combine(dao.observeAll(), dao.observeAllLaps()) { participants, laps ->
+            val byParticipant = laps.groupBy({ it.participantId }, { it.timeMs })
+            participants.map { com.nacho.kartlog.domain.analytics.RivalEntry(it.toDomain(), byParticipant[it.id].orEmpty()) }
+        }
 }
 
 class ImportRepositoryImpl(private val dao: ImportDao, private val photos: ImportPhotoStore? = null) : ImportRepository {

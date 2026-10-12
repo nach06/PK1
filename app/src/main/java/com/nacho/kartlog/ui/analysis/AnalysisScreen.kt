@@ -58,7 +58,7 @@ import com.nacho.kartlog.ui.util.icon
 import com.nacho.kartlog.ui.util.labelRes
 
 @Composable
-fun AnalysisScreen(viewModel: AnalysisViewModel) {
+fun AnalysisScreen(viewModel: AnalysisViewModel, onOpenRivals: () -> Unit = {}) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showPicker by rememberSaveable { mutableStateOf(false) }
 
@@ -87,6 +87,12 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                OutlinedButton(
+                    onClick = onOpenRivals,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("open_rivals"),
+                    shape = MaterialTheme.shapes.medium,
+                ) { Text(stringResource(R.string.rivals_open), style = MaterialTheme.typography.titleSmall, maxLines = 1) }
+
                 // 1. Selector de circuito.
                 OutlinedButton(
                     onClick = { showPicker = true },
@@ -295,6 +301,9 @@ private fun ConsistencySection(stats: CircuitStats) {
     }
 }
 
+/** Con menos tandas por kart el ranking no es concluyente (C3). */
+const val MIN_KART_SAMPLES = 3
+
 @Composable
 private fun KartRankingSection(karts: List<KartStats>) {
     SectionTitle(stringResource(R.string.analysis_kart_ranking))
@@ -340,6 +349,14 @@ private fun KartRankingSection(karts: List<KartStats>) {
                     modifier = Modifier.weight(1.3f),
                 )
                 MonoCell(text = k.sessionCount.toString(), color = kart.textMuted, modifier = Modifier.weight(0.7f))
+            }
+            if (k.sessionCount < MIN_KART_SAMPLES) {
+                Text(
+                    text = stringResource(R.string.analysis_kart_few_samples, MIN_KART_SAMPLES),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = kart.warning,
+                    modifier = Modifier.testTag("kart_few_${k.kartNumber}"),
+                )
             }
         }
     }

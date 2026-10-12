@@ -71,6 +71,9 @@ interface StintRepository {
 interface ParticipantRepository {
     /** Clasificación de la sesión importada, por posición (los sin posición, al final). */
     fun observeBySession(sessionId: Long): Flow<List<Participant>>
+
+    /** Todos los rivales de todas las sesiones con sus vueltas (para el análisis de rivales). */
+    fun observeAllWithLaps(): Flow<List<com.nacho.kartlog.domain.analytics.RivalEntry>>
 }
 
 interface ImportRepository {

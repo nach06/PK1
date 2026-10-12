@@ -52,4 +52,8 @@ class InMemoryUserSettings(driverName: String = "") : UserSettings {
     private val lastAuto = MutableStateFlow(0L)
     override val lastAutoBackupMs: StateFlow<Long> = lastAuto
     override fun setLastAutoBackupMs(epochMs: Long) { lastAuto.value = epochMs }
+
+    private val aliases = MutableStateFlow<Map<String, String>>(emptyMap())
+    override val driverAliases: StateFlow<Map<String, String>> = aliases
+    override fun setDriverAliases(aliases: Map<String, String>) { this.aliases.value = aliases }
 }
