@@ -225,11 +225,17 @@ class SettingsViewModel(
     fun dashboardOpened() = _uiState.update { it.copy(openDashboard = false) }
 
     /** Solo debug: carga una muestra de texto de los fixtures en el flujo real de «Importar tiempos» (sin teclear ni portapapeles). */
-    fun importTextSample(sample: TextSample) {
+    fun importTextSample(sample: TextSample, asMe: String? = null, circuit: String? = null) {
         val tools = debugTools ?: return
         viewModelScope.launch {
             val text = runCatching { tools.loadTextSample(sample) }.getOrNull()
-            if (text == null) _uiState.update { it.copy(message = SettingsMessage.FAILED) } else importInbox?.put(SharedContent.Text(text))
+            if (text == null) {
+                _uiState.update { it.copy(message = SettingsMessage.FAILED) }
+            } else {
+                // Atajo «como Nacho»: deja el circuito del documento creado y la columna propia ya marcada, para llegar a GUARDAR con un toque.
+                if (circuit != null) runCatching { tools.ensureCircuit(circuit, 900) }
+                importInbox?.put(SharedContent.Text(text, meName = asMe))
+            }
         }
     }
 

@@ -309,7 +309,9 @@ class ImportViewModel(
         }
         val grid = scan?.grid
         val review = ImportReview.from(doc) { line, col -> grid?.boxAt(line, col)?.confidence }
-        val meDriver = DriverMatcher.findMe(doc.drivers, settings.driverName.value) ?: doc.drivers.singleOrNull { it.laps.isNotEmpty() }
+        val forcedMe = pendingMeName?.let { DriverMatcher.findMe(doc.drivers, it) }
+        pendingMeName = null
+        val meDriver = forcedMe ?: DriverMatcher.findMe(doc.drivers, settings.driverName.value) ?: doc.drivers.singleOrNull { it.laps.isNotEmpty() }
         // Sin nombre guardado ni coincidencia: se sugiere (sin marcarla) la columna elegida la última vez.
         val suggested = if (meDriver == null) DriverMatcher.findSuggested(doc.drivers, settings.lastImportColumn.value) else null
         val circuit = doc.circuitName?.let { name -> known.firstOrNull { it.name.equals(name, ignoreCase = true) } }
@@ -331,9 +333,15 @@ class ImportViewModel(
         }
     }
 
+    /** Nombre de la columna «tuya» para la próxima lectura (atajo de depuración); se consume al abrir la revisión. */
+    private var pendingMeName: String? = null
+
     private fun handleShared(content: SharedContent) {
         when (content) {
-            is SharedContent.Text -> pasteAndAnalyze(content.text)
+            is SharedContent.Text -> {
+                pendingMeName = content.meName
+                pasteAndAnalyze(content.text)
+            }
             is SharedContent.Image -> loadPhoto(content.uri)
         }
     }

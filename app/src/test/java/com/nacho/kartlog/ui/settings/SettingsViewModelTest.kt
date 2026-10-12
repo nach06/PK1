@@ -55,6 +55,7 @@ class SettingsViewModelTest {
     private fun run(block: suspend () -> Unit) = runBlocking { withTimeout(20_000) { block() } }
 
     private class FakeDebugTools(val samples: List<String>) : com.nacho.kartlog.debug.DebugTools {
+        override suspend fun ensureCircuit(name: String, lengthM: Int): Long = 1L
         override suspend fun seed() = 0
         override suspend fun wipeAll() = Unit
         override suspend fun seedGpsSession() = 0L

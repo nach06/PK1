@@ -117,6 +117,7 @@
     <string name="settings_clear_rivals_confirm">Borrar rivales</string>
     <string name="settings_rivals_cleared">Datos de rivales borrados</string>
     <string name="settings_simulate_track">Simular tanda en pista</string>
+    <string name="settings_import_sample_a_me">Muestra A como Nacho (kart 28)</string>
     <string name="settings_import_sample_a">Importar muestra de texto A</string>
     <string name="settings_import_sample_b">Importar muestra de texto B</string>
     <string name="settings_test_ocr">Probar importación con muestra A/B (imagen)</string>

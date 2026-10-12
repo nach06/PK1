@@ -16,6 +16,9 @@ enum class TextSample(val assetName: String) {
 data class SampleDiagnosis(val entries: List<String>, val imageCount: Int, val expectedDir: String, val projectDir: String)
 
 interface DebugTools {
+    /** Crea el circuito [name] si no existe y devuelve su id (para que una importación de muestra pueda guardarse sin teclear). */
+    suspend fun ensureCircuit(name: String, lengthM: Int): Long
+
     /** Diagnóstico de la carpeta de muestras. */
     fun sampleDiagnosis(): SampleDiagnosis
 

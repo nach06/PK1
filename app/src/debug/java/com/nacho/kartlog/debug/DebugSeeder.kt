@@ -142,6 +142,9 @@ class DebugSeeder(
         return sessionId
     }
 
+    override suspend fun ensureCircuit(name: String, lengthM: Int): Long =
+        circuits.observeAll().first().firstOrNull { it.name.equals(name, ignoreCase = true) }?.id ?: circuits.add(name, lengthM)
+
     override suspend fun loadTextSample(sample: TextSample): String? = samples.readText(sample.assetName)
 
     override fun sampleNames(): List<String> = samples.names()

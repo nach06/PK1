@@ -2,6 +2,7 @@ package com.nacho.kartlog
 
 import android.content.Context
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -62,6 +63,25 @@ class DebugSamplesFlowTest {
         compose.onNodeWithText("Importar muestra de texto A", ignoreCase = true).performScrollTo().performClick()
         waitForTag("who_banner")
         waitFor("Nacho · Kart 28", substring = true)
+    }
+
+    @Test
+    fun b3_sampleAAsNacho_reachesSaveWithJustClicks() {
+        val container = AppContainer(context)
+        compose.setContent { KartLogTheme { KartNavHost(container) } }
+        waitFor("Tandas")
+        compose.onNodeWithText("Ajustes").performClick()
+        compose.onNodeWithTag("debug_header").performClick()
+        waitForTag("debug_text_a_me")
+        compose.onNodeWithTag("debug_text_a_me").performClick()
+
+        // Sin «¿Cuál eres tú?», con el circuito GP3 creado y GUARDAR activo: un toque más y se guarda.
+        waitForTag("review_save")
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("who_banner").fetchSemanticsNodes().isEmpty() }
+        check(compose.onAllNodesWithTag("save_blocked").fetchSemanticsNodes().isEmpty()) { "GUARDAR no debe estar bloqueado" }
+        compose.onNodeWithTag("review_save").assertIsEnabled()
+        compose.onNodeWithTag("review_save").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("lap_list").fetchSemanticsNodes().isNotEmpty() }
     }
 
     @Test

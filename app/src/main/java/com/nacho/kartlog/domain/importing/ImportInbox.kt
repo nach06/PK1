@@ -6,7 +6,8 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /** Contenido recibido desde otra app con «Compartir → KartLog». */
 sealed interface SharedContent {
-    data class Text(val text: String) : SharedContent
+    /** [meName]: solo en depuración, nombre de la columna que se da por «tuya» en esta importación (sin tocar los ajustes). */
+    data class Text(val text: String, val meName: String? = null) : SharedContent
 
     /** [uri] de una imagen (captura o foto); se pasa por OCR. */
     data class Image(val uri: String) : SharedContent
