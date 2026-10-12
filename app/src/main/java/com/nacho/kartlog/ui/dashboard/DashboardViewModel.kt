@@ -36,9 +36,16 @@ import kotlinx.coroutines.launch
 data class SummaryLap(val number: Int, val timeMs: Long, val reliable: Boolean, val kept: Boolean)
 
 /** Resumen de una tanda parada. Las cifras se calculan solo con las vueltas que se conservan. */
+/** Un stint de resistencia en el resumen: quién condujo, cuántas vueltas válidas, la mejor y el tiempo en boxes que lo cierra. */
+data class SummaryStint(val number: Int, val driverName: String?, val lapCount: Int, val bestMs: Long?, val pitAfterMs: Long?)
+
 data class DashboardSummary(
     val laps: List<SummaryLap>,
+    val stints: List<SummaryStint> = emptyList(),
 ) {
+    /** Solo hay desglose por stints si hubo alguna parada en boxes. */
+    val hasStints: Boolean get() = stints.size > 1
+    val totalPitMs: Long get() = stints.sumOf { it.pitAfterMs ?: 0L }
     private val keptTimes get() = laps.filter { it.kept }.map { it.timeMs }
     val lapCount: Int get() = keptTimes.size
     val bestMs: Long? get() = keptTimes.minOrNull()
@@ -241,6 +248,10 @@ class DashboardViewModel(
     private fun summaryOf(timing: TimingState, discarded: Set<Int>) = DashboardSummary(
         laps = timing.laps.mapIndexed { i, ms ->
             SummaryLap(number = i + 1, timeMs = ms, reliable = timing.lapReliable.getOrElse(i) { true }, kept = (i + 1) !in discarded)
+        },
+        stints = timing.stints.mapIndexed { index, stint ->
+            val times = timing.laps.filterIndexed { i, _ -> timing.lapStint.getOrElse(i) { 0 } == index && (i + 1) !in discarded }
+            SummaryStint(index + 1, stint.driverName, times.size, times.minOrNull(), stint.pitAfterMs)
         },
     )
 

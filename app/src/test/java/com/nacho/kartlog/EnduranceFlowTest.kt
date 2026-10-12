@@ -129,6 +129,13 @@ class EnduranceFlowTest {
         compose.mainClock.advanceTimeBy(1_700)
         compose.mainClock.autoAdvance = true
         waitFor("Tanda terminada")
+        // Sprint 8, A8: el resumen desglosa los stints y el tiempo en boxes antes de guardar.
+        waitForTag("summary_stints")
+        waitFor("Stint 1", substring = true)
+        waitFor("Stint 2", substring = true)
+        waitFor("3 vueltas", substring = true)
+        compose.onNodeWithTag("summary_pit_1", useUnmergedTree = true).assertExists()
+        compose.onNodeWithTag("summary_pit_total", useUnmergedTree = true).assertExists()
         compose.onNodeWithText("GUARDAR TANDA").performTouchInput { up() }
         compose.onNodeWithText("GUARDAR TANDA").performClick()
 

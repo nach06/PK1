@@ -311,6 +311,8 @@
     <string name="quality_max">máx. %1$s</string>
     <string name="debug_share_dump">Dump OCR (debug)</string>
     <string name="official_average">Media oficial %1$s (la hoja trunca; la app redondea)</string>
+    <string name="summary_pit">Boxes: %1$s</string>
+    <string name="summary_pit_total">Total en boxes: %1$s</string>
     <string name="more_below">Hay más contenido abajo</string>
     <string name="debug_jump_end">Ir al final (debug)</string>
     <string name="debug_finish_tap">Terminar (debug)</string>

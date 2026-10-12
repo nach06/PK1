@@ -45,6 +45,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -328,6 +329,22 @@ private fun SummaryContent(state: DashboardUiState, onSave: () -> Unit, onDiscar
             SummaryRow(stringResource(R.string.track_summary_laps), (summary?.lapCount ?: 0).toString(), Modifier.testTag("summary_laps"))
             SummaryRow(stringResource(R.string.badge_best), summary?.bestMs?.let(LapTime::format) ?: stringResource(R.string.value_unset), Modifier.testTag("summary_best"))
             SummaryRow(stringResource(R.string.stat_clean_average), summary?.cleanAverageMs?.let(LapTime::format) ?: stringResource(R.string.value_unset), Modifier.testTag("summary_avg"))
+        }
+        if (summary?.hasStints == true) {
+            KartCard(Modifier.fillMaxWidth().testTag("summary_stints"), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                summary.stints.forEach { st ->
+                    Text(
+                        stringResource(R.string.stint_current, st.number) + (st.driverName?.let { " · $it" } ?: "") + " · " +
+                            pluralStringResource(R.plurals.format_lap_count, st.lapCount, st.lapCount) + (st.bestMs?.let { " · " + LapTime.format(it) } ?: ""),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.testTag("summary_stint_${st.number}"),
+                    )
+                    st.pitAfterMs?.let {
+                        Text(stringResource(R.string.summary_pit, LapTime.format(it)), style = MaterialTheme.typography.bodyMedium, color = kart.warning, modifier = Modifier.testTag("summary_pit_${st.number}"))
+                    }
+                }
+                Text(stringResource(R.string.summary_pit_total, LapTime.format(summary.totalPitMs)), style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 4.dp).testTag("summary_pit_total"))
+            }
         }
         if (summary?.hasUnreliableLap == true) {
             Text(stringResource(R.string.track_unreliable_lap), style = MaterialTheme.typography.bodyLarge, color = kart.warning)
