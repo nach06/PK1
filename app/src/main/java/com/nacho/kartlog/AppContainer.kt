@@ -175,6 +175,9 @@ class AppContainer(context: Context) {
         }
     }
 
+    /** Estado del móvil para «Antes de salir»; los tests lo sustituyen. */
+    var deviceSnapshot: () -> com.nacho.kartlog.domain.DeviceSnapshot = com.nacho.kartlog.data.DeviceSnapshotReader(context.applicationContext)::read
+
     val fieldCalibrationViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
         initializer { com.nacho.kartlog.ui.fieldcal.FieldCalibrationViewModel(circuitRepository, locationSource, userSettings) }
     }

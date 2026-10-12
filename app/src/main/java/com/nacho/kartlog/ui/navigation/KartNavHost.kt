@@ -77,6 +77,7 @@ object Routes {
     const val CIRCUIT_ID = "circuitId"
     const val FINISH = "circuits/{$CIRCUIT_ID}/finish"
     const val FIELD_CAL = "settings/fieldcal"
+    const val PRERIDE = "settings/preride"
 
     fun finish(circuitId: Long) = "circuits/$circuitId/finish"
     const val SESSION_ID = "sessionId"
@@ -230,7 +231,11 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
                     viewModel = viewModel(factory = container.settingsViewModelFactory),
                     onOpenDashboard = { navController.navigate(Routes.TRACK) { launchSingleTop = true } },
                     onOpenFieldCalibration = { navController.navigate(Routes.FIELD_CAL) { launchSingleTop = true } },
+                    onOpenPreRide = { navController.navigate(Routes.PRERIDE) { launchSingleTop = true } },
                 )
+            }
+            composable(Routes.PRERIDE) {
+                com.nacho.kartlog.ui.checklist.PreRideScreen(snapshot = { container.deviceSnapshot() }, onBack = { navController.popBackStack() })
             }
             composable(Routes.FIELD_CAL) {
                 com.nacho.kartlog.ui.fieldcal.FieldCalibrationScreen(
