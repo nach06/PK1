@@ -44,6 +44,9 @@
 
     <!-- Nueva tanda -->
     <string name="new_session_title">Nueva tanda</string>
+    <string name="undo_lap_deleted">Vuelta %1$d borrada</string>
+    <string name="undo_session_deleted">Tanda borrada</string>
+    <string name="undo_action">Deshacer</string>
     <string name="edit_session_title">Editar tanda</string>
     <string name="action_edit_session">Editar tanda</string>
     <string name="label_circuit">Circuito</string>
@@ -339,6 +342,7 @@
     <string name="fieldcal_col_diff">Dif. ms</string>
     <string name="tools_title">Herramientas</string>
     <string name="tools_fieldcal">Calibración en pista</string>
+    <string name="tools_fieldcal_short">Calibración</string>
     <string name="signal_good">Señal GPS buena</string>
     <string name="signal_fair">Señal GPS regular</string>
     <string name="signal_poor">Señal GPS mala</string>

@@ -91,13 +91,18 @@ class AppContainer(context: Context) {
         }
     }
 
+    /** Alcance de la app: el cronometraje sigue aunque se cierre la pantalla. */
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     val circuitRepository: CircuitRepository = CircuitRepositoryImpl(database.circuitDao())
     /** Trazados GPS (`filesDir/tracks/{sessionId}.csv`); se borran junto con su tanda. */
     val trackStore: TrackStore = FileTrackStore(File(context.filesDir, "tracks"))
     /** Fotos originales de las hojas importadas (`filesDir/imports/{sessionId}.jpg`); se borran con su tanda. */
     val importPhotoStore: ImportPhotoStore = FileImportPhotoStore(context, File(context.filesDir, "imports"))
-    val sessionRepository: SessionRepository = SessionRepositoryImpl(database.sessionDao(), trackStore, importPhotoStore)
-    val lapRepository: LapRepository = LapRepositoryImpl(database.lapDao())
+    /** Borrados con «Deshacer» (8 s). */
+    val pendingDeletions = com.nacho.kartlog.domain.PendingDeletions(appScope)
+    val sessionRepository: SessionRepository = SessionRepositoryImpl(database.sessionDao(), trackStore, importPhotoStore, pendingDeletions)
+    val lapRepository: LapRepository = LapRepositoryImpl(database.lapDao(), pendingDeletions)
     val participantRepository: ParticipantRepository = ParticipantRepositoryImpl(database.participantDao())
     val stintRepository: StintRepository = StintRepositoryImpl(database.stintDao())
     val importRepository: ImportRepository = ImportRepositoryImpl(database.importDao(), importPhotoStore)
@@ -148,8 +153,6 @@ class AppContainer(context: Context) {
     /** Origen de posiciones. GPS interno por defecto; los tests o el simulador lo sustituyen. */
     var locationSource: LocationSource = FusedLocationSource(context)
 
-    /** Alcance de la app: el cronometraje sigue aunque se cierre la pantalla. */
-    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     /** Borrador de la tanda en curso (para recuperarla si el sistema mata la app). */
     val draftStore: DraftStore = FileDraftStore(File(context.filesDir, "tracks"))
     val timingSession = TimingSession(appScope, clockNs = { nanoClock() }, wallClockMs = { wallClockMs() }, draftStore = draftStore)
@@ -268,6 +271,6 @@ class AppContainer(context: Context) {
     }
 
     fun sessionDetailViewModelFactory(sessionId: Long): ViewModelProvider.Factory = viewModelFactory {
-        initializer { SessionDetailViewModel(sessionId, sessionRepository, lapRepository, participantRepository, stintRepository, trackStore) }
+        initializer { SessionDetailViewModel(sessionId, sessionRepository, lapRepository, participantRepository, stintRepository, trackStore, pendingDeletions) }
     }
 }

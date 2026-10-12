@@ -76,12 +76,20 @@ class SessionRepositoryImpl(
     private val dao: SessionDao,
     private val tracks: TrackStore? = null,
     private val photos: ImportPhotoStore? = null,
+    private val pending: com.nacho.kartlog.domain.PendingDeletions? = null,
 ) : SessionRepository {
     override fun observeSummaries(): Flow<List<SessionSummary>> =
-        dao.observeSummaries().map { rows -> rows.map { it.toDomain() } }
+        withHiddenSessions(dao.observeSummaries().map { rows -> rows.map { it.toDomain() } }) { list, hidden -> list.filter { it.session.id !in hidden } }
 
     override fun observeDetail(sessionId: Long): Flow<SessionDetail?> =
-        dao.observeById(sessionId).map { it?.toDomain() }
+        withHiddenSessions(dao.observeById(sessionId).map { it?.toDomain() }) { detail, hidden -> detail?.takeIf { sessionId !in hidden } }
+
+    /** Las tandas con borrado pendiente («Deshacer») no se ven aunque sigan en la base de datos. */
+    private fun <T> withHiddenSessions(source: Flow<T>, filter: (T, Set<Long>) -> T): Flow<T> =
+        if (pending == null) source
+        else kotlinx.coroutines.flow.combine(source, pending.hiddenItems) { value, items ->
+            filter(value, items.filter { it.kind == com.nacho.kartlog.domain.PendingDeletions.Kind.SESSION }.map { it.id }.toSet())
+        }
 
     override suspend fun create(session: NewSession): Long = dao.insert(session.toEntity())
 
@@ -97,11 +105,29 @@ class SessionRepositoryImpl(
     }
 }
 
-class LapRepositoryImpl(private val dao: LapDao) : LapRepository {
-    override fun observeBySession(sessionId: Long): Flow<List<Lap>> =
-        dao.observeBySession(sessionId).map { list -> list.map { it.toDomain() } }
+class LapRepositoryImpl(
+    private val dao: LapDao,
+    private val pending: com.nacho.kartlog.domain.PendingDeletions? = null,
+) : LapRepository {
+    override fun observeBySession(sessionId: Long): Flow<List<Lap>> = visible(dao.observeBySession(sessionId).map { list -> list.map { it.toDomain() } })
 
-    override fun observeAll(): Flow<List<Lap>> = dao.observeAll().map { list -> list.map { it.toDomain() } }
+    override fun observeAll(): Flow<List<Lap>> = visible(dao.observeAll().map { list -> list.map { it.toDomain() } })
+
+    /** Sin las vueltas con borrado pendiente («Deshacer») ni las de una tanda con borrado pendiente. */
+    private fun visible(source: Flow<List<Lap>>): Flow<List<Lap>> =
+        if (pending == null) source
+        else kotlinx.coroutines.flow.combine(source, pending.hiddenItems) { laps, items ->
+            if (items.isEmpty()) laps else {
+                val lapIds = items.filter { it.kind == com.nacho.kartlog.domain.PendingDeletions.Kind.LAP }.map { it.id }.toSet()
+                val sessionIds = items.filter { it.kind == com.nacho.kartlog.domain.PendingDeletions.Kind.SESSION }.map { it.id }.toSet()
+                val touched = laps.filter { it.id in lapIds }.map { it.sessionId }.toSet()
+                val kept = laps.filter { it.id !in lapIds && it.sessionId !in sessionIds }
+                // El borrado real renumera las vueltas de la tanda; se muestra ya así para que la lista no cambie al confirmarse.
+                if (touched.isEmpty()) kept else kept.groupBy { it.sessionId }.flatMap { (sid, list) ->
+                    if (sid in touched) list.sortedBy { it.number }.mapIndexed { i, lap -> lap.copy(number = i + 1) } else list
+                }
+            }
+        }
 
     override suspend fun addManual(sessionId: Long, timeMs: Long): Long =
         dao.insertNext(sessionId, timeMs, LapSource.MANUAL)

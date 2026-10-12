@@ -180,12 +180,13 @@ fun SettingsScreen(
                 }
             }
 
-            KartCard(Modifier.fillMaxWidth().testTag("tools_section")) {
-                Text(stringResource(R.string.tools_title).uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.kartColors.textMuted)
-                Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SecondaryButton(stringResource(R.string.tools_preride), onOpenPreRide, modifier = Modifier.testTag("tool_preride"))
-                    SecondaryButton(stringResource(R.string.tools_fieldcal), onOpenFieldCalibration, modifier = Modifier.testTag("tool_fieldcal"))
-                }
+            // Herramientas (Antes de salir / Calibración): una sola fila de dos botones para no empujar los ajustes de datos fuera de la vista.
+            androidx.compose.foundation.layout.Row(
+                modifier = Modifier.fillMaxWidth().testTag("tools_section"),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                SecondaryButton(stringResource(R.string.tools_preride), onOpenPreRide, modifier = Modifier.weight(1f).testTag("tool_preride"))
+                SecondaryButton(stringResource(R.string.tools_fieldcal_short), onOpenFieldCalibration, modifier = Modifier.weight(1f).testTag("tool_fieldcal"))
             }
             KartCard(Modifier.fillMaxWidth()) {
                 Text(

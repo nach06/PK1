@@ -139,6 +139,17 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
     // Tanda GPS interrumpida (la app murió a mitad de una tanda): se ofrece recuperarla o descartarla.
     var pendingDraft by remember { mutableStateOf<SessionDraft?>(null) }
     val snackbarHost = remember { SnackbarHostState() }
+    // «Deshacer» tras borrar una vuelta o una tanda (D2): el aviso vive aquí para sobrevivir a la navegación (borrar la tanda vuelve a la lista).
+    val pendingDelete by container.pendingDeletions.current.collectAsState()
+    val lapDeletedText = stringResource(R.string.undo_lap_deleted, pendingDelete?.arg ?: 0)
+    val sessionDeletedText = stringResource(R.string.undo_session_deleted)
+    val undoText = stringResource(R.string.undo_action)
+    LaunchedEffect(pendingDelete?.token) {
+        val p = pendingDelete ?: return@LaunchedEffect
+        val message = if (p.kind == com.nacho.kartlog.domain.PendingDeletions.Kind.LAP) lapDeletedText else sessionDeletedText
+        val result = snackbarHost.showSnackbar(message, actionLabel = undoText, duration = androidx.compose.material3.SnackbarDuration.Indefinite)
+        if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) container.pendingDeletions.undo(p.token)
+    }
     val draftEmptyNotice = stringResource(R.string.draft_empty_discarded)
     LaunchedEffect(Unit) {
         if (container.timingSession.state.value.phase == TimingPhase.IDLE) {

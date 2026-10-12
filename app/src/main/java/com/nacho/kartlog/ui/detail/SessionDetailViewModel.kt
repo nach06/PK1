@@ -88,6 +88,8 @@ class SessionDetailViewModel(
     participantRepository: ParticipantRepository? = null,
     stintRepository: StintRepository? = null,
     private val trackStore: TrackStore? = null,
+    /** Con «Deshacer» (D2); sin él, el borrado es inmediato. */
+    private val pendingDeletions: com.nacho.kartlog.domain.PendingDeletions? = null,
 ) : ViewModel() {
 
     private val local = MutableStateFlow(Local())
@@ -197,7 +199,9 @@ class SessionDetailViewModel(
                 digits = if (stillEditing) "" else it.digits,
             )
         }
-        viewModelScope.launch { lapRepository.delete(lap.id) }
+        val pending = pendingDeletions
+        if (pending != null) pending.schedule(com.nacho.kartlog.domain.PendingDeletions.Kind.LAP, lap.id, lap.number) { lapRepository.delete(lap.id) }
+        else viewModelScope.launch { lapRepository.delete(lap.id) }
     }
 
     fun requestDeleteSession() = local.update { it.copy(confirmDeleteSession = true) }
@@ -207,6 +211,8 @@ class SessionDetailViewModel(
     /** Borra la sesión; la UI detecta `detail == null` y vuelve atrás. */
     fun confirmDeleteSession() {
         local.update { it.copy(confirmDeleteSession = false) }
-        viewModelScope.launch { sessionRepository.delete(sessionId) }
+        val pending = pendingDeletions
+        if (pending != null) pending.schedule(com.nacho.kartlog.domain.PendingDeletions.Kind.SESSION, sessionId) { sessionRepository.delete(sessionId) }
+        else viewModelScope.launch { sessionRepository.delete(sessionId) }
     }
 }
