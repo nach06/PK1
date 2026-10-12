@@ -2,7 +2,18 @@ package com.nacho.kartlog.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material3.Icon
+import androidx.compose.ui.text.style.TextOverflow
+import com.nacho.kartlog.ui.theme.kartColors
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -27,27 +38,34 @@ fun RunningBanner(timing: TimingState, onReturn: () -> Unit, modifier: Modifier 
     } else {
         stringResource(R.string.track_banner_waiting)
     }
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.primary)
-            .clickable(onClick = onReturn)
-            .heightIn(min = 56.dp)
-            .padding(horizontal = 16.dp)
-            .testTag("running_banner"),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleSmall.copy(fontFamily = MonoFontFamily),
-            color = MaterialTheme.colorScheme.onPrimary,
-            modifier = Modifier.weight(1f).testTag("running_banner_text"),
-        )
-        Text(
-            text = stringResource(R.string.track_banner_back).uppercase() + " ›",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onPrimary,
-            modifier = Modifier.testTag("running_banner_return"),
-        )
+    val accent = MaterialTheme.colorScheme.primary
+    // Sobrio: superficie oscura de la app con el rojo solo en el borde superior y en el punto de «en pista».
+    Column(modifier.fillMaxWidth().background(MaterialTheme.kartColors.card).testTag("running_banner")) {
+        Box(Modifier.fillMaxWidth().height(2.dp).background(accent))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onReturn)
+                .heightIn(min = 54.dp)
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Default.FiberManualRecord, contentDescription = null, tint = accent, modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.titleSmall.copy(fontFamily = MonoFontFamily),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f).testTag("running_banner_text"),
+            )
+            Text(
+                text = stringResource(R.string.track_banner_back).uppercase() + " ›",
+                style = MaterialTheme.typography.titleSmall,
+                color = accent,
+                modifier = Modifier.testTag("running_banner_return"),
+            )
+        }
     }
 }
