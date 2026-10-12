@@ -203,7 +203,7 @@ de tiempo del Detalle.
 | D5 | `3e044fd` |
 | D6 | `eda6480` |
 | Tests estables (flush, FileProvider, Replay v2) | `b9c2d85` |
-| Lint + heap de tests + informe | `__LAST__` |
+| Lint + heap de tests + informe | `422f9f6` |
 
 Push: `HEAD == origin/claude/kartlog-sprint-1-3hhlkb` confirmado al final (ver el último commit).
 
