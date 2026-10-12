@@ -263,6 +263,10 @@ class AppContainer(context: Context) {
         initializer { NewSessionViewModel(circuitRepository, sessionRepository) }
     }
 
+    fun editSessionViewModelFactory(sessionId: Long): ViewModelProvider.Factory = viewModelFactory {
+        initializer { NewSessionViewModel(circuitRepository, sessionRepository, editSessionId = sessionId) }
+    }
+
     fun sessionDetailViewModelFactory(sessionId: Long): ViewModelProvider.Factory = viewModelFactory {
         initializer { SessionDetailViewModel(sessionId, sessionRepository, lapRepository, participantRepository, stintRepository, trackStore) }
     }

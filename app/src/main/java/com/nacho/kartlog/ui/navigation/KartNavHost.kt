@@ -87,6 +87,9 @@ object Routes {
     fun finish(circuitId: Long) = "circuits/$circuitId/finish"
     const val SESSION_ID = "sessionId"
     const val DETAIL = "sessions/{$SESSION_ID}"
+    const val EDIT = "sessions/{$SESSION_ID}/edit"
+
+    fun edit(sessionId: Long) = "sessions/$sessionId/edit"
 
     fun detail(sessionId: Long) = "sessions/$sessionId"
 }
@@ -323,6 +326,17 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
             }
             // `NEW` ("sessions/new") es literal y se declara antes que DETAIL, así que tiene prioridad.
             composable(
+                route = Routes.EDIT,
+                arguments = listOf(navArgument(Routes.SESSION_ID) { type = NavType.LongType }),
+            ) { entry ->
+                val sessionId = requireNotNull(entry.arguments?.getLong(Routes.SESSION_ID))
+                NewSessionScreen(
+                    viewModel = viewModel(key = "edit-$sessionId", factory = container.editSessionViewModelFactory(sessionId)),
+                    onBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
+                )
+            }
+            composable(
                 route = Routes.DETAIL,
                 arguments = listOf(navArgument(Routes.SESSION_ID) { type = NavType.LongType }),
             ) { entry ->
@@ -334,6 +348,7 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
                     ),
                     onBack = { navController.popBackStack() },
                     debugShortcuts = container.debugTools != null,
+                    onEdit = { navController.navigate(Routes.edit(sessionId)) },
                     onReplay = {
                         replayScope.launch {
                             if (container.startReplay(sessionId)) navController.navigate(Routes.TRACK) { launchSingleTop = true }

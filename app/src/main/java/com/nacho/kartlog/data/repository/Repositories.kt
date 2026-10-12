@@ -85,6 +85,11 @@ class SessionRepositoryImpl(
 
     override suspend fun create(session: NewSession): Long = dao.insert(session.toEntity())
 
+    override suspend fun update(sessionId: Long, session: NewSession) = dao.updateEditable(
+        sessionId, session.circuitId, session.dateTime, session.type, session.kartNumber, session.ballastKg,
+        session.ambientTempC, session.trackTempC, session.trackCondition, session.notes,
+    )
+
     override suspend fun delete(sessionId: Long) {
         dao.deleteById(sessionId)
         tracks?.delete(sessionId) // el trazado GPS vive en un fichero y se borra con la tanda

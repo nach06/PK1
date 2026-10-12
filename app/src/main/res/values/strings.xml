@@ -44,6 +44,8 @@
 
     <!-- Nueva tanda -->
     <string name="new_session_title">Nueva tanda</string>
+    <string name="edit_session_title">Editar tanda</string>
+    <string name="action_edit_session">Editar tanda</string>
     <string name="label_circuit">Circuito</string>
     <string name="label_session_type">Tipo de sesión</string>
     <string name="label_kart_number">Kart nº</string>

@@ -39,6 +39,9 @@ interface SessionRepository {
 
     suspend fun create(session: NewSession): Long
 
+    /** Cambia los datos editables de la tanda (circuito, fecha, tipo, kart, lastre, temperaturas, estado y notas); sus vueltas y su trazado no se tocan. */
+    suspend fun update(sessionId: Long, session: NewSession)
+
     suspend fun delete(sessionId: Long)
 }
 

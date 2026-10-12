@@ -76,7 +76,7 @@ fun NewSessionScreen(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = { KartTopBar(title = stringResource(R.string.new_session_title), onBack = onBack) },
+        topBar = { KartTopBar(title = stringResource(if (state.isEditing) R.string.edit_session_title else R.string.new_session_title), onBack = onBack) },
         // El botón GUARDAR sube con el teclado del sistema y el formulario se desplaza por encima.
         bottomBar = {
             Column(

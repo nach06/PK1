@@ -6,6 +6,8 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import com.nacho.kartlog.domain.model.SessionType
+import com.nacho.kartlog.domain.model.TrackCondition
 import com.nacho.kartlog.data.local.entity.SessionEntity
 import com.nacho.kartlog.data.local.entity.SessionSummaryRow
 import com.nacho.kartlog.data.local.entity.SessionWithCircuit
@@ -37,6 +39,16 @@ interface SessionDao {
 
     @Delete
     suspend fun delete(session: SessionEntity)
+
+    /** Edición desde el Detalle: solo los datos del formulario; no toca título importado, duración, texto original ni calidad GPS. */
+    @Query(
+        "UPDATE sessions SET circuitId = :circuitId, dateTime = :dateTime, type = :type, kartNumber = :kartNumber, " +
+            "ballastKg = :ballastKg, ambientTempC = :ambientTempC, trackTempC = :trackTempC, trackCondition = :condition, notes = :notes WHERE id = :id",
+    )
+    suspend fun updateEditable(
+        id: Long, circuitId: Long, dateTime: Long, type: SessionType, kartNumber: Int?, ballastKg: Float?,
+        ambientTempC: Float?, trackTempC: Float?, condition: TrackCondition, notes: String,
+    )
 
     @Query("DELETE FROM sessions WHERE id = :id")
     suspend fun deleteById(id: Long)

@@ -69,6 +69,7 @@ fun SessionDetailScreen(
     onBack: () -> Unit,
     debugShortcuts: Boolean = false,
     onReplay: (() -> Unit)? = null,
+    onEdit: (() -> Unit)? = null,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val trackState by viewModel.track.collectAsStateWithLifecycle()
@@ -113,6 +114,11 @@ fun SessionDetailScreen(
                 actions = {
                     KartOverflowMenu(
                         actions = listOf(
+                            MenuAction(
+                                label = stringResource(R.string.action_edit_session),
+                                enabled = detail != null && onEdit != null,
+                                onClick = { onEdit?.invoke() },
+                            ),
                             MenuAction(
                                 label = stringResource(R.string.action_export_csv),
                                 enabled = state.laps.isNotEmpty() && detail != null,

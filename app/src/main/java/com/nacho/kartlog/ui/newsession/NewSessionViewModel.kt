@@ -39,6 +39,8 @@ data class NewSessionUiState(
     val isSaving: Boolean = false,
     val showCircuitPicker: Boolean = false,
     val circuitDialog: CircuitDialogState? = null,
+    /** Edición de una tanda existente (desde el Detalle) en vez de una nueva. */
+    val isEditing: Boolean = false,
 ) {
     val selectedCircuit: Circuit? get() = circuits.firstOrNull { it.id == circuitId }
     val canSave: Boolean get() = circuitId != null && !isSaving
@@ -75,6 +77,8 @@ class NewSessionViewModel(
     private val sessionRepository: SessionRepository,
     private val zone: ZoneId = ZoneId.systemDefault(),
     now: () -> Long = System::currentTimeMillis,
+    /** Si no es `null`, el formulario edita esa tanda (D1): se rellena con sus datos y GUARDAR la actualiza. */
+    private val editSessionId: Long? = null,
 ) : ViewModel() {
 
     private val form = MutableStateFlow(Form(dateTime = now().truncatedToMinute()))
@@ -104,6 +108,7 @@ class NewSessionViewModel(
             isSaving = f.isSaving,
             showCircuitPicker = f.showCircuitPicker,
             circuitDialog = f.circuitDialog,
+            isEditing = editSessionId != null,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NewSessionUiState(dateTime = form.value.dateTime))
 
@@ -113,6 +118,18 @@ class NewSessionViewModel(
     val saved = savedChannel.receiveAsFlow()
 
     init {
+        if (editSessionId != null) {
+            viewModelScope.launch {
+                val s = sessionRepository.observeDetail(editSessionId).first()?.session ?: return@launch
+                form.update {
+                    it.copy(
+                        circuitId = s.circuitId, dateTime = s.dateTime, type = s.type, kartNumber = s.kartNumber,
+                        ballastKg = s.ballastKg?.let(Math::round), ambientTempC = s.ambientTempC?.let(Math::round),
+                        trackTempC = s.trackTempC?.let(Math::round), condition = s.trackCondition, notes = s.notes,
+                    )
+                }
+            }
+        } else
         // Preselecciona el circuito de la última tanda creada; sin tandas, no preselecciona nada.
         viewModelScope.launch {
             val (sorted, used) = orderedCircuits.first()
@@ -201,19 +218,18 @@ class NewSessionViewModel(
         form.update { it.copy(isSaving = true) }
         viewModelScope.launch {
             try {
-                val id = sessionRepository.create(
-                    NewSession(
-                        circuitId = circuitId,
-                        dateTime = f.dateTime,
-                        type = f.type,
-                        kartNumber = f.kartNumber,
-                        ballastKg = f.ballastKg?.toFloat(),
-                        ambientTempC = f.ambientTempC?.toFloat(),
-                        trackTempC = f.trackTempC?.toFloat(),
-                        trackCondition = f.condition,
-                        notes = f.notes.trim(),
-                    ),
+                val data = NewSession(
+                    circuitId = circuitId,
+                    dateTime = f.dateTime,
+                    type = f.type,
+                    kartNumber = f.kartNumber,
+                    ballastKg = f.ballastKg?.toFloat(),
+                    ambientTempC = f.ambientTempC?.toFloat(),
+                    trackTempC = f.trackTempC?.toFloat(),
+                    trackCondition = f.condition,
+                    notes = f.notes.trim(),
                 )
+                val id = if (editSessionId != null) editSessionId.also { sessionRepository.update(it, data) } else sessionRepository.create(data)
                 savedChannel.send(id)
             } finally {
                 form.update { it.copy(isSaving = false) }
