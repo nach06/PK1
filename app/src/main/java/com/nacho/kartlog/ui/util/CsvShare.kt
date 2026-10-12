@@ -40,6 +40,22 @@ suspend fun shareCsv(context: Context, fileName: String, content: String) {
     context.startActivity(chooser)
 }
 
+/** Escribe [content] en `cache/exports/[fileName]` y abre el selector de compartir con el tipo [mime]. */
+suspend fun shareTextFile(context: Context, fileName: String, mime: String, content: String) {
+    val intent = withContext(Dispatchers.IO) {
+        val dir = File(context.cacheDir, "exports").apply { mkdirs() }
+        val file = File(dir, fileName)
+        file.writeText(content, Charsets.UTF_8)
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        Intent(Intent.ACTION_SEND).apply {
+            type = mime
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+    }
+    context.startActivity(Intent.createChooser(intent, context.getString(R.string.share_csv_title)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+}
+
 /** Comparte la copia de seguridad (.zip) con el selector de Android. El fichero ya está en `cache/exports` (FileProvider). */
 fun shareBackup(context: Context, file: File) {
     val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)

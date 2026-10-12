@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -141,6 +142,18 @@ class SessionDetailViewModel(
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TrackUiState.Loading)
+
+    /** Posiciones y cruces del trazado para exportar a GPX/CSV, o `null` si la tanda no tiene trazado. */
+    suspend fun trackExport(): com.nacho.kartlog.domain.gps.TrackExportData? {
+        val store = trackStore ?: return null
+        val detail = sessionRepository.observeDetail(sessionId).first() ?: return null
+        val fixes = cachedFixes ?: store.load(sessionId).also { cachedFixes = it }
+        if (fixes.size < 2) return null
+        return com.nacho.kartlog.domain.gps.TrackExportData(
+            fixes = fixes,
+            crossingsNs = com.nacho.kartlog.domain.gps.TrackExport.crossingsOf(fixes, detail.circuit.finishLine),
+        )
+    }
 
     fun onDigits(input: String) = local.update { it.copy(digits = LapTime.appendDigits(it.digits, input)) }
 

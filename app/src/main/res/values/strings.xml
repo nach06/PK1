@@ -92,6 +92,8 @@
     <string name="badge_best">Mejor</string>
     <string name="format_temp_ambient">Ambiente %1$d °C</string>
     <string name="format_temp_track">Pista %1$d °C</string>
+    <string name="action_export_gpx">Exportar GPX (trazado)</string>
+    <string name="action_export_gps_csv">Exportar CSV del GPS</string>
     <string name="action_export_csv">Exportar CSV</string>
     <string name="share_csv_title">Compartir vueltas</string>
     <string name="laps_empty">Aún no hay vueltas. Teclea el tiempo y pulsa GUARDAR VUELTA.</string>

@@ -59,6 +59,7 @@ import com.nacho.kartlog.ui.util.formatDateTime
 import com.nacho.kartlog.ui.util.labelRes
 import com.nacho.kartlog.ui.util.ShareCardData
 import com.nacho.kartlog.ui.util.shareLapsCsv
+import com.nacho.kartlog.ui.util.shareTextFile
 import com.nacho.kartlog.ui.util.shareSessionImage
 import kotlinx.coroutines.launch
 
@@ -119,6 +120,29 @@ fun SessionDetailScreen(
                                         scope.launch {
                                             shareLapsCsv(context, detail.circuit.name, detail.session.dateTime, state.laps)
                                         }
+                                    }
+                                },
+                            ),
+                            MenuAction(
+                                label = stringResource(R.string.action_export_gpx),
+                                enabled = trackState is TrackUiState.Ready && detail != null,
+                                onClick = {
+                                    if (detail != null) scope.launch {
+                                        val data = viewModel.trackExport() ?: return@launch
+                                        val title = detail.circuit.name + " · " + formatDateTime(detail.session.dateTime)
+                                        shareTextFile(context, exportName(detail.circuit.name, detail.session.dateTime, "gpx"), "application/gpx+xml",
+                                            com.nacho.kartlog.domain.gps.TrackExport.gpx(title, detail.session.dateTime, data.fixes, data.crossingsNs))
+                                    }
+                                },
+                            ),
+                            MenuAction(
+                                label = stringResource(R.string.action_export_gps_csv),
+                                enabled = trackState is TrackUiState.Ready && detail != null,
+                                onClick = {
+                                    if (detail != null) scope.launch {
+                                        val data = viewModel.trackExport() ?: return@launch
+                                        shareTextFile(context, exportName(detail.circuit.name, detail.session.dateTime, "gps.csv"), "text/csv",
+                                            com.nacho.kartlog.domain.gps.TrackExport.csv(data.fixes))
                                     }
                                 },
                             ),
@@ -474,4 +498,10 @@ private fun StatsRowPreview() {
             StatsRow(bestLapMs = 47_388, cleanAverageMs = 47_901) // 0:47.388 · 0:47.901
         }
     }
+}
+
+private fun exportName(circuit: String, dateTime: Long, ext: String): String {
+    val safe = circuit.replace(Regex("[^A-Za-z0-9]+"), "_").trim('_').ifEmpty { "tanda" }
+    val stamp = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmm").format(java.time.Instant.ofEpochMilli(dateTime).atZone(java.time.ZoneId.systemDefault()))
+    return "kartlog_${safe}_$stamp.$ext"
 }
