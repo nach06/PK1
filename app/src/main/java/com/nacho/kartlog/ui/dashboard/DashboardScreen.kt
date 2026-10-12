@@ -298,7 +298,7 @@ private fun PrepContent(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.track_day_mode), style = MaterialTheme.typography.titleSmall)
-                    Text(stringResource(R.string.track_day_mode_hint), style = MaterialTheme.typography.bodyMedium, color = kart.textMuted)
+                    Text(stringResource(if (state.prefs.dayMode) R.string.track_day_mode_on else R.string.track_day_mode_off), style = MaterialTheme.typography.bodyMedium, color = kart.textMuted)
                 }
                 androidx.compose.material3.Switch(
                     checked = state.prefs.dayMode,

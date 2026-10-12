@@ -441,6 +441,8 @@
     <string name="track_unreliable_short">⚠ vuelta con hueco de GPS</string>
     <string name="track_battery_low">Batería %1$d %% · conecta el cargador</string>
     <string name="track_day_mode">Modo día (sol)</string>
+    <string name="track_day_mode_on">Activado: fondo claro para ver el panel a pleno sol.</string>
+    <string name="track_day_mode_off">Desactivado: fondo oscuro (recomendado). Solo cambia si lo activas tú.</string>
     <string name="track_day_mode_hint">Fondo claro y contraste máximo para ver el panel a pleno sol.</string>
     <string name="alert_best">Mejor</string>
     <string name="alert_record_hint">Récord del circuito</string>

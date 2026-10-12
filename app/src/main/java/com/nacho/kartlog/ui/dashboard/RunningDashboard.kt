@@ -227,7 +227,26 @@ fun RunningDashboard(
             )
         }
         val gap: @Composable () -> Unit = {
-            if (timing.pitPending) PitBanner(palette) else DeltaBar(delta, palette, Modifier.fillMaxWidth().height(24.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) {
+                    if (timing.pitPending) PitBanner(palette) else DeltaBar(delta, palette, Modifier.fillMaxWidth().height(24.dp))
+                }
+                // Solo en depuración: «Terminar» de un toque, al final de la fila de la barra (misma altura: no quita sitio al cronómetro).
+                if (onDebugFinish != null) {
+                    Box(
+                        Modifier
+                            .height(24.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(palette.warning)
+                            .clickable(onClick = onDebugFinish)
+                            .padding(horizontal = 8.dp)
+                            .testTag("debug_finish"),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(stringResource(R.string.debug_finish_tap).uppercase(), style = MaterialTheme.typography.labelMedium, color = palette.onAccent, maxLines = 1)
+                    }
+                }
+            }
         }
         val deltaBlock: @Composable (Modifier) -> Unit = { m ->
             DashValue(stringResource(R.string.track_delta_short), delta?.let(LapTime::formatDelta) ?: stringResource(R.string.value_unset), deltaColor, palette, m.testTag("dash_delta"), size = if (landscape) 48.sp else 44.sp, caption = deltaCaption)
@@ -281,7 +300,7 @@ fun RunningDashboard(
         }
 
         if (landscape) {
-            Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Column(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)) {
                 Column(Modifier.weight(1f).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                     timeText(Modifier.fillMaxWidth())
                 }
@@ -299,7 +318,7 @@ fun RunningDashboard(
                 footer()
             }
         } else {
-            Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Column(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.SpaceBetween) {
                 Column(Modifier.weight(1f).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                     lapLabel()
                     timeText(Modifier.fillMaxWidth())
@@ -312,22 +331,6 @@ fun RunningDashboard(
                 }
                 Spacer(Modifier.height(12.dp))
                 footer()
-            }
-        }
-        if (onDebugFinish != null) {
-            Box(
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
-                    .heightIn(min = 48.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(palette.warning)
-                    .clickable(onClick = onDebugFinish)
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
-                    .testTag("debug_finish"),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(stringResource(R.string.debug_finish_tap).uppercase(), style = MaterialTheme.typography.labelLarge, color = palette.onAccent, maxLines = 1)
             }
         }
         if (alert != null) LapAlertOverlay(alert, palette)
