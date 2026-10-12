@@ -126,6 +126,7 @@ class SettingsViewModel(
         _uiState.update { it.copy(isBusy = true) }
         viewModelScope.launch {
             val result = runCatching { repository.clearRivalData() }
+            if (result.isSuccess) userSettings.setDriverAliases(emptyMap()) // los alias son nombres de rivales
             _uiState.update {
                 it.copy(isBusy = false, message = if (result.isSuccess) SettingsMessage.RIVALS_CLEARED else SettingsMessage.FAILED)
             }
