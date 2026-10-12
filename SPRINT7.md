@@ -172,4 +172,4 @@ Todo lo anterior: el comportamiento del GPS real, de ML Kit, del selector de fic
 
 ## Push
 
-Todo en `origin/claude/kartlog-sprint-1-3hhlkb` (un commit por tarea, `git push` tras cada uno). HEAD final y confirmación `HEAD == origin`: ver el último commit de la rama (se anota abajo al cerrar).
+Todo en `origin/claude/kartlog-sprint-1-3hhlkb` (un commit por tarea, `git push` tras cada uno). Código y tests cerrados en `b6cecaf` (informe) sobre `4f8bb8f`/`946d2c3`; tras este commit de cierre `git rev-parse HEAD == origin/claude/kartlog-sprint-1-3hhlkb` (comprobado con `git fetch`).
