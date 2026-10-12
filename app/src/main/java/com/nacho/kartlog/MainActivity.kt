@@ -29,6 +29,8 @@ class MainActivity : ComponentActivity() {
         // Al recrear la actividad (rotación) el intent original ya se entregó: no volver a importarlo.
         if (savedInstanceState == null) {
             deliverShared(intent, container)
+            // Copia semanal en segundo plano (si está activada) y, además, al abrir la app por si el trabajo no ha corrido.
+            if (container.userSettings.autoBackup.value) com.nacho.kartlog.data.backup.AutoBackupScheduler.schedule(applicationContext)
             // Copia semanal automática (discreta: solo un aviso corto cuando se hace).
             lifecycleScope.launch {
                 container.autoBackup.runIfDue()?.let {

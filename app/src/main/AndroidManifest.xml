@@ -41,6 +41,10 @@
             </intent-filter>
         </activity>
         <service
+            android:name=".data.backup.AutoBackupJobService"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+        <service
             android:name=".data.tracking.TrackingService"
             android:exported="false"
             android:foregroundServiceType="location" />
