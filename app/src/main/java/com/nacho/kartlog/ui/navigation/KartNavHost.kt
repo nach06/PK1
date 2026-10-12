@@ -138,7 +138,7 @@ fun KartNavHost(container: AppContainer, modifier: Modifier = Modifier) {
             } else if (draft != null && countRecoverableLaps(draft) == 0) {
                 // Sin ninguna vuelta cerrada no hay nada que guardar: se descarta y se avisa (no queda una tanda «terminada» vacía).
                 container.draftStore.clear()
-                snackbarHost.showSnackbar(draftEmptyNotice)
+                snackbarHost.showSnackbar(draftEmptyNotice, duration = androidx.compose.material3.SnackbarDuration.Long)
             } else {
                 pendingDraft = draft
             }
